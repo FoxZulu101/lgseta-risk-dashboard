@@ -713,383 +713,593 @@ function AssuranceTab({ data }) {
 // ─── BCM TAB ─────────────────────────────────────────────────────
 function BCMTab({ data }) {
   const bcm = data.bcmResilience;
-  return (
-    <div>
-      <SectionTitle title="BCM Resilience Dashboard" sub="Business continuity maturity, RTO/RPO compliance and critical process status" />
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
-        <KpiCard label="BCM Readiness" value={`${bcm.readinessIndex}%`} icon="🔄" color={C.amber} />
-        <KpiCard label="RTO Compliance" value={`${bcm.rtoCompliance}%`} icon="⏱️" color={C.amber} />
-        <KpiCard label="RPO Compliance" value={`${bcm.rpoCompliance}%`} icon="💾" color={C.amber} />
-        <KpiCard label="BCM Maturity" value={bcm.bcmMaturity} icon="📊" color={C.blue} />
-        <KpiCard label="DR Status" value={`${bcm.drStatus}%`} icon="🛡️" color={C.purple} />
-      </div>
-      <Card>
-        <div style={{ fontWeight: 700, marginBottom: 16, color: C.text }}>Critical Process Status</div>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-            <thead>
-              <tr style={{ borderBottom: `1px solid ${C.border}` }}>
-                {["Process","RTO","RPO","Last Tested","Status","Maturity"].map(h => (
-                  <th key={h} style={{ padding: "8px 12px", textAlign: "left", color: C.muted, fontWeight: 600 }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {bcm.criticalProcesses.map(p => (
-                <tr key={p.name} style={{ borderBottom: `1px solid ${C.border}22` }}>
-                  <td style={{ padding: "12px", color: C.text, fontWeight: 600 }}>{p.name}</td>
-                  <td style={{ padding: "12px", color: C.accent }}>{p.rto}</td>
-                  <td style={{ padding: "12px", color: C.accent }}>{p.rpo}</td>
-                  <td style={{ padding: "12px", color: C.sub }}>{p.lastTested}</td>
-                  <td style={{ padding: "12px" }}><Badge label={p.status} color={p.status === "Passed" ? "green" : "red"} /></td>
-                  <td style={{ padding: "12px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <ProgressBar value={p.maturity} max={5} color={p.maturity >= 4 ? C.green : p.maturity >= 3 ? C.amber : C.red} />
-                      <span style={{ color: C.text, minWidth: 30 }}>{p.maturity}/5</span>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-    </div>
-  );
-}
+  const [activeSection, setActiveSection] = useState("dashboard");
 
-// ─── FRAUD TAB ───────────────────────────────────────────────────
-function FraudTab({ data }) {
-  const fe = data.fraudEthics;
-  return (
-    <div>
-      <SectionTitle title="Fraud, Ethics & Compliance" sub="Case register, investigation status and compliance breach tracking" />
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
-        <KpiCard label="Fraud Cases" value={fe.fraudCases} icon="🔍" color={C.red} />
-        <KpiCard label="Ethics Cases" value={fe.ethicsCases} icon="⚖️" color={C.amber} />
-        <KpiCard label="Compliance Breaches" value={fe.complianceBreaches} icon="📋" color={C.amber} />
-        <KpiCard label="Active Investigations" value={fe.activeInvestigations} icon="🕵️" color={C.purple} />
-        <KpiCard label="Declarations" value={fe.declarations} icon="📝" color={C.blue} sub="Gifts & hospitality this quarter" />
-      </div>
-      <Card>
-        <div style={{ fontWeight: 700, marginBottom: 16, color: C.text }}>Fraud, Ethics & Compliance Register</div>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-            <thead>
-              <tr style={{ borderBottom: `1px solid ${C.border}` }}>
-                {["Case ID","Type","Category","Severity","Status","Description","Date","Assigned To"].map(h => (
-                  <th key={h} style={{ padding: "8px 12px", textAlign: "left", color: C.muted, fontWeight: 600 }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {fe.cases.map(c => (
-                <tr key={c.id} style={{ borderBottom: `1px solid ${C.border}22` }}>
-                  <td style={{ padding: "10px 12px", color: C.accent, fontWeight: 700 }}>{c.id}</td>
-                  <td style={{ padding: "10px 12px" }}><Badge label={c.type} color={c.type === "Fraud" ? "red" : c.type === "Ethics" ? "purple" : "amber"} /></td>
-                  <td style={{ padding: "10px 12px", color: C.text }}>{c.category}</td>
-                  <td style={{ padding: "10px 12px" }}><Badge label={c.severity} color={c.severity === "High" ? "red" : c.severity === "Medium" ? "amber" : "green"} /></td>
-                  <td style={{ padding: "10px 12px" }}><Badge label={c.status} color={c.status === "Investigating" ? "amber" : c.status === "Resolved" ? "green" : c.status === "Open" ? "red" : "blue"} /></td>
-                  <td style={{ padding: "10px 12px", color: C.sub, maxWidth: 200 }}>{c.description}</td>
-                  <td style={{ padding: "10px 12px", color: C.muted }}>{c.dateReported}</td>
-                  <td style={{ padding: "10px 12px", color: C.text }}>{c.assignedTo}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-    </div>
-  );
-}
+  const sections = [
+    { id: "dashboard", label: "📊 Dashboard" },
+    { id: "governance", label: "🏛️ Governance" },
+    { id: "bia", label: "📋 BIA Register" },
+    { id: "services", label: "⚙️ Critical Services" },
+    { id: "bcplans", label: "📄 BC Plans" },
+    { id: "drplans", label: "💾 DR Plans" },
+    { id: "risks", label: "🛡️ BCM Risks" },
+    { id: "incidents", label: "🚨 Incidents" },
+    { id: "testing", label: "🧪 Testing" },
+    { id: "kris", label: "📡 BCM KRIs" },
+    { id: "actions", label: "🔧 Actions" },
+  ];
 
-// ─── DEPARTMENTS TAB ─────────────────────────────────────────────
-function DepartmentsTab({ data }) {
-  const depts = data.departments;
-  const allDepts = [depts.corporateServices, depts.officeOfCEO, depts.cooOffice, depts.cfoOffice];
+  const impactColor = (v) =>
+    v === "Critical" ? C.red : v === "High" ? "#f97316" : v === "Medium" ? C.amber : C.green;
+
   return (
     <div>
-      <SectionTitle title="Departmental Risk Profile" sub="Risk exposure by department and business unit across LGSETA" />
-      {allDepts.map(dept => (
-        <div key={dept.name} style={{ marginBottom: 28 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: C.accent, marginBottom: 12, paddingBottom: 8, borderBottom: `1px solid ${C.border}` }}>
-            🏢 {dept.name} — {dept.head}
+      <SectionTitle title="BCM Resilience Center" sub="Enterprise Business Continuity Management — LGSETA BJMAPEX GRC Intelligence" />
+
+      {/* Sub Navigation */}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 24, background: C.surface, padding: 8, borderRadius: 10, border: `1px solid ${C.border}` }}>
+        {sections.map(s => (
+          <button key={s.id} onClick={() => setActiveSection(s.id)} style={{
+            padding: "6px 14px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 12, fontWeight: activeSection === s.id ? 700 : 400,
+            background: activeSection === s.id ? C.accent : "transparent",
+            color: activeSection === s.id ? "#000" : C.muted,
+            transition: "all 0.2s"
+          }}>{s.label}</button>
+        ))}
+      </div>
+
+      {/* ── DASHBOARD ── */}
+      {activeSection === "dashboard" && (
+        <div>
+          {/* Readiness KPIs */}
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
+            <KpiCard label="BCM Readiness" value={`${bcm.readinessIndex}%`} icon="🔄" color={C.amber} sub="Overall readiness index" />
+            <KpiCard label="RTO Compliance" value={`${bcm.rtoCompliance}%`} icon="⏱️" color={C.amber} sub="Recovery time compliance" />
+            <KpiCard label="RPO Compliance" value={`${bcm.rpoCompliance}%`} icon="💾" color={C.amber} sub="Recovery point compliance" />
+            <KpiCard label="BCM Maturity" value={bcm.bcmMaturity} icon="📊" color={C.blue} sub="ISO 22301 maturity level" />
+            <KpiCard label="DR Status" value={`${bcm.drStatus}%`} icon="🛡️" color={C.purple} sub="Disaster recovery readiness" />
           </div>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            {dept.units.map(unit => (
-              <Card key={unit.name} style={{ flex: 1, minWidth: 200, borderTop: `3px solid ${statusColor(unit.status)}` }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{unit.name}</div>
-                  <Badge label={unit.status} color={unit.status === "Red" ? "red" : unit.status === "Amber" ? "amber" : "green"} />
+
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 24 }}>
+            {/* BCM Plans Summary */}
+            <Card style={{ flex: 1, minWidth: 220 }}>
+              <div style={{ fontWeight: 700, color: C.accent, marginBottom: 14 }}>📄 BCM Plans Status</div>
+              {[
+                { label: "Total Plans", value: bcm.bcPlans.length, color: C.accent },
+                { label: "Approved", value: bcm.bcPlans.filter(p => p.approvalStatus === "Approved").length, color: C.green },
+                { label: "Draft", value: bcm.bcPlans.filter(p => p.approvalStatus === "Draft").length, color: C.amber },
+                { label: "Tested", value: bcm.bcPlans.filter(p => p.testingStatus === "Passed").length, color: C.green },
+                { label: "Failed", value: bcm.bcPlans.filter(p => p.testingStatus === "Failed").length, color: C.red },
+                { label: "Not Tested", value: bcm.bcPlans.filter(p => p.testingStatus === "Not Tested").length, color: C.muted },
+              ].map(i => (
+                <div key={i.label} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: `1px solid ${C.border}` }}>
+                  <span style={{ fontSize: 12, color: C.sub }}>{i.label}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: i.color }}>{i.value}</span>
                 </div>
-                <div style={{ fontSize: 11, color: C.muted, marginBottom: 8 }}>Key Risk: <span style={{ color: C.sub }}>{unit.keyRisk}</span></div>
-                <div style={{ display: "flex", gap: 16, fontSize: 11 }}>
-                  <span style={{ color: C.sub }}>Risks: <strong style={{ color: C.text }}>{unit.riskCount}</strong></span>
-                  <span style={{ color: C.red }}>High: <strong>{unit.highRisks}</strong></span>
+              ))}
+            </Card>
+
+            {/* Critical Services Coverage */}
+            <Card style={{ flex: 1, minWidth: 220 }}>
+              <div style={{ fontWeight: 700, color: C.accent, marginBottom: 14 }}>⚙️ Critical Services Coverage</div>
+              {[
+                { label: "Total Services", value: bcm.criticalServices.length, color: C.accent },
+                { label: "Adequate Readiness", value: bcm.criticalServices.filter(s => s.readiness === "Adequate").length, color: C.green },
+                { label: "Partial Readiness", value: bcm.criticalServices.filter(s => s.readiness === "Partial").length, color: C.amber },
+                { label: "High Risk", value: bcm.criticalServices.filter(s => s.riskRating === "High").length, color: C.red },
+                { label: "Critical Priority", value: bcm.criticalServices.filter(s => s.priority === "Critical").length, color: C.red },
+              ].map(i => (
+                <div key={i.label} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: `1px solid ${C.border}` }}>
+                  <span style={{ fontSize: 12, color: C.sub }}>{i.label}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: i.color }}>{i.value}</span>
                 </div>
-                <div style={{ marginTop: 8 }}>
-                  <Badge label={unit.controlEffectiveness} color={unit.controlEffectiveness === "Effective" ? "green" : unit.controlEffectiveness === "Ineffective" ? "red" : "amber"} />
+              ))}
+            </Card>
+
+            {/* Testing Summary */}
+            <Card style={{ flex: 1, minWidth: 220 }}>
+              <div style={{ fontWeight: 700, color: C.accent, marginBottom: 14 }}>🧪 Testing Summary</div>
+              {[
+                { label: "Tests Conducted", value: bcm.testing.length, color: C.accent },
+                { label: "Passed", value: bcm.testing.filter(t => t.result === "Passed").length, color: C.green },
+                { label: "Failed", value: bcm.testing.filter(t => t.result === "Failed").length, color: C.red },
+                { label: "Partial", value: bcm.testing.filter(t => t.result === "Partial").length, color: C.amber },
+                { label: "Total Findings", value: bcm.testing.reduce((s, t) => s + t.findingsCount, 0), color: C.red },
+              ].map(i => (
+                <div key={i.label} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: `1px solid ${C.border}` }}>
+                  <span style={{ fontSize: 12, color: C.sub }}>{i.label}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: i.color }}>{i.value}</span>
+                </div>
+              ))}
+            </Card>
+
+            {/* Treatment Actions Summary */}
+            <Card style={{ flex: 1, minWidth: 220 }}>
+              <div style={{ fontWeight: 700, color: C.accent, marginBottom: 14 }}>🔧 Treatment Actions</div>
+              {[
+                { label: "Total Actions", value: bcm.treatmentActions.length, color: C.accent },
+                { label: "In Progress", value: bcm.treatmentActions.filter(t => t.status === "In Progress").length, color: C.amber },
+                { label: "Overdue", value: bcm.treatmentActions.filter(t => t.status === "Overdue").length, color: C.red },
+                { label: "Not Started", value: bcm.treatmentActions.filter(t => t.status === "Not Started").length, color: C.muted },
+                { label: "Critical Priority", value: bcm.treatmentActions.filter(t => t.priority === "Critical").length, color: C.red },
+              ].map(i => (
+                <div key={i.label} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: `1px solid ${C.border}` }}>
+                  <span style={{ fontSize: 12, color: C.sub }}>{i.label}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: i.color }}>{i.value}</span>
+                </div>
+              ))}
+            </Card>
+          </div>
+
+          {/* RTO/RPO Performance */}
+          <Card style={{ marginBottom: 24 }}>
+            <div style={{ fontWeight: 700, color: C.text, marginBottom: 16 }}>⏱️ RTO / RPO Performance Dashboard</div>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <thead>
+                  <tr style={{ borderBottom: `1px solid ${C.border}` }}>
+                    {["Critical Service", "Approved RTO", "Approved RPO", "Priority", "Readiness", "Risk Rating", "Escalation"].map(h => (
+                      <th key={h} style={{ padding: "8px 12px", textAlign: "left", color: C.muted, fontWeight: 600 }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {bcm.criticalServices.map(s => (
+                    <tr key={s.id} style={{ borderBottom: `1px solid ${C.border}22` }}>
+                      <td style={{ padding: "10px 12px", color: C.text, fontWeight: 600 }}>{s.service}</td>
+                      <td style={{ padding: "10px 12px", color: C.accent }}>{s.rto}</td>
+                      <td style={{ padding: "10px 12px", color: C.accent }}>{s.rpo}</td>
+                      <td style={{ padding: "10px 12px" }}><Badge label={s.priority} color={s.priority === "Critical" ? "red" : s.priority === "High" ? "amber" : "blue"} /></td>
+                      <td style={{ padding: "10px 12px" }}><Badge label={s.readiness} color={s.readiness === "Adequate" ? "green" : "amber"} /></td>
+                      <td style={{ padding: "10px 12px" }}><Badge label={s.riskRating} color={s.riskRating === "High" ? "red" : s.riskRating === "Medium" ? "amber" : "green"} /></td>
+                      <td style={{ padding: "10px 12px", color: C.sub, fontSize: 11 }}>{s.escalation}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          {/* BCM KRIs Summary */}
+          <Card>
+            <div style={{ fontWeight: 700, color: C.text, marginBottom: 16 }}>📡 BCM Key Risk Indicators</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {bcm.bcmKRIs.map(k => (
+                <div key={k.id} style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                  <div style={{ flex: 2, minWidth: 200, fontSize: 12, color: C.text }}>{k.indicator}</div>
+                  <div style={{ fontWeight: 800, fontSize: 16, color: statusColor(k.status), minWidth: 60 }}>{k.currentValue}</div>
+                  <div style={{ flex: 1, minWidth: 150 }}><ProgressBar value={parseFloat(k.currentValue)} color={statusColor(k.status)} /></div>
+                  <Badge label={k.status} color={k.status === "Red" ? "red" : k.status === "Amber" ? "amber" : "green"} />
+                  <span style={{ fontSize: 11, color: C.muted }}>{trendIcon(k.trend)}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* ── GOVERNANCE ── */}
+      {activeSection === "governance" && (
+        <div>
+          <SectionTitle title="BCM Governance Register" sub="Policy status, committee structure and roles & responsibilities" />
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
+            <KpiCard label="BCM Policy" value={bcm.governance.bcmPolicy} icon="📋" color={C.green} sub={`Version ${bcm.governance.policyVersion}`} />
+            <KpiCard label="Framework Status" value={bcm.governance.bcmFrameworkStatus} icon="🏛️" color={C.green} />
+            <KpiCard label="ISO 22301" value={bcm.governance.iso22301Alignment} icon="✅" color={C.amber} sub="Alignment status" />
+            <KpiCard label="Governance Rating" value={bcm.governance.governanceRating} icon="⭐" color={C.amber} />
+          </div>
+
+          {/* Committees */}
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ fontWeight: 700, color: C.accent, marginBottom: 12, fontSize: 14 }}>Committee Structure</div>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              {bcm.governance.committees.map(c => (
+                <Card key={c.name} style={{ flex: 1, minWidth: 220, borderTop: `3px solid ${C.accent}` }}>
+                  <div style={{ fontWeight: 700, color: C.text, marginBottom: 8, fontSize: 13 }}>{c.name}</div>
+                  <div style={{ fontSize: 12, color: C.muted, marginBottom: 8 }}>Chair: <span style={{ color: C.accent }}>{c.chair}</span></div>
+                  <div style={{ fontSize: 11, color: C.sub, marginBottom: 8 }}>Members: {c.members.join(", ")}</div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                    <Badge label={c.meetingFrequency} color="blue" />
+                    <Badge label={c.status} color="green" />
+                  </div>
+                  <div style={{ fontSize: 11, color: C.muted }}>Last: {c.lastMeeting} | Next: {c.nextMeeting}</div>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          {/* Governance Register */}
+          <Card>
+            <div style={{ fontWeight: 700, color: C.text, marginBottom: 16 }}>Governance Document Register</div>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <thead>
+                  <tr style={{ borderBottom: `1px solid ${C.border}` }}>
+                    {["Governance Item", "Owner", "Approval Status", "Last Review", "Next Review", "Committee", "Status", "Comments"].map(h => (
+                      <th key={h} style={{ padding: "8px 12px", textAlign: "left", color: C.muted, fontWeight: 600 }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {bcm.governance.governanceRegister.map((g, i) => (
+                    <tr key={i} style={{ borderBottom: `1px solid ${C.border}22` }}>
+                      <td style={{ padding: "10px 12px", color: C.text, fontWeight: 600 }}>{g.item}</td>
+                      <td style={{ padding: "10px 12px", color: C.accent }}>{g.owner}</td>
+                      <td style={{ padding: "10px 12px" }}><Badge label={g.approvalStatus} color={g.approvalStatus === "Approved" ? "green" : "amber"} /></td>
+                      <td style={{ padding: "10px 12px", color: C.sub }}>{g.lastReview}</td>
+                      <td style={{ padding: "10px 12px", color: C.sub }}>{g.nextReview}</td>
+                      <td style={{ padding: "10px 12px", color: C.sub, fontSize: 11 }}>{g.committee}</td>
+                      <td style={{ padding: "10px 12px" }}><Badge label={g.status} color={g.status === "Current" ? "green" : "red"} /></td>
+                      <td style={{ padding: "10px 12px", color: C.muted, fontSize: 11 }}>{g.comments}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* ── BIA ── */}
+      {activeSection === "bia" && (
+        <div>
+          <SectionTitle title="Business Impact Analysis Register" sub="Critical process identification, impact assessment and recovery prioritisation" />
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {bcm.bia.map(b => (
+              <Card key={b.id} style={{ borderLeft: `4px solid ${impactColor(b.financialImpact)}` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 12 }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>{b.id} — {b.businessUnit}</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: C.text }}>{b.process}</div>
+                    <div style={{ fontSize: 12, color: C.sub, marginTop: 4 }}>Owner: <span style={{ color: C.accent }}>{b.owner}</span></div>
+                    <div style={{ fontSize: 12, color: C.sub, marginTop: 4 }}>{b.description}</div>
+                  </div>
+                  <div style={{ display: "flex", gap: 16 }}>
+                    {[{ label: "MTPD", value: b.mtpd }, { label: "RTO", value: b.rto }, { label: "RPO", value: b.rpo }].map(m => (
+                      <div key={m.label} style={{ textAlign: "center", background: "#0f172a", borderRadius: 8, padding: "8px 12px" }}>
+                        <div style={{ fontSize: 10, color: C.muted }}>{m.label}</div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: C.accent }}>{m.value}</div>
+                      </div>
+                    ))}
+                    <div style={{ textAlign: "center", background: "#0f172a", borderRadius: 8, padding: "8px 12px" }}>
+                      <div style={{ fontSize: 10, color: C.muted }}>Priority</div>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: C.red }}>#{b.priority}</div>
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+                  {[
+                    { label: `Financial: ${b.financialImpact}`, val: b.financialImpact },
+                    { label: `Operational: ${b.operationalImpact}`, val: b.operationalImpact },
+                    { label: `Compliance: ${b.complianceImpact}`, val: b.complianceImpact },
+                    { label: `Reputational: ${b.reputationalImpact}`, val: b.reputationalImpact },
+                    { label: `Stakeholder: ${b.stakeholderImpact}`, val: b.stakeholderImpact },
+                  ].map(i => (
+                    <Badge key={i.label} label={i.label} color={i.val === "Critical" ? "red" : i.val === "High" ? "amber" : "blue"} />
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 12 }}>
+                  <div style={{ flex: 1, minWidth: 150 }}><span style={{ color: C.muted }}>Systems: </span><span style={{ color: C.sub }}>{b.systems.join(", ")}</span></div>
+                  <div style={{ flex: 1, minWidth: 150 }}><span style={{ color: C.muted }}>Suppliers: </span><span style={{ color: C.sub }}>{b.suppliers.join(", ")}</span></div>
+                </div>
+                <div style={{ marginTop: 10, background: "#0f172a", borderRadius: 6, padding: "8px 12px", fontSize: 12, color: C.sub }}>
+                  <strong style={{ color: C.green }}>MBCO:</strong> {b.mbco} &nbsp;|&nbsp; <strong style={{ color: C.accent }}>Strategy:</strong> {b.continuityStrategy}
                 </div>
               </Card>
             ))}
           </div>
         </div>
-      ))}
-    </div>
-  );
-}
+      )}
 
-// ─── UIFW TAB ────────────────────────────────────────────────────
-function UIFWTab({ data }) {
-  const ui = data.uifwExpenditure;
-  const s = ui.summary;
-  return (
-    <div>
-      <SectionTitle title="UIFW Expenditure Tracker" sub="Unauthorised, Irregular, Fruitless and Wasteful expenditure — transparency and enforcement" />
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
-        <KpiCard label="Unauthorised" value={fmt(s.totalUnauthorised)} icon="🚫" color={C.red} />
-        <KpiCard label="Irregular" value={fmt(s.totalIrregular)} icon="⚠️" color="#f97316" />
-        <KpiCard label="Fruitless & Wasteful" value={fmt(s.totalFruitless + s.totalWasteful)} icon="💸" color={C.amber} />
-        <KpiCard label="Total UIFW" value={fmt(s.grandTotal)} icon="🚨" color={C.red} sub={`↑ ${fmt(s.grandTotal - s.previousPeriodTotal)} from last period`} />
-        <KpiCard label="Pending Recovery" value={fmt(s.pendingRecovery)} icon="⏳" color={C.purple} />
-        <KpiCard label="Referred to NPA" value={s.referredToNPA} icon="⚖️" color={C.red} />
-      </div>
-
-      {/* Trend bars */}
-      <Card style={{ marginBottom: 24 }}>
-        <div style={{ fontWeight: 700, marginBottom: 16, color: C.text }}>UIFW Expenditure Trend</div>
-        <div style={{ overflowX: "auto" }}>
-          <div style={{ display: "flex", gap: 8, minWidth: 600 }}>
-            {ui.trend.map(t => {
-              const total = t.unauthorised + t.irregular + t.fruitless + t.wasteful;
-              const max = 20000000;
-              return (
-                <div key={t.period} style={{ flex: 1, textAlign: "center" }}>
-                  <div style={{ display: "flex", flexDirection: "column-reverse", height: 120, justifyContent: "flex-start", gap: 1 }}>
-                    {[
-                      { val: t.unauthorised, color: C.red },
-                      { val: t.irregular, color: "#f97316" },
-                      { val: t.fruitless, color: C.amber },
-                      { val: t.wasteful, color: C.purple },
-                    ].map((b, i) => (
-                      <div key={i} style={{ height: `${(b.val / max) * 120}px`, background: b.color, borderRadius: 2 }} />
-                    ))}
-                  </div>
-                  <div style={{ fontSize: 9, color: C.muted, marginTop: 4 }}>{t.period.replace("2025/26", "25/26").replace("2024/25", "24/25").replace("2026/27", "26/27")}</div>
-                </div>
-              );
-            })}
+      {/* ── CRITICAL SERVICES ── */}
+      {activeSection === "services" && (
+        <div>
+          <SectionTitle title="Critical Services Register" sub="LGSETA critical services with continuity requirements and readiness status" />
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <thead>
+                <tr style={{ borderBottom: `1px solid ${C.border}` }}>
+                  {["ID", "Critical Service", "Business Owner", "Supporting System", "Supporting Supplier", "RTO", "RPO", "Priority", "Readiness", "Risk Rating", "Escalation"].map(h => (
+                    <th key={h} style={{ padding: "8px 12px", textAlign: "left", color: C.muted, fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {bcm.criticalServices.map(s => (
+                  <tr key={s.id} style={{ borderBottom: `1px solid ${C.border}22` }}>
+                    <td style={{ padding: "10px 12px", color: C.accent, fontWeight: 700 }}>{s.id}</td>
+                    <td style={{ padding: "10px 12px", color: C.text, fontWeight: 600 }}>{s.service}</td>
+                    <td style={{ padding: "10px 12px", color: C.sub }}>{s.owner}</td>
+                    <td style={{ padding: "10px 12px", color: C.sub }}>{s.system}</td>
+                    <td style={{ padding: "10px 12px", color: C.sub }}>{s.supplier}</td>
+                    <td style={{ padding: "10px 12px", color: C.accent, fontWeight: 700 }}>{s.rto}</td>
+                    <td style={{ padding: "10px 12px", color: C.accent, fontWeight: 700 }}>{s.rpo}</td>
+                    <td style={{ padding: "10px 12px" }}><Badge label={s.priority} color={s.priority === "Critical" ? "red" : s.priority === "High" ? "amber" : "blue"} /></td>
+                    <td style={{ padding: "10px 12px" }}><Badge label={s.readiness} color={s.readiness === "Adequate" ? "green" : "amber"} /></td>
+                    <td style={{ padding: "10px 12px" }}><Badge label={s.riskRating} color={s.riskRating === "High" ? "red" : s.riskRating === "Medium" ? "amber" : "green"} /></td>
+                    <td style={{ padding: "10px 12px", color: C.sub, fontSize: 11 }}>{s.escalation}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          <div style={{ display: "flex", gap: 16, marginTop: 12, justifyContent: "center" }}>
-            {[{ label: "Unauthorised", color: C.red }, { label: "Irregular", color: "#f97316" }, { label: "Fruitless", color: C.amber }, { label: "Wasteful", color: C.purple }].map(l => (
-              <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
-                <div style={{ width: 10, height: 10, borderRadius: 2, background: l.color }} />
-                <span style={{ color: C.muted }}>{l.label}</span>
-              </div>
+        </div>
+      )}
+
+      {/* ── BC PLANS ── */}
+      {activeSection === "bcplans" && (
+        <div>
+          <SectionTitle title="Business Continuity Plan Register" sub="All approved and draft BCPs with testing status and readiness ratings" />
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {bcm.bcPlans.map(p => (
+              <Card key={p.id} style={{ borderLeft: `4px solid ${p.testingStatus === "Passed" ? C.green : p.testingStatus === "Failed" ? C.red : C.amber}` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 12 }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>{p.id} — {p.businessUnit} — {p.version}</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: C.text }}>{p.name}</div>
+                    <div style={{ fontSize: 12, color: C.sub, marginTop: 4 }}>Owner: <span style={{ color: C.accent }}>{p.owner}</span> | Min Staff: <span style={{ color: C.text }}>{p.minStaff}</span></div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap" }}>
+                    <Badge label={p.approvalStatus} color={p.approvalStatus === "Approved" ? "green" : "amber"} />
+                    <Badge label={p.testingStatus} color={p.testingStatus === "Passed" ? "green" : p.testingStatus === "Failed" ? "red" : "amber"} />
+                    <Badge label={`Readiness: ${p.readinessRating}`} color={p.readinessRating === "High" ? "green" : p.readinessRating === "Medium" ? "amber" : "red"} />
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 24, fontSize: 12, color: C.sub, marginBottom: 10, flexWrap: "wrap" }}>
+                  <span>Processes: <strong style={{ color: C.text }}>{p.processesCovered.join(", ")}</strong></span>
+                  <span>Last Updated: <strong style={{ color: C.text }}>{p.lastUpdated}</strong></span>
+                  <span>Next Review: <strong style={{ color: C.text }}>{p.nextReview}</strong></span>
+                </div>
+                <div style={{ fontSize: 12, color: C.sub, marginBottom: 10 }}>
+                  <strong style={{ color: C.accent }}>Recovery Strategy:</strong> {p.recoveryStrategy}
+                </div>
+                <div style={{ fontSize: 12, color: C.sub, marginBottom: 10 }}>
+                  <strong style={{ color: C.accent }}>Alternate Work:</strong> {p.alternateWork}
+                </div>
+                {p.gaps.length > 0 && (
+                  <div style={{ background: "#0f172a", borderRadius: 6, padding: "8px 12px" }}>
+                    <div style={{ fontSize: 11, color: C.red, fontWeight: 700, marginBottom: 6 }}>⚠️ Identified Gaps:</div>
+                    {p.gaps.map((g, i) => <div key={i} style={{ fontSize: 11, color: C.sub, marginBottom: 2 }}>• {g}</div>)}
+                  </div>
+                )}
+              </Card>
             ))}
           </div>
         </div>
-      </Card>
+      )}
 
-      <Card>
-        <div style={{ fontWeight: 700, marginBottom: 16, color: C.text }}>UIFW Case Register</div>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-            <thead>
-              <tr style={{ borderBottom: `1px solid ${C.border}` }}>
-                {["Case ID","Type","Amount","Department","Status","Condoned","Recoverable","Description"].map(h => (
-                  <th key={h} style={{ padding: "8px 12px", textAlign: "left", color: C.muted, fontWeight: 600 }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {ui.cases.map(c => (
-                <tr key={c.id} style={{ borderBottom: `1px solid ${C.border}22` }}>
-                  <td style={{ padding: "10px 12px", color: C.red, fontWeight: 700 }}>{c.id}</td>
-                  <td style={{ padding: "10px 12px" }}><Badge label={c.type} color={c.type === "Unauthorised" ? "red" : c.type === "Irregular" ? "amber" : "purple"} /></td>
-                  <td style={{ padding: "10px 12px", color: C.text, fontWeight: 700 }}>{fmt(c.amount)}</td>
-                  <td style={{ padding: "10px 12px", color: C.sub }}>{c.department}</td>
-                  <td style={{ padding: "10px 12px" }}><Badge label={c.status} color={c.status === "Condoned" ? "green" : c.status === "Under Investigation" ? "amber" : "red"} /></td>
-                  <td style={{ padding: "10px 12px" }}><Badge label={c.condoned ? "Yes" : "No"} color={c.condoned ? "green" : "red"} /></td>
-                  <td style={{ padding: "10px 12px" }}><Badge label={c.recoverable ? "Yes" : "No"} color={c.recoverable ? "green" : "red"} /></td>
-                  <td style={{ padding: "10px 12px", color: C.sub, maxWidth: 200 }}>{c.description}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-    </div>
-  );
-}
-
-// ─── THIRD PARTY TAB ─────────────────────────────────────────────
-function ThirdPartyTab({ data }) {
-  const tp = data.thirdPartyRisk;
-  return (
-    <div>
-      <SectionTitle title="Third-Party Risk Management" sub="Vendor risk assessment, concentration risk and contract oversight" />
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
-        <KpiCard label="Total Vendors" value={tp.summary.totalVendors} icon="🤝" color={C.accent} />
-        <KpiCard label="High Risk Vendors" value={tp.summary.highRiskVendors} icon="🚨" color={C.red} />
-        <KpiCard label="Critical Dependencies" value={tp.summary.criticalDependencies} icon="⚠️" color={C.red} />
-        <KpiCard label="Contracts Expiring (90d)" value={tp.summary.contractsExpiring90Days} icon="📅" color={C.amber} />
-        <KpiCard label="Overdue Reviews" value={tp.summary.overdueReviews} icon="⏰" color={C.amber} />
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        {tp.vendors.map(v => (
-          <Card key={v.id} style={{ borderLeft: `4px solid ${v.riskLevel === "High" ? C.red : v.riskLevel === "Medium" ? C.amber : C.green}` }}>
-            <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-              <div style={{ flex: 2 }}>
-                <div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>{v.id} — {v.category}</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 6 }}>{v.name}</div>
-                <div style={{ display: "flex", gap: 16, fontSize: 12, color: C.sub, flexWrap: "wrap" }}>
-                  <span>Contract Value: <strong style={{ color: C.text }}>{fmt(v.contractValue)}</strong></span>
-                  <span>Expiry: <strong style={{ color: C.text }}>{v.contractExpiry}</strong></span>
-                  <span>Last Review: <strong style={{ color: C.text }}>{v.lastReview}</strong></span>
-                  <span>BEE: <strong style={{ color: C.text }}>{v.beeLevel}</strong></span>
+      {/* ── DR PLANS ── */}
+      {activeSection === "drplans" && (
+        <div>
+          <SectionTitle title="ICT Disaster Recovery Plan Register" sub="Critical system DR plans, RTO/RPO targets and test status" />
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {bcm.drPlans.map(d => (
+              <Card key={d.id} style={{ borderLeft: `4px solid ${d.drTestStatus === "Passed" ? C.green : d.drTestStatus === "Failed" ? C.red : C.amber}` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 12 }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>{d.id} — {d.hostingType}</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: C.text }}>{d.system}</div>
+                    <div style={{ fontSize: 12, color: C.sub, marginTop: 4 }}>Business Owner: <span style={{ color: C.accent }}>{d.businessOwner}</span> | ICT Owner: <span style={{ color: C.accent }}>{d.ictOwner}</span></div>
+                  </div>
+                  <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+                    {[{ label: "RTO", value: d.rto }, { label: "RPO", value: d.rpo }].map(m => (
+                      <div key={m.label} style={{ textAlign: "center", background: "#0f172a", borderRadius: 8, padding: "8px 14px" }}>
+                        <div style={{ fontSize: 10, color: C.muted }}>{m.label}</div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: C.accent }}>{m.value}</div>
+                      </div>
+                    ))}
+                    <Badge label={d.drTestStatus} color={d.drTestStatus === "Passed" ? "green" : d.drTestStatus === "Failed" ? "red" : "amber"} />
+                    <Badge label={`Readiness: ${d.readinessRating}`} color={d.readinessRating === "High" ? "green" : d.readinessRating === "Medium" ? "amber" : "red"} />
+                  </div>
                 </div>
-                {v.issues.length > 0 && (
-                  <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    {v.issues.map(i => <Badge key={i} label={i} color="red" />)}
+                <div style={{ display: "flex", gap: 24, fontSize: 12, color: C.sub, marginBottom: 10, flexWrap: "wrap" }}>
+                  <span>Backup: <strong style={{ color: C.text }}>{d.backupFrequency}</strong></span>
+                  <span>Location: <strong style={{ color: C.text }}>{d.backupLocation}</strong></span>
+                  <span>Last Test: <strong style={{ color: C.text }}>{d.lastBackupTest}</strong></span>
+                  <span>Supplier: <strong style={{ color: C.text }}>{d.supplierDependency}</strong></span>
+                </div>
+                <div style={{ fontSize: 12, color: C.sub, marginBottom: 8 }}><strong style={{ color: C.accent }}>DR Strategy:</strong> {d.drStrategy}</div>
+                {d.keyRisk && (
+                  <div style={{ background: "#0f172a", borderRadius: 6, padding: "8px 12px", fontSize: 12, color: C.red }}>
+                    ⚠️ <strong>Key Risk:</strong> {d.keyRisk}
                   </div>
                 )}
-              </div>
-              <div style={{ display: "flex", gap: 8, flexDirection: "column", alignItems: "flex-end" }}>
-                <Badge label={v.riskLevel + " Risk"} color={v.riskLevel === "High" ? "red" : v.riskLevel === "Medium" ? "amber" : "green"} />
-                <Badge label={v.concentration} color={v.concentration === "Critical" ? "red" : v.concentration === "High" ? "amber" : "green"} />
-                <Badge label={v.status} color={v.status === "Active" ? "green" : "amber"} />
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
-    </div>
-  );
-}
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
-// ─── APP TAB ─────────────────────────────────────────────────────
-function APPTab({ data }) {
-  const app = data.appAlignment;
-  return (
-    <div>
-      <SectionTitle title="APP Alignment Dashboard" sub="Strategic objectives linked to KPIs, KRIs, risks and opportunities" />
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
-        <KpiCard label="Strategic Objectives" value={app.strategicObjectives} icon="🎯" color={C.accent} />
-        <KpiCard label="KPIs Tracked" value={app.kpisTracked} icon="📊" color={C.blue} />
-        <KpiCard label="Avg Assurance Coverage" value={`${app.avgAssuranceCoverage}%`} icon="✅" color={C.green} />
-        <KpiCard label="Active Opportunities" value={app.activeOpportunities} icon="💡" color={C.purple} />
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        {app.objectives.map((o, i) => (
-          <Card key={i}>
-            <div style={{ fontWeight: 700, color: C.accent, marginBottom: 12 }}>{o.objective}</div>
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              {[
-                { label: "KPI", value: o.kpi, sub: o.kpiValue, color: C.blue },
-                { label: "KRI", value: o.kriIndicator, sub: o.kriStatus, color: statusColor(o.kriStatus) },
-                { label: "Linked Risk", value: o.linkedRisk, sub: o.riskTolerance, color: o.riskTolerance === "Outside Tolerance" ? C.red : C.amber },
-                { label: "Opportunity", value: o.opportunity, sub: o.opportunityStatus, color: C.green },
-                { label: "Treatment", value: o.treatmentAction, sub: o.actionStatus, color: C.amber },
-              ].map(item => (
-                <div key={item.label} style={{ flex: 1, minWidth: 140, background: "#0f172a", borderRadius: 8, padding: 12 }}>
-                  <div style={{ fontSize: 10, color: C.muted, marginBottom: 4 }}>{item.label}</div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 4 }}>{item.value}</div>
-                  <Badge label={item.sub} color={item.color === C.red ? "red" : item.color === C.amber ? "amber" : item.color === C.green ? "green" : "blue"} />
+      {/* ── BCM RISKS ── */}
+      {activeSection === "risks" && (
+        <div>
+          <SectionTitle title="BCM Risk Register" sub="Business continuity specific risks integrated with enterprise risk framework" />
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {bcm.bcmRisks.map(r => (
+              <Card key={r.id} style={{ borderLeft: `4px solid ${r.residualRating >= 15 ? C.red : r.residualRating >= 10 ? C.amber : C.green}` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+                  <div style={{ flex: 2 }}>
+                    <div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>{r.id} — {r.category}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 6 }}>{r.title}</div>
+                    <div style={{ fontSize: 12, color: C.sub }}><span style={{ color: C.red }}>Cause:</span> {r.cause}</div>
+                    <div style={{ fontSize: 12, color: C.sub, marginTop: 4 }}><span style={{ color: C.amber }}>Consequence:</span> {r.consequence}</div>
+                  </div>
+                  <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+                    {[{ label: "Inherent", value: r.inherentRating, color: C.red }, { label: "Residual", value: r.residualRating, color: statusColor(r.residualRating >= 15 ? "Red" : r.residualRating >= 10 ? "Amber" : "Green") }].map(m => (
+                      <div key={m.label} style={{ textAlign: "center" }}>
+                        <div style={{ fontSize: 20, fontWeight: 800, color: m.color }}>{m.value}</div>
+                        <div style={{ fontSize: 10, color: C.muted }}>{m.label}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ))}
-            </div>
-          </Card>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ─── PREDICTIVE TAB ──────────────────────────────────────────────
-function PredictiveTab({ data }) {
-  const pi = data.predictiveIntel;
-  return (
-    <div>
-      <SectionTitle title="Predictive Risk Intelligence" sub="AI-powered forecasting based on historical trend analysis and pattern recognition" />
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
-        <KpiCard label="Predicted KRI Breaches" value={pi.predictedKriBreaches} icon="📡" color={C.red} sub="-2 from previous" />
-        <KpiCard label="Predicted Overdue Actions" value={pi.predictedOverdueActions} icon="⏰" color={C.amber} sub="-3 from previous" />
-        <KpiCard label="Predicted Risk Exposure" value={pi.predictedRiskExposure} icon="📊" color={C.amber} sub="+1.5 from previous" />
-        <KpiCard label="Opportunity Realisation" value={`${pi.opportunityRealisationPct}%`} icon="💡" color={C.green} sub="+5 from previous" />
-      </div>
-
-      <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginBottom: 24 }}>
-        {/* Forecast Chart */}
-        <Card style={{ flex: 2, minWidth: 300 }}>
-          <div style={{ fontWeight: 700, marginBottom: 16, color: C.text }}>Future Risk Exposure Forecast</div>
-          <div style={{ position: "relative", height: 160 }}>
-            <svg width="100%" height="160" viewBox="0 0 600 160" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="forecastGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={C.accent} stopOpacity="0.3" />
-                  <stop offset="100%" stopColor={C.accent} stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              {pi.forecast.map((f, i) => {
-                const x = (i / (pi.forecast.length - 1)) * 580 + 10;
-                const y = f.historical ? 160 - ((f.historical - 30) / 20) * 140 : null;
-                const fy = f.forecast ? 160 - ((f.forecast - 30) / 20) * 140 : null;
-                return (
-                  <g key={i}>
-                    {y && <circle cx={x} cy={y} r={4} fill={C.accent} />}
-                    {fy && <circle cx={x} cy={fy} r={4} fill={C.amber} strokeDasharray="3,3" />}
-                  </g>
-                );
-              })}
-              <polyline points={pi.forecast.filter(f => f.historical).map((f, i) => `${(i / (pi.forecast.length - 1)) * 580 + 10},${160 - ((f.historical - 30) / 20) * 140}`).join(" ")} fill="none" stroke={C.accent} strokeWidth="2" />
-              <polyline points={pi.forecast.filter(f => f.forecast).map((f, i) => `${((i + 6) / (pi.forecast.length - 1)) * 580 + 10},${160 - ((f.forecast - 30) / 20) * 140}`).join(" ")} fill="none" stroke={C.amber} strokeWidth="2" strokeDasharray="6,3" />
-            </svg>
+                <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap", alignItems: "center" }}>
+                  <Badge label={r.controlEffectiveness} color={r.controlEffectiveness === "Ineffective" ? "red" : r.controlEffectiveness === "Partial" ? "amber" : "green"} />
+                  <Badge label={`Owner: ${r.owner}`} color="blue" />
+                  <Badge label={r.escalation} color={r.escalation === "Escalated" ? "red" : r.escalation === "Required" ? "amber" : "green"} />
+                  <Badge label={r.status} color={r.status === "Overdue" ? "red" : r.status === "In Progress" ? "amber" : "blue"} />
+                </div>
+                <div style={{ marginTop: 10, background: "#0f172a", borderRadius: 6, padding: "8px 12px", fontSize: 12, color: C.sub }}>
+                  <strong style={{ color: C.accent }}>Treatment:</strong> {r.treatmentAction} <span style={{ color: C.muted }}>| Due: {r.dueDate}</span>
+                </div>
+              </Card>
+            ))}
           </div>
-          <div style={{ display: "flex", gap: 16, marginTop: 8, justifyContent: "center" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}><div style={{ width: 20, height: 2, background: C.accent }} /><span style={{ color: C.muted }}>Historical</span></div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}><div style={{ width: 20, height: 2, background: C.amber, borderTop: "2px dashed" }} /><span style={{ color: C.muted }}>AI Forecast</span></div>
+        </div>
+      )}
+
+      {/* ── INCIDENTS ── */}
+      {activeSection === "incidents" && (
+        <div>
+          <SectionTitle title="BCM Incident & Disruption Register" sub="Actual disruptions, near misses and lessons learned" />
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
+            <KpiCard label="Total Incidents" value={bcm.incidents.length} icon="🚨" color={C.red} />
+            <KpiCard label="RTO Breached" value={bcm.incidents.filter(i => i.rtoBreached).length} icon="⏱️" color={C.red} />
+            <KpiCard label="RPO Breached" value={bcm.incidents.filter(i => i.rpoBreached).length} icon="💾" color={C.red} />
+            <KpiCard label="High Severity" value={bcm.incidents.filter(i => i.severity === "High").length} icon="⚠️" color={C.amber} />
           </div>
-        </Card>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {bcm.incidents.map(inc => (
+              <Card key={inc.id} style={{ borderLeft: `4px solid ${inc.severity === "High" ? C.red : inc.severity === "Medium" ? C.amber : C.green}` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 10 }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>{inc.id} — {inc.type} — {inc.date}</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: C.text }}>{inc.title}</div>
+                    <div style={{ fontSize: 12, color: C.sub, marginTop: 4 }}>Affected: <span style={{ color: C.accent }}>{inc.affectedUnit}</span> | Service: <span style={{ color: C.accent }}>{inc.affectedService}</span></div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap" }}>
+                    <Badge label={`Severity: ${inc.severity}`} color={inc.severity === "High" ? "red" : "amber"} />
+                    <Badge label={`Duration: ${inc.duration}`} color="blue" />
+                    <Badge label={inc.rtoBreached ? "RTO Breached" : "RTO Met"} color={inc.rtoBreached ? "red" : "green"} />
+                    <Badge label={inc.rpoBreached ? "RPO Breached" : "RPO Met"} color={inc.rpoBreached ? "red" : "green"} />
+                    <Badge label={inc.status} color={inc.status === "Closed" ? "green" : "amber"} />
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 12, fontSize: 12, color: C.sub, marginBottom: 8, flexWrap: "wrap" }}>
+                  <span>Start: <strong style={{ color: C.text }}>{inc.startTime}</strong></span>
+                  <span>End: <strong style={{ color: C.text }}>{inc.endTime}</strong></span>
+                  <span>Escalated To: <strong style={{ color: C.text }}>{inc.escalatedTo}</strong></span>
+                </div>
+                <div style={{ fontSize: 12, color: C.sub, marginBottom: 6 }}><strong style={{ color: C.amber }}>Impact:</strong> {inc.impact}</div>
+                <div style={{ fontSize: 12, color: C.sub, marginBottom: 6 }}><strong style={{ color: C.accent }}>Actions Taken:</strong> {inc.actionsTaken}</div>
+                <div style={{ background: "#0f172a", borderRadius: 6, padding: "8px 12px", fontSize: 12, color: C.green }}>
+                  <strong>Lessons Learned:</strong> <span style={{ color: C.sub }}>{inc.lessonsLearned}</span>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
-        {/* Model Confidence */}
-        <Card style={{ flex: 1, minWidth: 220 }}>
-          <div style={{ fontWeight: 700, marginBottom: 16, color: C.text }}>Model Confidence</div>
-          {Object.entries(pi.modelConfidence).map(([key, val]) => (
-            <div key={key} style={{ marginBottom: 12 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                <span style={{ fontSize: 12, color: C.sub }}>{key.replace(/([A-Z])/g, ' $1').trim()}</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: val >= 85 ? C.green : val >= 70 ? C.amber : C.red }}>{val}%</span>
-              </div>
-              <ProgressBar value={val} color={val >= 85 ? C.green : val >= 70 ? C.amber : C.red} />
-            </div>
-          ))}
-        </Card>
-      </div>
+      {/* ── TESTING ── */}
+      {activeSection === "testing" && (
+        <div>
+          <SectionTitle title="BCM Testing & Exercising Register" sub="All BCM tests, simulations and exercising results with corrective actions" />
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
+            <KpiCard label="Tests Conducted" value={bcm.testing.length} icon="🧪" color={C.accent} />
+            <KpiCard label="Passed" value={bcm.testing.filter(t => t.result === "Passed").length} icon="✅" color={C.green} />
+            <KpiCard label="Failed" value={bcm.testing.filter(t => t.result === "Failed").length} icon="❌" color={C.red} />
+            <KpiCard label="Total Findings" value={bcm.testing.reduce((s, t) => s + t.findingsCount, 0)} icon="⚠️" color={C.amber} />
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {bcm.testing.map(t => (
+              <Card key={t.id} style={{ borderLeft: `4px solid ${t.result === "Passed" ? C.green : t.result === "Failed" ? C.red : C.amber}` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 12 }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>{t.id} — {t.type} — {t.date}</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: C.text }}>{t.scenario}</div>
+                    <div style={{ fontSize: 12, color: C.sub, marginTop: 4 }}>Unit: <span style={{ color: C.accent }}>{t.businessUnit}</span> | Plan: <span style={{ color: C.accent }}>{t.planTested}</span></div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap" }}>
+                    <Badge label={t.result} color={t.result === "Passed" ? "green" : t.result === "Failed" ? "red" : "amber"} />
+                    <Badge label={`RTO: ${t.rtoAchieved}`} color={t.result === "Passed" ? "green" : "red"} />
+                    <Badge label={t.status} color={t.status === "Overdue" ? "red" : t.status === "In Progress" ? "amber" : "green"} />
+                  </div>
+                </div>
+                <div style={{ fontSize: 12, color: C.sub, marginBottom: 8 }}>Participants: <span style={{ color: C.text }}>{t.participants.join(", ")}</span></div>
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ fontSize: 11, color: C.red, fontWeight: 700, marginBottom: 6 }}>⚠️ Findings ({t.findingsCount}):</div>
+                  {t.findings.map((f, i) => <div key={i} style={{ fontSize: 11, color: C.sub, marginBottom: 2 }}>• {f}</div>)}
+                </div>
+                <div style={{ background: "#0f172a", borderRadius: 6, padding: "8px 12px" }}>
+                  <div style={{ fontSize: 11, color: C.green, fontWeight: 700, marginBottom: 6 }}>Corrective Actions:</div>
+                  {t.correctiveActions.map((a, i) => <div key={i} style={{ fontSize: 11, color: C.sub, marginBottom: 2 }}>• {a}</div>)}
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 6 }}>Owner: {t.actionOwner} | Due: {t.dueDate}</div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
-      <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
-        {/* Velocity Alerts */}
-        <Card style={{ flex: 1, minWidth: 260 }}>
-          <div style={{ fontWeight: 700, marginBottom: 16, color: C.text }}>⚡ Risk Velocity Alerts</div>
-          {pi.velocityAlerts.map((a, i) => (
-            <div key={i} style={{ marginBottom: 14, paddingBottom: 14, borderBottom: `1px solid ${C.border}` }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 4 }}>{a.indicator}</div>
-              <div style={{ fontSize: 12, color: a.severity === "High" ? C.red : C.amber }}>{a.alert}</div>
-            </div>
-          ))}
-        </Card>
+      {/* ── BCM KRIs ── */}
+      {activeSection === "kris" && (
+        <div>
+          <SectionTitle title="BCM Key Risk Indicators" sub="BCM-specific KRIs linked to appetite and tolerance thresholds" />
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {bcm.bcmKRIs.map(k => (
+              <Card key={k.id} style={{ borderLeft: `4px solid ${statusColor(k.status)}` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 12 }}>
+                  <div style={{ flex: 2 }}>
+                    <div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>{k.id}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{k.indicator}</div>
+                  </div>
+                  <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{ fontSize: 24, fontWeight: 800, color: statusColor(k.status) }}>{k.currentValue}</div>
+                      <div style={{ fontSize: 10, color: C.muted }}>Current</div>
+                    </div>
+                    <Badge label={k.status} color={k.status === "Red" ? "red" : k.status === "Amber" ? "amber" : "green"} />
+                    <span style={{ fontSize: 14 }}>{trendIcon(k.trend)}</span>
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 16, fontSize: 12, flexWrap: "wrap" }}>
+                  <span style={{ color: C.green }}>🟢 {k.greenThreshold}</span>
+                  <span style={{ color: C.amber }}>🟡 {k.amberThreshold}</span>
+                  <span style={{ color: C.red }}>🔴 {k.redThreshold}</span>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
-        {/* Recommended Actions */}
-        <Card style={{ flex: 1, minWidth: 260 }}>
-          <div style={{ fontWeight: 700, marginBottom: 16, color: C.text }}>🤖 AI Recommended Actions</div>
-          {pi.recommendedActions.map((a, i) => (
-            <div key={i} style={{ display: "flex", gap: 12, marginBottom: 12, paddingBottom: 12, borderBottom: `1px solid ${C.border}` }}>
-              <div style={{ width: 24, height: 24, borderRadius: "50%", background: C.accent + "22", color: C.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, flexShrink: 0 }}>{i + 1}</div>
-              <div style={{ fontSize: 12, color: C.sub, lineHeight: 1.5 }}>{a}</div>
-            </div>
-          ))}
-        </Card>
-      </div>
+      {/* ── TREATMENT ACTIONS ── */}
+      {activeSection === "actions" && (
+        <div>
+          <SectionTitle title="BCM Treatment Actions" sub="Corrective actions from BCM testing, incidents and risk assessments" />
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
+            <KpiCard label="Total Actions" value={bcm.treatmentActions.length} icon="🔧" color={C.accent} />
+            <KpiCard label="In Progress" value={bcm.treatmentActions.filter(t => t.status === "In Progress").length} icon="🔄" color={C.amber} />
+            <KpiCard label="Overdue" value={bcm.treatmentActions.filter(t => t.status === "Overdue").length} icon="⏰" color={C.red} />
+            <KpiCard label="Not Started" value={bcm.treatmentActions.filter(t => t.status === "Not Started").length} icon="⏳" color={C.muted} />
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {bcm.treatmentActions.map(t => (
+              <Card key={t.id} style={{ borderLeft: `4px solid ${t.status === "Overdue" ? C.red : t.status === "In Progress" ? C.amber : C.muted}` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 10 }}>
+                  <div style={{ flex: 2 }}>
+                    <div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>{t.id} — Linked Plan: {t.linkedPlan}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{t.finding}</div>
+                    <div style={{ fontSize: 12, color: C.sub, marginTop: 4 }}>Owner: <span style={{ color: C.accent }}>{t.owner}</span> | Due: <span style={{ color: t.status === "Overdue" ? C.red : C.text }}>{t.dueDate}</span></div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                    <Badge label={t.priority} color={t.priority === "Critical" ? "red" : t.priority === "High" ? "amber" : "blue"} />
+                    <Badge label={t.status} color={t.status === "Overdue" ? "red" : t.status === "In Progress" ? "amber" : "blue"} />
+                  </div>
+                </div>
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: C.muted, marginBottom: 4 }}>
+                    <span>Progress</span>
+                    <span style={{ color: t.progress >= 70 ? C.green : t.progress >= 30 ? C.amber : C.red }}>{t.progress}%</span>
+                  </div>
+                  <ProgressBar value={t.progress} color={t.status === "Overdue" ? C.red : t.status === "In Progress" ? C.accent : C.muted} />
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
