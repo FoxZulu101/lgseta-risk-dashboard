@@ -878,4 +878,199 @@
       "potentialImpact": "Mandatory restructuring of grant allocation and levy disbursement model",
       "dateIdentified": "2026-01-10",
       "pestle": "Legal",
-      "horizon":
+      "horizon":"0-12 months"
+    }
+  ],
+  "treatmentActions": [
+    {
+      "id": "TA-001",
+      "riskId": "SR-003",
+      "action": "Implement monthly APP risk review meetings with early-warning escalation protocol.",
+      "owner": "Strategy / ERM",
+      "ownerInitials": "NK",
+      "dueDate": "2026-07-31",
+      "status": "In Progress",
+      "priority": "High",
+      "progress": 65,
+      "budget": 150000
+    },
+    {
+      "id": "TA-002",
+      "riskId": "FIN-001",
+      "action": "Introduce administrative budget exception reporting and cost containment tracking dashboard.",
+      "owner": "CFO",
+      "ownerInitials": "TM",
+      "dueDate": "2026-07-15",
+      "status": "Overdue",
+      "priority": "Critical",
+      "progress": 35,
+      "budget": 80000
+    },
+    {
+      "id": "TA-003",
+      "riskId": "SR-005",
+      "action": "Deploy cybersecurity framework including penetration testing and staff awareness programme.",
+      "owner": "CIO",
+      "ownerInitials": "JW",
+      "dueDate": "2026-08-31",
+      "status": "In Progress",
+      "priority": "Critical",
+      "progress": 45,
+      "budget": 750000
+    },
+    {
+      "id": "TA-004",
+      "riskId": "BCM-001",
+      "action": "Update BCM plans, conduct BIA, test disaster recovery and confirm office accommodation.",
+      "owner": "COO",
+      "ownerInitials": "LD",
+      "dueDate": "2026-06-30",
+      "status": "Overdue",
+      "priority": "High",
+      "progress": 20,
+      "budget": 200000
+    },
+    {
+      "id": "TA-005",
+      "riskId": "COMP-001",
+      "action": "Develop compliance universe register and implement quarterly compliance monitoring reports.",
+      "owner": "Legal",
+      "ownerInitials": "PZ",
+      "dueDate": "2026-09-30",
+      "status": "In Progress",
+      "priority": "High",
+      "progress": 55,
+      "budget": 120000
+    },
+    {
+      "id": "TA-006",
+      "riskId": "SR-001",
+      "action": "Develop non-levy revenue diversification strategy with 3-year implementation roadmap.",
+      "owner": "CFO",
+      "ownerInitials": "TM",
+      "dueDate": "2026-09-30",
+      "status": "In Progress",
+      "priority": "High",
+      "progress": 30,
+      "budget": 300000
+    },
+    {
+      "id": "TA-007",
+      "riskId": "OP-002",
+      "action": "Implement e-procurement system and strengthen SCM oversight committee.",
+      "owner": "CFO / SCM",
+      "ownerInitials": "TM",
+      "dueDate": "2026-08-31",
+      "status": "In Progress",
+      "priority": "Critical",
+      "progress": 40,
+      "budget": 450000
+    }
+  ],
+  "appetiteDashboard": [
+    { "riskArea": "Strategic Performance", "appetiteLevel": "Moderate", "toleranceThreshold": "Minimum 85% APP achievement", "currentValue": "82%", "previousValue": "88%", "status": "Red" },
+    { "riskArea": "Financial Management", "appetiteLevel": "Low", "toleranceThreshold": "Administrative expenditure within approved budget", "currentValue": "Over tolerance", "previousValue": "Within tolerance", "status": "Red" },
+    { "riskArea": "Information Security", "appetiteLevel": "Zero Tolerance", "toleranceThreshold": "Zero critical cyber incidents", "currentValue": "2 incidents", "previousValue": "0 incidents", "status": "Red" },
+    { "riskArea": "Compliance", "appetiteLevel": "Zero Tolerance", "toleranceThreshold": "Zero PFMA violations", "currentValue": "1 violation", "previousValue": "0 violations", "status": "Red" },
+    { "riskArea": "Business Continuity", "appetiteLevel": "Low", "toleranceThreshold": "RTO less than 4 hours for critical systems", "currentValue": "6 hours", "previousValue": "4 hours", "status": "Amber" },
+    { "riskArea": "Fraud & Ethics", "appetiteLevel": "Zero Tolerance", "toleranceThreshold": "Zero unresolved fraud cases beyond 90 days", "currentValue": "1 case", "previousValue": "0 cases", "status": "Amber" },
+    { "riskArea": "UIFW Expenditure", "appetiteLevel": "Zero Tolerance", "toleranceThreshold": "Zero UIFW expenditure", "currentValue": "R19.87M", "previousValue": "R15.2M", "status": "Red" },
+    { "riskArea": "Third-Party Risk", "appetiteLevel": "Low", "toleranceThreshold": "Zero critical vendor failures", "currentValue": "4 critical dependencies", "previousValue": "3 critical dependencies", "status": "Amber" }
+  ],
+  "combinedAssurance": {
+    "providers": [
+      { "name": "Internal Audit", "type": "3rd Line", "coverage": 92, "effectiveness": "Effective", "findings": 4 },
+      { "name": "AGSA", "type": "3rd Line", "coverage": 100, "effectiveness": "Effective", "findings": 2 },
+      { "name": "ERM", "type": "2nd Line", "coverage": 85, "effectiveness": "Effective", "findings": 0 },
+      { "name": "Compliance", "type": "2nd Line", "coverage": 90, "effectiveness": "Effective", "findings": 3 },
+      { "name": "Fraud Risk Management", "type": "2nd Line", "coverage": 80, "effectiveness": "Partial", "findings": 5 },
+      { "name": "BCM Unit", "type": "2nd Line", "coverage": 60, "effectiveness": "Partial", "findings": 2 },
+      { "name": "ICT Security", "type": "2nd Line", "coverage": 70, "effectiveness": "Partial", "findings": 8 },
+      { "name": "Business Management", "type": "1st Line", "coverage": 75, "effectiveness": "Partial", "findings": 12 }
+    ],
+    "riskCoverage": [
+      { "riskId": "SR-001", "firstLine": 75, "secondLine": 90, "thirdLine": 85, "overall": "Adequate" },
+      { "riskId": "SR-005", "firstLine": 50, "secondLine": 70, "thirdLine": 65, "overall": "Inadequate" },
+      { "riskId": "FIN-001", "firstLine": 85, "secondLine": 95, "thirdLine": 100, "overall": "Adequate" },
+      { "riskId": "COMP-001", "firstLine": 80, "secondLine": 95, "thirdLine": 92, "overall": "Adequate" },
+      { "riskId": "BCM-001", "firstLine": 60, "secondLine": 70, "thirdLine": 75, "overall": "Partial" }
+    ]
+  },
+  "bcmResilience": {
+    "readinessIndex": 63,
+    "rtoCompliance": 78,
+    "rpoCompliance": 65,
+    "bcmMaturity": "L3.1",
+    "drStatus": 62,
+    "compliant": 5,
+    "partial": 1,
+    "nonCompliant": 2,
+    "criticalProcesses": [
+      { "name": "Payroll Processing", "rto": "4 hours", "rpo": "1 hour", "lastTested": "2026-02-15", "status": "Passed", "maturity": 4.2 },
+      { "name": "Levy Collection & Management", "rto": "8 hours", "rpo": "2 hours", "lastTested": "2026-01-20", "status": "Passed", "maturity": 3.8 },
+      { "name": "Grant Disbursement", "rto": "24 hours", "rpo": "4 hours", "lastTested": "2026-02-28", "status": "Failed", "maturity": 2.5 },
+      { "name": "Learner Management System", "rto": "12 hours", "rpo": "2 hours", "lastTested": "2026-01-10", "status": "Passed", "maturity": 3.5 },
+      { "name": "Financial Reporting", "rto": "8 hours", "rpo": "1 hour", "lastTested": "2026-02-20", "status": "Passed", "maturity": 4.0 }
+    ]
+  },
+  "fraudEthics": {
+    "fraudCases": 4,
+    "ethicsCases": 3,
+    "complianceBreaches": 3,
+    "activeInvestigations": 7,
+    "declarations": 24,
+    "cases": [
+      { "id": "FC-001", "type": "Fraud", "category": "Procurement Collusion", "severity": "High", "status": "Investigating", "description": "Alleged collusion between 3 service providers in tender process", "dateReported": "2026-01-10", "assignedTo": "Forensic Unit" },
+      { "id": "FC-002", "type": "Fraud", "category": "Ghost Learners", "severity": "High", "status": "Resolved", "description": "Training provider claiming payments for non-existing learners", "dateReported": "2025-11-15", "assignedTo": "Forensic Unit" },
+      { "id": "FC-003", "type": "Ethics", "category": "Conflict of Interest", "severity": "Medium", "status": "Open", "description": "Senior manager has undisclosed shareholding in service provider", "dateReported": "2026-02-05", "assignedTo": "Ethics Committee" },
+      { "id": "FC-004", "type": "Ethics", "category": "Gifts & Hospitality", "severity": "Low", "status": "Closed", "description": "Employee accepted hospitality exceeding declaration threshold", "dateReported": "2026-01-20", "assignedTo": "Ethics Committee" },
+      { "id": "FC-005", "type": "Compliance", "category": "SDL Act Breach", "severity": "High", "status": "Open", "description": "Failure to submit mandatory quarterly reports to DHET within stipulated timeframe", "dateReported": "2026-01-30", "assignedTo": "Compliance Office" },
+      { "id": "FC-006", "type": "Compliance", "category": "POPIA Non-Compliance", "severity": "Medium", "status": "Investigating", "description": "Learner personal information stored without adequate encryption", "dateReported": "2026-02-10", "assignedTo": "ICT Security" }
+    ]
+  },
+  "appAlignment": {
+    "strategicObjectives": 4,
+    "kpisTracked": 8,
+    "avgAssuranceCoverage": 79,
+    "activeOpportunities": 8,
+    "objectives": [
+      { "objective": "Financial Sustainability", "kpi": "Cost per Learner Placed", "kpiValue": "68%", "kriIndicator": "DG Utilisation Rate", "kriStatus": "Green", "linkedRisk": "FIN-001", "riskTolerance": "Within Tolerance", "opportunity": "AI Learner Placement Platform", "opportunityStatus": "Planned", "opportunityProgress": 78, "treatmentAction": "Optimise DG allocation model", "actionStatus": "In Progress" },
+      { "objective": "Operational Excellence", "kpi": "Learner Achievement Rate", "kpiValue": "75%", "kriIndicator": "Learner Achievement Rate", "kriStatus": "Amber", "linkedRisk": "SR-003", "riskTolerance": "Within Tolerance", "opportunity": "Provider Performance Scoring", "opportunityStatus": "Realised", "opportunityProgress": 90, "treatmentAction": "Strengthen QA framework", "actionStatus": "Completed" },
+      { "objective": "Governance & Compliance", "kpi": "Compliance Index", "kpiValue": "84%", "kriIndicator": "Compliance Index %", "kriStatus": "Amber", "linkedRisk": "COMP-001", "riskTolerance": "Outside Tolerance", "opportunity": "Municipal Finance Skills Academy", "opportunityStatus": "In Progress", "opportunityProgress": 95, "treatmentAction": "Update compliance registers", "actionStatus": "Completed" },
+      { "objective": "Digital Transformation", "kpi": "Cybersecurity Maturity", "kpiValue": "35%", "kriIndicator": "Cybersecurity Maturity", "kriStatus": "Red", "linkedRisk": "SR-005", "riskTolerance": "Outside Tolerance", "opportunity": "Data-as-a-Service Platform", "opportunityStatus": "Planned", "opportunityProgress": 70, "treatmentAction": "Deploy cybersecurity framework", "actionStatus": "In Progress" }
+    ]
+  },
+  "predictiveIntel": {
+    "predictedKriBreaches": 3,
+    "predictedOverdueActions": 5,
+    "predictedRiskExposure": 43.5,
+    "opportunityRealisationPct": 68,
+    "modelConfidence": { "riskExposureForecast": 92, "kriBreachPrediction": 85, "treatmentDelayForecast": 78, "opportunityRealisation": 72 },
+    "velocityAlerts": [
+      { "indicator": "Cybersecurity Maturity", "alert": "Projected to reach critical threshold by September 2026", "severity": "High" },
+      { "indicator": "UIFW Expenditure", "alert": "Trending 34% above previous period — escalation required", "severity": "High" },
+      { "indicator": "APP Achievement Rate", "alert": "Declining trend — intervention required within 30 days", "severity": "High" }
+    ],
+    "recommendedActions": [
+      "Accelerate cybersecurity framework deployment by 4 weeks",
+      "Refer UIFW-001 and UIFW-007 to NPA for investigation",
+      "Increase monitoring frequency for KRI-003 (Cyber Maturity) to weekly",
+      "Fast-track Municipal Finance Skills Academy for Q3 benefit realisation",
+      "Escalate SETA consolidation risk to ARC for strategic response planning"
+    ],
+    "forecast": [
+      { "month": "Jan", "historical": 38, "forecast": null },
+      { "month": "Feb", "historical": 39, "forecast": null },
+      { "month": "Mar", "historical": 40, "forecast": null },
+      { "month": "Apr", "historical": 41, "forecast": null },
+      { "month": "May", "historical": 40, "forecast": null },
+      { "month": "Jun", "historical": 42, "forecast": null },
+      { "month": "Jul", "historical": null, "forecast": 43 },
+      { "month": "Aug", "historical": null, "forecast": 43.5 },
+      { "month": "Sep", "historical": null, "forecast": 44 },
+      { "month": "Oct", "historical": null, "forecast": 43 },
+      { "month": "Nov", "historical": null, "forecast": 42 },
+      { "month": "Dec", "historical": null, "forecast": 41 }
+    ]
+  }
+}
