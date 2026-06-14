@@ -151,7 +151,7 @@ export default function App() {
   if (loading) return (
     <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", background: C.bg, color: C.accent, fontFamily: "Segoe UI, sans-serif", flexDirection: "column", gap: 16 }}>
       <div style={{ fontSize: 40 }}>🛡️</div>
-      <div style={{ fontSize: 16, fontWeight: 600 }}>Loading LGSETA Risk Intelligence...</div>
+      <div style={{ fontSize: 16, fontWeight: 600 }}>Loading LGSETA — BJMAPEX GRC Intelligence Center...</div>
       <div style={{ width: 200, height: 3, background: C.border, borderRadius: 999, overflow: "hidden" }}>
         <div style={{ width: "60%", height: "100%", background: C.accent, borderRadius: 999, animation: "none" }} />
       </div>
@@ -173,7 +173,7 @@ export default function App() {
       <div style={{ width: sidebarOpen ? 240 : 64, background: C.surface, borderRight: `1px solid ${C.border}`, display: "flex", flexDirection: "column", transition: "width 0.3s ease", overflow: "hidden", flexShrink: 0 }}>
         <div style={{ padding: "20px 16px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ width: 32, height: 32, background: C.accent, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>🛡️</div>
-          {sidebarOpen && <div><div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>LGSETA</div><div style={{ fontSize: 10, color: C.muted }}>Risk Command</div></div>}
+          {sidebarOpen && <div><div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>LGSETA — BJMAPEX</div><div style={{ fontSize: 10, color: C.muted }}>GRC Intelligence Center</div></div>}
         </div>
         <div style={{ flex: 1, overflowY: "auto", padding: "8px 0" }}>
           {NAV.map(n => (
