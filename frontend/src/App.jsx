@@ -2879,8 +2879,143 @@ function UploadSection() {
   );
 }
 
+function ReportsTab() {
+  const [generating, setGenerating] = useState(null); // null | "excom"|"arc"|"board"
+  const [toast, setToast]           = useState(null);
+
+  function showToast(msg, type="ok") { setToast({ msg, type }); setTimeout(()=>setToast(null), 5000); }
+
+  async function generateReport(type) {
+    setGenerating(type);
+    try {
+      const res = await fetch(`${API}/api/reports/${type}`, { method:"POST" });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message||"Generation failed");
+      }
+      const blob     = await res.blob();
+      const url      = URL.createObjectURL(blob);
+      const a        = document.createElement("a");
+      const date     = new Date().toISOString().slice(0,10);
+      const labels   = { excom:"EXCOM", arc:"ARC", board:"Board" };
+      a.href         = url;
+      a.download     = `LGSETA_${labels[type]}_GRC_Report_${date}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast(`✅ ${labels[type]} report downloaded successfully!`);
+    } catch(e) {
+      showToast(`❌ ${e.message}`, "err");
+    } finally {
+      setGenerating(null);
+    }
+  }
+
+  const reports = [
+    {
+      type:     "excom",
+      label:    "EXCOM Report",
+      audience: "Executive Committee",
+      color:    C.blue,
+      icon:     "🏛",
+      sections: ["Executive Summary & KPIs","Top 10 Strategic Risks","Treatment Action Status","UIFW Exposure Summary"],
+      desc:     "High-level GRC overview for the Executive Committee. Focuses on key metrics, critical risks, and action status.",
+    },
+    {
+      type:     "arc",
+      label:    "ARC Report",
+      audience: "Audit & Risk Committee",
+      color:    C.amber,
+      icon:     "⚖",
+      sections: ["Executive Summary & KPIs","Top 10 Strategic Risks","Treatment Action Status","UIFW Exposure","Fraud & Ethics Register","BCM Status"],
+      desc:     "Detailed GRC report for the Audit & Risk Committee. Includes fraud, BCM and full UIFW analysis.",
+    },
+    {
+      type:     "board",
+      label:    "Board Report",
+      audience: "Board of Directors",
+      color:    C.purple,
+      icon:     "🎯",
+      sections: ["Executive Summary & KPIs","Top 10 Strategic Risks","Treatment Action Status","UIFW Exposure","Fraud & Ethics Register","BCM Status","APP Alignment"],
+      desc:     "Full GRC overview for the Board. All sections included with APP performance alignment.",
+    },
+  ];
+
+  return (
+    <div style={{ maxWidth:900, margin:"0 auto" }}>
+      {toast && (
+        <div style={{ position:"fixed", top:16, right:16, zIndex:1000, padding:"0.75rem 1.5rem", borderRadius:8,
+          background:toast.type==="ok"?"rgba(63,185,80,0.15)":"rgba(248,81,73,0.15)",
+          border:`1px solid ${toast.type==="ok"?C.green:C.red}`,
+          color:toast.type==="ok"?C.green:C.red, fontWeight:600, fontSize:"0.9rem", maxWidth:400 }}>
+          {toast.msg}
+        </div>
+      )}
+
+      <div style={{ marginBottom:"1.5rem" }}>
+        <h2 style={{ color:C.text, fontSize:"1.4rem", fontWeight:700, margin:"0 0 0.2rem" }}>📄 Quarterly Report Generator</h2>
+        <p style={{ color:C.muted, fontSize:"0.9rem", margin:0 }}>
+          Generate Word (.docx) reports from live dashboard data. Reports include all current data from the server.
+        </p>
+      </div>
+
+      <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
+        {reports.map(r => (
+          <div key={r.type} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:"1.5rem",
+            borderLeft:`4px solid ${r.color}`, display:"flex", alignItems:"flex-start", gap:"1.5rem", flexWrap:"wrap" }}>
+
+            {/* Icon + label */}
+            <div style={{ minWidth:160 }}>
+              <div style={{ fontSize:"2rem", marginBottom:"0.3rem" }}>{r.icon}</div>
+              <div style={{ color:r.color, fontWeight:800, fontSize:"1.1rem" }}>{r.label}</div>
+              <div style={{ color:C.muted, fontSize:"0.78rem" }}>{r.audience}</div>
+            </div>
+
+            {/* Description + sections */}
+            <div style={{ flex:1 }}>
+              <p style={{ color:C.muted, fontSize:"0.85rem", margin:"0 0 0.75rem", lineHeight:1.6 }}>{r.desc}</p>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:"0.4rem" }}>
+                {r.sections.map(s => (
+                  <span key={s} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:4,
+                    padding:"2px 8px", fontSize:"0.72rem", color:C.muted }}>
+                    {s}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Generate button */}
+            <div style={{ display:"flex", flexDirection:"column", gap:"0.5rem", alignItems:"flex-end", minWidth:160 }}>
+              <button
+                onClick={()=>generateReport(r.type)}
+                disabled={!!generating}
+                style={{ padding:"0.7rem 1.5rem", background:generating===r.type?C.surface:r.color,
+                  color:generating===r.type?C.muted:"#fff", border:`1px solid ${r.color}`,
+                  borderRadius:8, fontWeight:700, fontSize:"0.9rem", cursor:generating?"not-allowed":"pointer",
+                  whiteSpace:"nowrap", transition:"all 0.15s", minWidth:160, textAlign:"center" }}>
+                {generating===r.type ? "⏳ Generating…" : "⬇ Download .docx"}
+              </button>
+              {generating===r.type && (
+                <span style={{ color:C.muted, fontSize:"0.75rem" }}>Fetching live data…</span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ marginTop:"1.5rem", padding:"1rem 1.25rem", background:"rgba(88,166,255,0.08)",
+        border:`1px solid rgba(88,166,255,0.2)`, borderRadius:8, fontSize:"0.83rem", color:C.blue, lineHeight:1.65 }}>
+        <strong>How it works:</strong> Each report fetches live data from your Render server, builds a professionally
+        formatted Word document with your LGSETA branding, and downloads it directly. Open in Microsoft Word or
+        Google Docs, then share with your stakeholders.
+      </div>
+    </div>
+  );
+}
+
 function AdminTab() {
-  const [view, setView]       = useState("upload");   // "upload" | "edit"
+  const [view, setView]       = useState("upload");   // "upload" | "edit" | "reports"
   const [editModule, setEditModule] = useState(null); // null | module value
 
   const chosen = MODULE_OPTIONS.find(m=>m.value===editModule);
@@ -2894,7 +3029,7 @@ function AdminTab() {
 
       {/* Sub-tab switcher */}
       <div style={{ display:"flex", borderBottom:`2px solid ${C.border}`, marginBottom:"1.5rem" }}>
-        {[["upload","📤 Excel Upload"],["edit","✏️ Manual Edit"]].map(([k,l])=>(
+        {[["upload","📤 Excel Upload"],["edit","✏️ Manual Edit"],["reports","📄 Reports"]].map(([k,l])=>(
           <button key={k} onClick={()=>{ setView(k); setEditModule(null); }}
             style={{ padding:"0.55rem 1.4rem", border:"none", background:"transparent", cursor:"pointer",
               fontSize:"0.88rem", fontWeight:600, color:view===k?C.text:C.muted,
@@ -2904,7 +3039,8 @@ function AdminTab() {
         ))}
       </div>
 
-      {view==="upload" && <UploadSection/>}
+      {view==="upload"  && <UploadSection/>}
+      {view==="reports" && <ReportsTab/>}
 
       {view==="edit" && !editModule && (
         <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"1.75rem 2rem" }}>

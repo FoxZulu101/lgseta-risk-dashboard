@@ -371,3 +371,27 @@ app.post("/api/upload/:type", upload.single("file"), (req, res) => {
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => console.log(`LGSETA GRC Backend running on port ${PORT}`));
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// QUARTERLY REPORT GENERATOR
+// ═══════════════════════════════════════════════════════════════════════════════
+const { generateReport } = require("./reportGenerator");
+
+app.post("/api/reports/:type", async (req, res) => {
+  const type = req.params.type; // excom | arc | board
+  if (!["excom","arc","board"].includes(type)) {
+    return res.status(400).json({ message:"Invalid report type. Use: excom, arc, or board" });
+  }
+  try {
+    const data   = readData();
+    const buffer = await generateReport(type, data);
+    const date   = new Date().toISOString().slice(0,10);
+    const labels = { excom:"EXCOM", arc:"ARC", board:"Board" };
+    res.setHeader("Content-Disposition", `attachment; filename=LGSETA_${labels[type]}_GRC_Report_${date}.docx`);
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+    res.send(buffer);
+  } catch (e) {
+    console.error("Report generation error:", e);
+    res.status(500).json({ message:"Report generation failed", error:e.message });
+  }
+});
