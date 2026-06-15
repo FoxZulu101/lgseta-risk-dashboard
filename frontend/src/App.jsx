@@ -1686,12 +1686,229 @@ function UIFWAdmin() {
   );
 }
 
+// ─── FRAUD & ETHICS ADMIN ─────────────────────────────────────────────────────
+const EMPTY_FRAUD = {
+  id:"", category:"Procurement Fraud", description:"", amount:"",
+  status:"Open", reported:"", source:"Hotline", responsiblePerson:"",
+  investigator:"", resolutionDate:"", outcome:"", referredTo:"",
+};
+
+function FraudForm({ initial={}, onSave, onCancel, saving }) {
+  const [f, setF] = useState({ ...EMPTY_FRAUD, ...initial, amount:initial.amount||"" });
+  const set = k => v => setF(p=>({ ...p, [k]:v }));
+  return (
+    <div style={{ background:C.surface, border:`1px solid ${C.purple}`, borderRadius:10, padding:"1.5rem", marginBottom:"1.5rem" }}>
+      <h3 style={{ color:C.purple, fontWeight:700, margin:"0 0 1.25rem" }}>
+        {initial.id ? `Edit Case — ${initial.id}` : "Add New Fraud / Ethics Case"}
+      </h3>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
+        <FInput  label="Case ID"  value={f.id}       onChange={set("id")}       required placeholder="FC-004" />
+        <FSelect label="Category" value={f.category} onChange={set("category")} required
+          options={["Procurement Fraud","Misappropriation","Conflict of Interest","Bribery & Corruption","Financial Misconduct","Dishonesty","Ethics Violation","Other"]} />
+        <FSelect label="Source"   value={f.source}   onChange={set("source")}
+          options={["Hotline","Internal","Disclosure","External Tip","Audit Finding","Management","Anonymous"]} />
+      </div>
+      <FTextarea label="Description" value={f.description} onChange={set("description")} rows={2} placeholder="Describe the fraud or ethics case…" />
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
+        <div style={{ marginBottom:"0.85rem" }}>
+          <label style={labelSt}>Financial Loss (R)</label>
+          <input type="number" value={f.amount} onChange={e=>set("amount")(e.target.value)} placeholder="0 if no financial loss" style={inputSt} />
+          {Number(f.amount) > 0 && <div style={{ color:C.red, fontSize:"0.75rem", marginTop:3 }}>= R{Number(f.amount).toLocaleString()}</div>}
+        </div>
+        <FInput  label="Date Reported" value={f.reported} onChange={set("reported")} type="date" />
+        <FSelect label="Status" value={f.status} onChange={set("status")} required
+          options={["Open","Under Investigation","Disciplinary Action","Resolved","Closed","Referred to NPA","Written Off"]} />
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
+        <FInput label="Responsible Person" value={f.responsiblePerson} onChange={set("responsiblePerson")} placeholder="Name of implicated person" />
+        <FInput label="Investigator"       value={f.investigator}      onChange={set("investigator")}      placeholder="e.g. Internal Audit / SAPS" />
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
+        <FInput label="Referred To"     value={f.referredTo}     onChange={set("referredTo")}     placeholder="e.g. NPA, DPCI, Internal Disciplinary" />
+        <FInput label="Resolution Date" value={f.resolutionDate} onChange={set("resolutionDate")} type="date" />
+      </div>
+      <FTextarea label="Outcome / Resolution" value={f.outcome} onChange={set("outcome")} rows={2} placeholder="Describe the outcome or current resolution status…" />
+      <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.5rem" }}>
+        <button onClick={()=>onSave(f)} disabled={saving}
+          style={{ padding:"0.65rem 1.75rem", background:C.purple, color:"#fff", border:"none", borderRadius:8, fontWeight:700, fontSize:"0.9rem", cursor:"pointer", opacity:saving?0.6:1 }}>
+          {saving ? "Saving…" : initial.id ? "Update Case" : "Add Case"}
+        </button>
+        <button onClick={onCancel}
+          style={{ padding:"0.65rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, fontWeight:600, fontSize:"0.9rem", cursor:"pointer" }}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function FraudEthicsAdmin() {
+  const [cases, setCases]       = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [saving, setSaving]     = useState(false);
+  const [toast, setToast]       = useState(null);
+  const [mode, setMode]         = useState(null);
+  const [search, setSearch]     = useState("");
+  const [confirmDel, setConfirmDel] = useState(null);
+
+  function showToast(msg, type="ok") { setToast({ msg, type }); setTimeout(()=>setToast(null), 3500); }
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res  = await fetch(`${API}/api/dashboard`);
+      const data = await res.json();
+      const fraud = data.fraudEthics?.cases || data.fraudCases || [];
+      setCases(fraud.length > 0 ? fraud : STATIC_FRAUD);
+    } catch { setCases(STATIC_FRAUD); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(()=>{ load(); }, [load]);
+
+  async function handleSave(f) {
+    if (!f.id || !f.description) { showToast("Case ID and Description are required.", "err"); return; }
+    setSaving(true);
+    try {
+      const res  = await fetch(`${API}/api/dashboard`);
+      const data = await res.json();
+      if (!data.fraudEthics) data.fraudEthics = { cases:[] };
+      if (!data.fraudEthics.cases) data.fraudEthics.cases = [];
+      const body   = { ...f, amount:Number(f.amount)||0 };
+      const isEdit = mode?.id;
+      const idx    = data.fraudEthics.cases.findIndex(c => c.id === f.id);
+      if (isEdit && idx >= 0) {
+        data.fraudEthics.cases[idx] = { ...data.fraudEthics.cases[idx], ...body, updatedAt:new Date().toISOString() };
+      } else {
+        data.fraudEthics.cases.push({ ...body, createdAt:new Date().toISOString() });
+      }
+      const saveRes = await fetch(`${API}/api/dashboard`, { method:"PUT", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(data) });
+      if (!saveRes.ok) throw new Error("Failed to save");
+      showToast(isEdit ? `✅ ${f.id} updated.` : `✅ ${f.id} added.`);
+      setMode(null); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  async function handleDelete(id) {
+    setSaving(true);
+    try {
+      const res  = await fetch(`${API}/api/dashboard`);
+      const data = await res.json();
+      if (data.fraudEthics?.cases) data.fraudEthics.cases = data.fraudEthics.cases.filter(c => c.id !== id);
+      const saveRes = await fetch(`${API}/api/dashboard`, { method:"PUT", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(data) });
+      if (!saveRes.ok) throw new Error("Failed to delete");
+      showToast(`🗑 ${id} deleted.`); setConfirmDel(null); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  const filtered = cases.filter(c =>
+    (c.description||"").toLowerCase().includes(search.toLowerCase()) ||
+    (c.id||"").toLowerCase().includes(search.toLowerCase()) ||
+    (c.category||"").toLowerCase().includes(search.toLowerCase())
+  );
+
+  const totalLoss = cases.reduce((s,c)=>s+(Number(c.amount)||0),0);
+  const openCases = cases.filter(c=>!["Resolved","Closed","Written Off"].includes(c.status)).length;
+
+  return (
+    <div>
+      {toast && (
+        <div style={{ position:"fixed", top:16, right:16, zIndex:1000, padding:"0.75rem 1.25rem", borderRadius:8,
+          background:toast.type==="ok"?"rgba(163,113,247,0.15)":"rgba(248,81,73,0.15)",
+          border:`1px solid ${toast.type==="ok"?C.purple:C.red}`,
+          color:toast.type==="ok"?C.purple:C.red, fontWeight:600, fontSize:"0.88rem" }}>
+          {toast.msg}
+        </div>
+      )}
+      {confirmDel && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", zIndex:999, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div style={{ background:C.card, border:`1px solid ${C.red}`, borderRadius:12, padding:"2rem", maxWidth:400, width:"90%" }}>
+            <h3 style={{ color:C.red, margin:"0 0 0.75rem" }}>Delete Case</h3>
+            <p style={{ color:C.text, marginBottom:"1.5rem" }}>Delete <strong>{confirmDel}</strong>? This cannot be undone.</p>
+            <div style={{ display:"flex", gap:"0.75rem" }}>
+              <button onClick={()=>handleDelete(confirmDel)} disabled={saving}
+                style={{ padding:"0.6rem 1.5rem", background:C.red, color:"#fff", border:"none", borderRadius:7, fontWeight:700, cursor:"pointer", opacity:saving?0.6:1 }}>
+                {saving?"Deleting…":"Yes, Delete"}
+              </button>
+              <button onClick={()=>setConfirmDel(null)}
+                style={{ padding:"0.6rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:7, cursor:"pointer" }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.25rem", flexWrap:"wrap", gap:"0.75rem" }}>
+        <div>
+          <h3 style={{ color:C.text, margin:"0 0 0.2rem", fontWeight:700 }}>Fraud & Ethics Register — Edit Mode</h3>
+          <p style={{ color:C.muted, fontSize:"0.82rem", margin:0 }}>{cases.length} cases · changes save directly to the server</p>
+        </div>
+        <div style={{ display:"flex", gap:"0.75rem", alignItems:"center" }}>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search cases…" style={{ ...inputSt, width:200 }}/>
+          <button onClick={()=>setMode("add")} disabled={!!mode}
+            style={{ padding:"0.6rem 1.25rem", background:C.purple, color:"#fff", border:"none", borderRadius:8, fontWeight:700, fontSize:"0.88rem", cursor:"pointer", opacity:mode?0.5:1 }}>
+            + Add Case
+          </button>
+          <button onClick={load}
+            style={{ padding:"0.6rem 0.9rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer", fontSize:"0.88rem" }}>
+            ↻ Refresh
+          </button>
+        </div>
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"0.75rem", marginBottom:"1.25rem" }}>
+        {[
+          ["Total Cases",       cases.length,                                                         C.purple],
+          ["Open / Active",     openCases,                                                            C.red   ],
+          ["Resolved / Closed", cases.filter(c=>["Resolved","Closed"].includes(c.status)).length,    C.green ],
+          ["Total Loss",        totalLoss>0?`R${(totalLoss/1e6).toFixed(2)}M`:"R0",                  C.red   ],
+        ].map(([l,v,c])=>(
+          <div key={l} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8, padding:"0.75rem 1rem", borderTop:`3px solid ${c}` }}>
+            <div style={{ color:C.muted, fontSize:"0.7rem", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.06em" }}>{l}</div>
+            <div style={{ color:c, fontSize:"1.4rem", fontWeight:800 }}>{v}</div>
+          </div>
+        ))}
+      </div>
+      {mode==="add"         && <FraudForm onSave={handleSave} onCancel={()=>setMode(null)} saving={saving} />}
+      {mode && mode!=="add" && <FraudForm initial={mode} onSave={handleSave} onCancel={()=>setMode(null)} saving={saving} />}
+      {loading ? (
+        <div style={{ textAlign:"center", padding:"3rem", color:C.muted }}>Loading cases from server…</div>
+      ) : (
+        <Card>
+          <Table
+            headers={["ID","Category","Description","Amount","Source","Reported","Status","Actions"]}
+            rows={filtered.map(c=>[
+              <span style={{ color:C.purple, fontWeight:700, whiteSpace:"nowrap" }}>{c.id}</span>,
+              <Badge label={c.category} color="blue"/>,
+              <span style={{ maxWidth:200, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={c.description}>{c.description||"—"}</span>,
+              <span style={{ color:Number(c.amount)>0?C.red:C.muted, fontWeight:Number(c.amount)>0?700:400 }}>
+                {Number(c.amount)>0?`R${Number(c.amount).toLocaleString()}`:"—"}
+              </span>,
+              <span style={{ color:C.muted, fontSize:"0.78rem" }}>{c.source||"—"}</span>,
+              <span style={{ color:C.muted, fontSize:"0.78rem", whiteSpace:"nowrap" }}>{c.reported||"—"}</span>,
+              <StatusBadge status={c.status}/>,
+              <div style={{ display:"flex", gap:"0.5rem" }}>
+                <button onClick={()=>setMode({ ...c })} disabled={!!mode}
+                  style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.blue, border:`1px solid ${C.blue}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Edit</button>
+                <button onClick={()=>setConfirmDel(c.id)} disabled={!!mode}
+                  style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.red, border:`1px solid ${C.red}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Delete</button>
+              </div>,
+            ])}
+          />
+          {filtered.length===0 && <p style={{ color:C.muted, textAlign:"center", padding:"2rem" }}>No cases match your search.</p>}
+        </Card>
+      )}
+    </div>
+  );
+}
+
 const MODULE_OPTIONS = [
   { value:"strategic",    label:"Strategic Risks",    component: StrategicRisksAdmin },
   { value:"kri",          label:"KRI Monitoring",     component: KRIMonitoringAdmin },
   { value:"treatment",    label:"Treatment Actions",  component: TreatmentActionsAdmin },
   { value:"uifw",         label:"UIFW Expenditure",   component: UIFWAdmin },
-  { value:"fraud",        label:"Fraud & Ethics",     component: null },
+  { value:"fraud",        label:"Fraud & Ethics",     component: FraudEthicsAdmin },
   { value:"departmental", label:"Departmental Risks", component: null },
   { value:"thirdparty",   label:"Third-Party Risk",   component: null },
   { value:"opportunities",label:"Opportunities",      component: null },
