@@ -997,9 +997,214 @@ function PredictiveIntel() {
 }
 
 // ─── ADMIN PANEL ──────────────────────────────────────────────────────────────
+// ─── KRI MONITORING ADMIN ────────────────────────────────────────────────────
+const EMPTY_KRI = {
+  id:"", indicator:"", linkedRisk:"", category:"Strategic Performance",
+  target:"", currentPeriodValue:"", previousPeriodValue:"",
+  currentStatus:"Outside Tolerance", previousStatus:"Within Tolerance",
+  trend:"Stable", greenThreshold:"", amberThreshold:"", redThreshold:"",
+};
+
+function KRIForm({ initial={}, onSave, onCancel, saving }) {
+  const [f, setF] = useState({ ...EMPTY_KRI, ...initial });
+  const set = k => v => setF(p=>({ ...p, [k]:v }));
+  return (
+    <div style={{ background:C.surface, border:`1px solid ${C.blue}`, borderRadius:10, padding:"1.5rem", marginBottom:"1.5rem" }}>
+      <h3 style={{ color:C.blue, fontWeight:700, margin:"0 0 1.25rem" }}>
+        {initial.id ? `Edit KRI — ${initial.id}` : "Add New KRI"}
+      </h3>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 2fr", gap:"1rem" }}>
+        <FInput label="KRI ID"        value={f.id}        onChange={set("id")}        required placeholder="KRI-009" />
+        <FInput label="Indicator Name" value={f.indicator} onChange={set("indicator")} required placeholder="e.g. Levy Income vs Budget" />
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
+        <FInput  label="Linked Risk ID"  value={f.linkedRisk} onChange={set("linkedRisk")} placeholder="e.g. SR-001" />
+        <FSelect label="Category"        value={f.category}   onChange={set("category")}
+          options={["Strategic Performance","Financial Performance","Operational Performance","Compliance","Human Capital","Technology","Stakeholder"]} />
+        <FSelect label="Trend"           value={f.trend}      onChange={set("trend")}
+          options={["Improving","Stable","Declining","Unknown"]} />
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
+        <FInput label="Target"                value={f.target}              onChange={set("target")}              placeholder="e.g. 95%" />
+        <FInput label="Current Period Value"  value={f.currentPeriodValue}  onChange={set("currentPeriodValue")}  placeholder="e.g. 88%" />
+        <FInput label="Previous Period Value" value={f.previousPeriodValue} onChange={set("previousPeriodValue")} placeholder="e.g. 82%" />
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
+        <FSelect label="Current Status"  value={f.currentStatus}  onChange={set("currentStatus")}
+          options={["Outside Tolerance","Within Tolerance","Critical","Closed"]} required />
+        <FSelect label="Previous Status" value={f.previousStatus} onChange={set("previousStatus")}
+          options={["Outside Tolerance","Within Tolerance","Critical","Closed"]} />
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
+        <FInput label="Green Threshold (e.g. 95%-100%)" value={f.greenThreshold} onChange={set("greenThreshold")} placeholder="95%-100%" />
+        <FInput label="Amber Threshold (e.g. 85%-94%)" value={f.amberThreshold} onChange={set("amberThreshold")} placeholder="85%-94%"  />
+        <FInput label="Red Threshold (e.g. Below 85%)"  value={f.redThreshold}  onChange={set("redThreshold")}  placeholder="Below 85%" />
+      </div>
+      <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.5rem" }}>
+        <button onClick={()=>onSave(f)} disabled={saving}
+          style={{ padding:"0.65rem 1.75rem", background:C.green, color:"#fff", border:"none", borderRadius:8, fontWeight:700, fontSize:"0.9rem", cursor:"pointer", opacity:saving?0.6:1 }}>
+          {saving ? "Saving…" : initial.id ? "Update KRI" : "Add KRI"}
+        </button>
+        <button onClick={onCancel}
+          style={{ padding:"0.65rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, fontWeight:600, fontSize:"0.9rem", cursor:"pointer" }}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function KRIMonitoringAdmin() {
+  const [kris, setKris]         = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [saving, setSaving]     = useState(false);
+  const [toast, setToast]       = useState(null);
+  const [mode, setMode]         = useState(null);
+  const [search, setSearch]     = useState("");
+  const [confirmDel, setConfirmDel] = useState(null);
+
+  function showToast(msg, type="ok") { setToast({ msg, type }); setTimeout(()=>setToast(null), 3500); }
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res  = await fetch(`${API}/api/kris`);
+      const data = await res.json();
+      setKris(Array.isArray(data) && data.length > 0 ? data : STATIC_KRIS);
+    } catch { setKris(STATIC_KRIS); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(()=>{ load(); }, [load]);
+
+  async function handleSave(f) {
+    if (!f.id || !f.indicator) { showToast("KRI ID and Indicator Name are required.", "err"); return; }
+    setSaving(true);
+    try {
+      const isEdit = mode?.id;
+      const res = await fetch(
+        isEdit ? `${API}/api/kris/${f.id}` : `${API}/api/kris`,
+        { method: isEdit ? "PUT" : "POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(f) }
+      );
+      if (!res.ok) throw new Error((await res.json()).message || "Server error");
+      showToast(isEdit ? `✅ ${f.id} updated.` : `✅ ${f.id} added.`);
+      setMode(null); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  async function handleDelete(id) {
+    setSaving(true);
+    try {
+      const res = await fetch(`${API}/api/kris/${id}`, { method:"DELETE" });
+      if (!res.ok) throw new Error((await res.json()).message || "Server error");
+      showToast(`🗑 ${id} deleted.`); setConfirmDel(null); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  const filtered = kris.filter(k =>
+    (k.indicator||k.name||"").toLowerCase().includes(search.toLowerCase()) ||
+    (k.id||"").toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div>
+      {/* Toast */}
+      {toast && (
+        <div style={{ position:"fixed", top:16, right:16, zIndex:1000, padding:"0.75rem 1.25rem", borderRadius:8,
+          background:toast.type==="ok"?"rgba(63,185,80,0.15)":"rgba(248,81,73,0.15)",
+          border:`1px solid ${toast.type==="ok"?C.green:C.red}`,
+          color:toast.type==="ok"?C.green:C.red, fontWeight:600, fontSize:"0.88rem" }}>
+          {toast.msg}
+        </div>
+      )}
+
+      {/* Delete confirm */}
+      {confirmDel && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", zIndex:999, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div style={{ background:C.card, border:`1px solid ${C.red}`, borderRadius:12, padding:"2rem", maxWidth:400, width:"90%" }}>
+            <h3 style={{ color:C.red, margin:"0 0 0.75rem" }}>Delete KRI</h3>
+            <p style={{ color:C.text, marginBottom:"1.5rem" }}>Delete <strong>{confirmDel}</strong>? This cannot be undone.</p>
+            <div style={{ display:"flex", gap:"0.75rem" }}>
+              <button onClick={()=>handleDelete(confirmDel)} disabled={saving}
+                style={{ padding:"0.6rem 1.5rem", background:C.red, color:"#fff", border:"none", borderRadius:7, fontWeight:700, cursor:"pointer", opacity:saving?0.6:1 }}>
+                {saving?"Deleting…":"Yes, Delete"}
+              </button>
+              <button onClick={()=>setConfirmDel(null)}
+                style={{ padding:"0.6rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:7, cursor:"pointer" }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.25rem", flexWrap:"wrap", gap:"0.75rem" }}>
+        <div>
+          <h3 style={{ color:C.text, margin:"0 0 0.2rem", fontWeight:700 }}>KRI Register — Edit Mode</h3>
+          <p style={{ color:C.muted, fontSize:"0.82rem", margin:0 }}>{kris.length} indicators · changes save directly to the server</p>
+        </div>
+        <div style={{ display:"flex", gap:"0.75rem", alignItems:"center" }}>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search KRIs…" style={{ ...inputSt, width:200 }}/>
+          <button onClick={()=>setMode("add")} disabled={!!mode}
+            style={{ padding:"0.6rem 1.25rem", background:C.green, color:"#fff", border:"none", borderRadius:8, fontWeight:700, fontSize:"0.88rem", cursor:"pointer", opacity:mode?0.5:1 }}>
+            + Add KRI
+          </button>
+          <button onClick={load}
+            style={{ padding:"0.6rem 0.9rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer", fontSize:"0.88rem" }}>
+            ↻ Refresh
+          </button>
+        </div>
+      </div>
+
+      {/* Form */}
+      {mode==="add"        && <KRIForm onSave={handleSave} onCancel={()=>setMode(null)} saving={saving} />}
+      {mode && mode!=="add"&& <KRIForm initial={mode} onSave={handleSave} onCancel={()=>setMode(null)} saving={saving} />}
+
+      {/* Table */}
+      {loading ? (
+        <div style={{ textAlign:"center", padding:"3rem", color:C.muted }}>Loading KRIs from server…</div>
+      ) : (
+        <Card>
+          <Table
+            headers={["ID","Indicator","Category","Current Value","Target","Trend","Status","Actions"]}
+            rows={filtered.map(k=>{
+              const breach=(k.currentStatus||"").includes("Outside");
+              return [
+                <span style={{ color:C.blue, fontWeight:700, whiteSpace:"nowrap" }}>{k.id}</span>,
+                <span style={{ maxWidth:220, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={k.indicator||k.name}>{k.indicator||k.name||"—"}</span>,
+                <span style={{ color:C.muted, fontSize:"0.78rem" }}>{k.category||"—"}</span>,
+                <span style={{ color:breach?C.red:C.green, fontWeight:700 }}>{k.currentPeriodValue||k.actual||"—"}</span>,
+                <span style={{ color:C.text }}>{k.target||"—"}</span>,
+                <span style={{ color:(k.trend||"").toLowerCase()==="improving"?C.green:(k.trend||"").toLowerCase()==="declining"?C.red:C.muted }}>
+                  {(k.trend||"").toLowerCase()==="improving"?"↑ Improving":(k.trend||"").toLowerCase()==="declining"?"↓ Declining":"→ Stable"}
+                </span>,
+                <StatusBadge status={k.currentStatus||k.status}/>,
+                <div style={{ display:"flex", gap:"0.5rem" }}>
+                  <button onClick={()=>setMode({ ...k })} disabled={!!mode}
+                    style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.blue, border:`1px solid ${C.blue}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>
+                    Edit
+                  </button>
+                  <button onClick={()=>setConfirmDel(k.id)} disabled={!!mode}
+                    style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.red, border:`1px solid ${C.red}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>
+                    Delete
+                  </button>
+                </div>,
+              ];
+            })}
+          />
+          {filtered.length===0 && <p style={{ color:C.muted, textAlign:"center", padding:"2rem" }}>No KRIs match your search.</p>}
+        </Card>
+      )}
+    </div>
+  );
+}
+
 const MODULE_OPTIONS = [
   { value:"strategic",    label:"Strategic Risks",    component: StrategicRisksAdmin },
-  { value:"kri",          label:"KRI Monitoring",     component: null },
+  { value:"kri",          label:"KRI Monitoring",     component: KRIMonitoringAdmin },
   { value:"treatment",    label:"Treatment Actions",  component: null },
   { value:"uifw",         label:"UIFW Expenditure",   component: null },
   { value:"fraud",        label:"Fraud & Ethics",     component: null },
