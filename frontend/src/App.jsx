@@ -1903,18 +1903,910 @@ function FraudEthicsAdmin() {
   );
 }
 
+
+// ─── DEPARTMENTAL RISKS ADMIN ─────────────────────────────────────────────────
+const EMPTY_DEPT = {
+  id:"", name:"", risks:"", critical:"", treatment:"", uifw:"",
+  riskOwner:"", department:"", notes:"",
+};
+
+function DeptForm({ initial={}, onSave, onCancel, saving }) {
+  const [f, setF] = useState({ ...EMPTY_DEPT, ...initial });
+  const set = k => v => setF(p=>({ ...p, [k]:v }));
+  return (
+    <div style={{ background:C.surface, border:`1px solid ${C.blue}`, borderRadius:10, padding:"1.5rem", marginBottom:"1.5rem" }}>
+      <h3 style={{ color:C.blue, fontWeight:700, margin:"0 0 1.25rem" }}>{initial.name ? `Edit — ${initial.name}` : "Add Department"}</h3>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
+        <FInput label="Department Name" value={f.name}       onChange={set("name")}       required placeholder="e.g. Finance" />
+        <FInput label="Risk Owner"      value={f.riskOwner}  onChange={set("riskOwner")}  placeholder="e.g. CFO" />
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:"1rem" }}>
+        <FInput label="Total Risks"      value={f.risks}     onChange={set("risks")}     type="number" placeholder="8" />
+        <FInput label="Critical Risks"   value={f.critical}  onChange={set("critical")}  type="number" placeholder="2" />
+        <FInput label="Treatment % "     value={f.treatment} onChange={set("treatment")} type="number" placeholder="75" />
+        <FInput label="UIFW Exposure (R)"value={f.uifw}      onChange={set("uifw")}      type="number" placeholder="0" />
+      </div>
+      <FTextarea label="Notes" value={f.notes} onChange={set("notes")} rows={2} placeholder="Any additional notes…" />
+      <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.5rem" }}>
+        <button onClick={()=>onSave(f)} disabled={saving}
+          style={{ padding:"0.65rem 1.75rem", background:C.blue, color:"#fff", border:"none", borderRadius:8, fontWeight:700, fontSize:"0.9rem", cursor:"pointer", opacity:saving?0.6:1 }}>
+          {saving?"Saving…":initial.name?"Update Department":"Add Department"}
+        </button>
+        <button onClick={onCancel} style={{ padding:"0.65rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, fontWeight:600, fontSize:"0.9rem", cursor:"pointer" }}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+function DepartmentalRisksAdmin() {
+  const [depts, setDepts]       = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [saving, setSaving]     = useState(false);
+  const [toast, setToast]       = useState(null);
+  const [mode, setMode]         = useState(null);
+  const [confirmDel, setConfirmDel] = useState(null);
+
+  function showToast(msg, type="ok") { setToast({ msg, type }); setTimeout(()=>setToast(null), 3500); }
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res  = await fetch(`${API}/api/dashboard`);
+      const data = await res.json();
+      const d = data.departmentalRisks || data.departments || [];
+      setDepts(d.length > 0 ? d : STATIC_DEPTS);
+    } catch { setDepts(STATIC_DEPTS); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(()=>{ load(); }, [load]);
+
+  async function handleSave(f) {
+    if (!f.name) { showToast("Department Name is required.", "err"); return; }
+    setSaving(true);
+    try {
+      const res  = await fetch(`${API}/api/dashboard`);
+      const data = await res.json();
+      if (!data.departmentalRisks) data.departmentalRisks = [];
+      const body = { ...f, risks:Number(f.risks)||0, critical:Number(f.critical)||0, treatment:Number(f.treatment)||0, uifw:Number(f.uifw)||0 };
+      const isEdit = mode?.name;
+      const idx    = data.departmentalRisks.findIndex(d => d.name === f.name);
+      if (isEdit && idx >= 0) { data.departmentalRisks[idx] = { ...data.departmentalRisks[idx], ...body, updatedAt:new Date().toISOString() }; }
+      else { data.departmentalRisks.push({ ...body, createdAt:new Date().toISOString() }); }
+      const saveRes = await fetch(`${API}/api/dashboard`, { method:"PUT", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(data) });
+      if (!saveRes.ok) throw new Error("Failed to save");
+      showToast(isEdit ? `✅ ${f.name} updated.` : `✅ ${f.name} added.`);
+      setMode(null); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  async function handleDelete(name) {
+    setSaving(true);
+    try {
+      const res  = await fetch(`${API}/api/dashboard`);
+      const data = await res.json();
+      if (data.departmentalRisks) data.departmentalRisks = data.departmentalRisks.filter(d => d.name !== name);
+      const saveRes = await fetch(`${API}/api/dashboard`, { method:"PUT", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(data) });
+      if (!saveRes.ok) throw new Error("Failed to delete");
+      showToast(`🗑 ${name} deleted.`); setConfirmDel(null); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <div>
+      {toast && <div style={{ position:"fixed", top:16, right:16, zIndex:1000, padding:"0.75rem 1.25rem", borderRadius:8, background:toast.type==="ok"?"rgba(63,185,80,0.15)":"rgba(248,81,73,0.15)", border:`1px solid ${toast.type==="ok"?C.green:C.red}`, color:toast.type==="ok"?C.green:C.red, fontWeight:600, fontSize:"0.88rem" }}>{toast.msg}</div>}
+      {confirmDel && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", zIndex:999, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div style={{ background:C.card, border:`1px solid ${C.red}`, borderRadius:12, padding:"2rem", maxWidth:400, width:"90%" }}>
+            <h3 style={{ color:C.red, margin:"0 0 0.75rem" }}>Delete Department</h3>
+            <p style={{ color:C.text, marginBottom:"1.5rem" }}>Delete <strong>{confirmDel}</strong>?</p>
+            <div style={{ display:"flex", gap:"0.75rem" }}>
+              <button onClick={()=>handleDelete(confirmDel)} disabled={saving} style={{ padding:"0.6rem 1.5rem", background:C.red, color:"#fff", border:"none", borderRadius:7, fontWeight:700, cursor:"pointer" }}>{saving?"Deleting…":"Yes, Delete"}</button>
+              <button onClick={()=>setConfirmDel(null)} style={{ padding:"0.6rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:7, cursor:"pointer" }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.25rem", flexWrap:"wrap", gap:"0.75rem" }}>
+        <div>
+          <h3 style={{ color:C.text, margin:"0 0 0.2rem", fontWeight:700 }}>Departmental Risks — Edit Mode</h3>
+          <p style={{ color:C.muted, fontSize:"0.82rem", margin:0 }}>{depts.length} departments</p>
+        </div>
+        <div style={{ display:"flex", gap:"0.75rem" }}>
+          <button onClick={()=>setMode("add")} disabled={!!mode} style={{ padding:"0.6rem 1.25rem", background:C.blue, color:"#fff", border:"none", borderRadius:8, fontWeight:700, fontSize:"0.88rem", cursor:"pointer", opacity:mode?0.5:1 }}>+ Add Department</button>
+          <button onClick={load} style={{ padding:"0.6rem 0.9rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer", fontSize:"0.88rem" }}>↻ Refresh</button>
+        </div>
+      </div>
+      {mode==="add"         && <DeptForm onSave={handleSave} onCancel={()=>setMode(null)} saving={saving} />}
+      {mode && mode!=="add" && <DeptForm initial={mode} onSave={handleSave} onCancel={()=>setMode(null)} saving={saving} />}
+      {loading ? <div style={{ textAlign:"center", padding:"3rem", color:C.muted }}>Loading…</div> : (
+        <Card>
+          <Table
+            headers={["Department","Risk Owner","Total Risks","Critical","Treatment %","UIFW Exposure","Actions"]}
+            rows={depts.map(d=>[
+              <span style={{ color:C.text, fontWeight:700 }}>{d.name}</span>,
+              d.riskOwner||"—",
+              <span style={{ color:C.blue, fontWeight:700 }}>{d.risks||0}</span>,
+              <span style={{ color:C.red, fontWeight:700 }}>{d.critical||0}</span>,
+              <div style={{ minWidth:120 }}>
+                <div style={{ color:Number(d.treatment)>=80?C.green:Number(d.treatment)>=60?C.amber:C.red, fontSize:"0.78rem", fontWeight:700, marginBottom:3 }}>{d.treatment||0}%</div>
+                <ProgressBar value={Number(d.treatment)||0} color={Number(d.treatment)>=80?C.green:Number(d.treatment)>=60?C.amber:C.red}/>
+              </div>,
+              <span style={{ color:Number(d.uifw)>0?C.red:C.muted, fontWeight:Number(d.uifw)>0?700:400 }}>{Number(d.uifw)>0?`R${Number(d.uifw).toLocaleString()}`:"—"}</span>,
+              <div style={{ display:"flex", gap:"0.5rem" }}>
+                <button onClick={()=>setMode({ ...d })} disabled={!!mode} style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.blue, border:`1px solid ${C.blue}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Edit</button>
+                <button onClick={()=>setConfirmDel(d.name)} disabled={!!mode} style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.red, border:`1px solid ${C.red}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Delete</button>
+              </div>,
+            ])}
+          />
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ─── THIRD-PARTY RISK ADMIN ───────────────────────────────────────────────────
+const EMPTY_TP = {
+  id:"", name:"", type:"ICT", risk:"Medium", contract:"", score:"",
+  status:"Active", contactPerson:"", reviewDate:"", notes:"",
+};
+
+function ThirdPartyForm({ initial={}, onSave, onCancel, saving }) {
+  const [f, setF] = useState({ ...EMPTY_TP, ...initial });
+  const set = k => v => setF(p=>({ ...p, [k]:v }));
+  return (
+    <div style={{ background:C.surface, border:`1px solid ${C.cyan}`, borderRadius:10, padding:"1.5rem", marginBottom:"1.5rem" }}>
+      <h3 style={{ color:C.cyan, fontWeight:700, margin:"0 0 1.25rem" }}>{initial.id ? `Edit — ${initial.name}` : "Add Third Party"}</h3>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 2fr", gap:"1rem" }}>
+        <FInput  label="ID"   value={f.id}   onChange={set("id")}   required placeholder="TP-007" />
+        <FInput  label="Name" value={f.name} onChange={set("name")} required placeholder="e.g. Acme Technology" />
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:"1rem" }}>
+        <FSelect label="Type"   value={f.type}   onChange={set("type")}
+          options={["ICT","Auditor","Training","Facilities","Banking","Security","Legal","Consulting","Other"]} />
+        <FSelect label="Risk"   value={f.risk}   onChange={set("risk")}
+          options={["Low","Medium","High","Critical"]} />
+        <FSelect label="Status" value={f.status} onChange={set("status")}
+          options={["Active","Review","Suspended","Terminated","Pending"]} />
+        <FInput  label="Score (0-100)" value={f.score} onChange={set("score")} type="number" placeholder="85" />
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
+        <FInput label="Contract End Date" value={f.contract}     onChange={set("contract")}     type="date" />
+        <FInput label="Review Date"       value={f.reviewDate}   onChange={set("reviewDate")}   type="date" />
+      </div>
+      <FInput label="Contact Person" value={f.contactPerson} onChange={set("contactPerson")} placeholder="Primary contact at the third party" />
+      <FTextarea label="Notes" value={f.notes} onChange={set("notes")} rows={2} placeholder="Any additional risk notes…" />
+      <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.5rem" }}>
+        <button onClick={()=>onSave(f)} disabled={saving}
+          style={{ padding:"0.65rem 1.75rem", background:C.cyan, color:C.bg, border:"none", borderRadius:8, fontWeight:700, fontSize:"0.9rem", cursor:"pointer", opacity:saving?0.6:1 }}>
+          {saving?"Saving…":initial.id?"Update Third Party":"Add Third Party"}
+        </button>
+        <button onClick={onCancel} style={{ padding:"0.65rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, fontWeight:600, fontSize:"0.9rem", cursor:"pointer" }}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+function ThirdPartyRiskAdmin() {
+  const [parties, setParties]   = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [saving, setSaving]     = useState(false);
+  const [toast, setToast]       = useState(null);
+  const [mode, setMode]         = useState(null);
+  const [search, setSearch]     = useState("");
+  const [confirmDel, setConfirmDel] = useState(null);
+
+  function showToast(msg, type="ok") { setToast({ msg, type }); setTimeout(()=>setToast(null), 3500); }
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res  = await fetch(`${API}/api/dashboard`);
+      const data = await res.json();
+      const tp = data.thirdPartyRisk || data.thirdParties || [];
+      setParties(tp.length > 0 ? tp : STATIC_THIRD);
+    } catch { setParties(STATIC_THIRD); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(()=>{ load(); }, [load]);
+
+  async function handleSave(f) {
+    if (!f.id || !f.name) { showToast("ID and Name are required.", "err"); return; }
+    setSaving(true);
+    try {
+      const res  = await fetch(`${API}/api/dashboard`);
+      const data = await res.json();
+      if (!data.thirdPartyRisk) data.thirdPartyRisk = [];
+      const body = { ...f, score:Number(f.score)||0 };
+      const isEdit = mode?.id;
+      const idx    = data.thirdPartyRisk.findIndex(t => t.id === f.id);
+      if (isEdit && idx >= 0) { data.thirdPartyRisk[idx] = { ...data.thirdPartyRisk[idx], ...body, updatedAt:new Date().toISOString() }; }
+      else { data.thirdPartyRisk.push({ ...body, createdAt:new Date().toISOString() }); }
+      const saveRes = await fetch(`${API}/api/dashboard`, { method:"PUT", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(data) });
+      if (!saveRes.ok) throw new Error("Failed to save");
+      showToast(isEdit ? `✅ ${f.name} updated.` : `✅ ${f.name} added.`);
+      setMode(null); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  async function handleDelete(id) {
+    setSaving(true);
+    try {
+      const res  = await fetch(`${API}/api/dashboard`);
+      const data = await res.json();
+      if (data.thirdPartyRisk) data.thirdPartyRisk = data.thirdPartyRisk.filter(t => t.id !== id);
+      const saveRes = await fetch(`${API}/api/dashboard`, { method:"PUT", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(data) });
+      if (!saveRes.ok) throw new Error("Failed to delete");
+      showToast(`🗑 ${id} deleted.`); setConfirmDel(null); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  const filtered = parties.filter(p =>
+    (p.name||"").toLowerCase().includes(search.toLowerCase()) ||
+    (p.id||"").toLowerCase().includes(search.toLowerCase()) ||
+    (p.type||"").toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div>
+      {toast && <div style={{ position:"fixed", top:16, right:16, zIndex:1000, padding:"0.75rem 1.25rem", borderRadius:8, background:toast.type==="ok"?"rgba(57,211,83,0.15)":"rgba(248,81,73,0.15)", border:`1px solid ${toast.type==="ok"?C.cyan:C.red}`, color:toast.type==="ok"?C.cyan:C.red, fontWeight:600, fontSize:"0.88rem" }}>{toast.msg}</div>}
+      {confirmDel && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", zIndex:999, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div style={{ background:C.card, border:`1px solid ${C.red}`, borderRadius:12, padding:"2rem", maxWidth:400, width:"90%" }}>
+            <h3 style={{ color:C.red, margin:"0 0 0.75rem" }}>Delete Third Party</h3>
+            <p style={{ color:C.text, marginBottom:"1.5rem" }}>Delete <strong>{confirmDel}</strong>?</p>
+            <div style={{ display:"flex", gap:"0.75rem" }}>
+              <button onClick={()=>handleDelete(confirmDel)} disabled={saving} style={{ padding:"0.6rem 1.5rem", background:C.red, color:"#fff", border:"none", borderRadius:7, fontWeight:700, cursor:"pointer" }}>{saving?"Deleting…":"Yes, Delete"}</button>
+              <button onClick={()=>setConfirmDel(null)} style={{ padding:"0.6rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:7, cursor:"pointer" }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.25rem", flexWrap:"wrap", gap:"0.75rem" }}>
+        <div>
+          <h3 style={{ color:C.text, margin:"0 0 0.2rem", fontWeight:700 }}>Third-Party Risk Register — Edit Mode</h3>
+          <p style={{ color:C.muted, fontSize:"0.82rem", margin:0 }}>{parties.length} third parties · {parties.filter(p=>p.risk==="High"||p.risk==="Critical").length} high/critical risk</p>
+        </div>
+        <div style={{ display:"flex", gap:"0.75rem", alignItems:"center" }}>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search…" style={{ ...inputSt, width:180 }}/>
+          <button onClick={()=>setMode("add")} disabled={!!mode} style={{ padding:"0.6rem 1.25rem", background:C.cyan, color:C.bg, border:"none", borderRadius:8, fontWeight:700, fontSize:"0.88rem", cursor:"pointer", opacity:mode?0.5:1 }}>+ Add</button>
+          <button onClick={load} style={{ padding:"0.6rem 0.9rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer", fontSize:"0.88rem" }}>↻</button>
+        </div>
+      </div>
+      {mode==="add"         && <ThirdPartyForm onSave={handleSave} onCancel={()=>setMode(null)} saving={saving} />}
+      {mode && mode!=="add" && <ThirdPartyForm initial={mode} onSave={handleSave} onCancel={()=>setMode(null)} saving={saving} />}
+      {loading ? <div style={{ textAlign:"center", padding:"3rem", color:C.muted }}>Loading…</div> : (
+        <Card>
+          <Table
+            headers={["ID","Name","Type","Risk","Score","Contract End","Status","Actions"]}
+            rows={filtered.map(p=>[
+              <span style={{ color:C.cyan, fontWeight:700 }}>{p.id}</span>,
+              <span style={{ fontWeight:600 }}>{p.name}</span>,
+              <span style={{ color:C.muted, fontSize:"0.78rem" }}>{p.type}</span>,
+              <Badge label={p.risk} color={p.risk==="High"||p.risk==="Critical"?"red":p.risk==="Medium"?"amber":"green"}/>,
+              <span style={{ color:Number(p.score)>=80?C.green:Number(p.score)>=65?C.amber:C.red, fontWeight:700 }}>{p.score||"—"}</span>,
+              <span style={{ color:C.muted, fontSize:"0.78rem" }}>{p.contract||"Ongoing"}</span>,
+              <StatusBadge status={p.status}/>,
+              <div style={{ display:"flex", gap:"0.5rem" }}>
+                <button onClick={()=>setMode({ ...p })} disabled={!!mode} style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.blue, border:`1px solid ${C.blue}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Edit</button>
+                <button onClick={()=>setConfirmDel(p.id)} disabled={!!mode} style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.red, border:`1px solid ${C.red}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Delete</button>
+              </div>,
+            ])}
+          />
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ─── OPPORTUNITIES ADMIN ──────────────────────────────────────────────────────
+const EMPTY_OPP_FORM = {
+  id:"", name:"", benefit:"", score:"", status:"Proposed", owner:"",
+  horizon:"", category:"Strategic", notes:"",
+};
+
+function OpportunityForm({ initial={}, onSave, onCancel, saving }) {
+  const [f, setF] = useState({ ...EMPTY_OPP_FORM, ...initial });
+  const set = k => v => setF(p=>({ ...p, [k]:v }));
+  return (
+    <div style={{ background:C.surface, border:`1px solid ${C.cyan}`, borderRadius:10, padding:"1.5rem", marginBottom:"1.5rem" }}>
+      <h3 style={{ color:C.cyan, fontWeight:700, margin:"0 0 1.25rem" }}>{initial.id ? `Edit — ${initial.id}` : "Add Opportunity"}</h3>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 2fr", gap:"1rem" }}>
+        <FInput label="ID"   value={f.id}   onChange={set("id")}   required placeholder="OPP-006" />
+        <FInput label="Name" value={f.name} onChange={set("name")} required placeholder="Opportunity name" />
+      </div>
+      <FTextarea label="Benefit / Value" value={f.benefit} onChange={set("benefit")} rows={2} placeholder="Describe the strategic benefit…" />
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:"1rem" }}>
+        <FInput  label="Opportunity Score" value={f.score}   onChange={set("score")}   type="number" placeholder="15" />
+        <FSelect label="Status"            value={f.status}  onChange={set("status")}  options={["Proposed","Active","Under Review","Approved","Closed"]} />
+        <FInput  label="Owner"             value={f.owner}   onChange={set("owner")}   placeholder="e.g. CEO" />
+        <FSelect label="Category"          value={f.category}onChange={set("category")}options={["Strategic","Financial","Operational","Technology","Stakeholder","Skills Development"]} />
+      </div>
+      <FInput label="Time Horizon" value={f.horizon} onChange={set("horizon")} placeholder="e.g. 6-12 months" />
+      <FTextarea label="Notes" value={f.notes} onChange={set("notes")} rows={2} placeholder="Additional notes…" />
+      <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.5rem" }}>
+        <button onClick={()=>onSave(f)} disabled={saving}
+          style={{ padding:"0.65rem 1.75rem", background:C.cyan, color:C.bg, border:"none", borderRadius:8, fontWeight:700, fontSize:"0.9rem", cursor:"pointer", opacity:saving?0.6:1 }}>
+          {saving?"Saving…":initial.id?"Update Opportunity":"Add Opportunity"}
+        </button>
+        <button onClick={onCancel} style={{ padding:"0.65rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, fontWeight:600, fontSize:"0.9rem", cursor:"pointer" }}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+function OpportunitiesAdmin() {
+  const [opps, setOpps]         = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [saving, setSaving]     = useState(false);
+  const [toast, setToast]       = useState(null);
+  const [mode, setMode]         = useState(null);
+  const [confirmDel, setConfirmDel] = useState(null);
+
+  function showToast(msg, type="ok") { setToast({ msg, type }); setTimeout(()=>setToast(null), 3500); }
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res  = await fetch(`${API}/api/opportunities`);
+      const data = await res.json();
+      setOpps(Array.isArray(data) && data.length > 0 ? data : STATIC_OPP);
+    } catch { setOpps(STATIC_OPP); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(()=>{ load(); }, [load]);
+
+  async function handleSave(f) {
+    if (!f.id || !f.name) { showToast("ID and Name are required.", "err"); return; }
+    setSaving(true);
+    try {
+      const res  = await fetch(`${API}/api/dashboard`);
+      const data = await res.json();
+      if (!data.opportunityRisks) data.opportunityRisks = [];
+      const body = { ...f, score:Number(f.score)||0 };
+      const isEdit = mode?.id;
+      const idx    = data.opportunityRisks.findIndex(o => o.id === f.id);
+      if (isEdit && idx >= 0) { data.opportunityRisks[idx] = { ...data.opportunityRisks[idx], ...body, updatedAt:new Date().toISOString() }; }
+      else { data.opportunityRisks.push({ ...body, createdAt:new Date().toISOString() }); }
+      const saveRes = await fetch(`${API}/api/dashboard`, { method:"PUT", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(data) });
+      if (!saveRes.ok) throw new Error("Failed to save");
+      showToast(isEdit ? `✅ ${f.id} updated.` : `✅ ${f.id} added.`);
+      setMode(null); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  async function handleDelete(id) {
+    setSaving(true);
+    try {
+      const res  = await fetch(`${API}/api/dashboard`);
+      const data = await res.json();
+      if (data.opportunityRisks) data.opportunityRisks = data.opportunityRisks.filter(o => o.id !== id);
+      const saveRes = await fetch(`${API}/api/dashboard`, { method:"PUT", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(data) });
+      if (!saveRes.ok) throw new Error("Failed to delete");
+      showToast(`🗑 ${id} deleted.`); setConfirmDel(null); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <div>
+      {toast && <div style={{ position:"fixed", top:16, right:16, zIndex:1000, padding:"0.75rem 1.25rem", borderRadius:8, background:toast.type==="ok"?"rgba(57,211,83,0.15)":"rgba(248,81,73,0.15)", border:`1px solid ${toast.type==="ok"?C.cyan:C.red}`, color:toast.type==="ok"?C.cyan:C.red, fontWeight:600, fontSize:"0.88rem" }}>{toast.msg}</div>}
+      {confirmDel && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", zIndex:999, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div style={{ background:C.card, border:`1px solid ${C.red}`, borderRadius:12, padding:"2rem", maxWidth:400, width:"90%" }}>
+            <h3 style={{ color:C.red, margin:"0 0 0.75rem" }}>Delete Opportunity</h3>
+            <p style={{ color:C.text, marginBottom:"1.5rem" }}>Delete <strong>{confirmDel}</strong>?</p>
+            <div style={{ display:"flex", gap:"0.75rem" }}>
+              <button onClick={()=>handleDelete(confirmDel)} disabled={saving} style={{ padding:"0.6rem 1.5rem", background:C.red, color:"#fff", border:"none", borderRadius:7, fontWeight:700, cursor:"pointer" }}>{saving?"Deleting…":"Yes, Delete"}</button>
+              <button onClick={()=>setConfirmDel(null)} style={{ padding:"0.6rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:7, cursor:"pointer" }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.25rem", flexWrap:"wrap", gap:"0.75rem" }}>
+        <div>
+          <h3 style={{ color:C.text, margin:"0 0 0.2rem", fontWeight:700 }}>Opportunities Register — Edit Mode</h3>
+          <p style={{ color:C.muted, fontSize:"0.82rem", margin:0 }}>{opps.length} opportunities · {opps.filter(o=>o.status==="Active").length} active</p>
+        </div>
+        <div style={{ display:"flex", gap:"0.75rem" }}>
+          <button onClick={()=>setMode("add")} disabled={!!mode} style={{ padding:"0.6rem 1.25rem", background:C.cyan, color:C.bg, border:"none", borderRadius:8, fontWeight:700, fontSize:"0.88rem", cursor:"pointer", opacity:mode?0.5:1 }}>+ Add</button>
+          <button onClick={load} style={{ padding:"0.6rem 0.9rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer", fontSize:"0.88rem" }}>↻ Refresh</button>
+        </div>
+      </div>
+      {mode==="add"         && <OpportunityForm onSave={handleSave} onCancel={()=>setMode(null)} saving={saving} />}
+      {mode && mode!=="add" && <OpportunityForm initial={mode} onSave={handleSave} onCancel={()=>setMode(null)} saving={saving} />}
+      {loading ? <div style={{ textAlign:"center", padding:"3rem", color:C.muted }}>Loading…</div> : (
+        <Card>
+          <Table
+            headers={["ID","Name","Category","Score","Owner","Status","Actions"]}
+            rows={opps.map(o=>[
+              <span style={{ color:C.cyan, fontWeight:700 }}>{o.id}</span>,
+              <span style={{ maxWidth:200, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={o.name}>{o.name}</span>,
+              <span style={{ color:C.muted, fontSize:"0.78rem" }}>{o.category||"—"}</span>,
+              <span style={{ color:C.amber, fontWeight:700 }}>{o.score||"—"}</span>,
+              o.owner||"—",
+              <StatusBadge status={o.status}/>,
+              <div style={{ display:"flex", gap:"0.5rem" }}>
+                <button onClick={()=>setMode({ ...o })} disabled={!!mode} style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.blue, border:`1px solid ${C.blue}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Edit</button>
+                <button onClick={()=>setConfirmDel(o.id)} disabled={!!mode} style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.red, border:`1px solid ${C.red}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Delete</button>
+              </div>,
+            ])}
+          />
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ─── EMERGING RISKS ADMIN ─────────────────────────────────────────────────────
+const EMPTY_ER = {
+  id:"", name:"", category:"Technology", likelihood:"3", impact:"3",
+  horizon:"12-24 months", action:"Monitor", description:"", owner:"",
+};
+
+function EmergingRiskForm({ initial={}, onSave, onCancel, saving }) {
+  const [f, setF] = useState({ ...EMPTY_ER, ...initial });
+  const set = k => v => setF(p=>({ ...p, [k]:v }));
+  return (
+    <div style={{ background:C.surface, border:`1px solid ${C.amber}`, borderRadius:10, padding:"1.5rem", marginBottom:"1.5rem" }}>
+      <h3 style={{ color:C.amber, fontWeight:700, margin:"0 0 1.25rem" }}>{initial.id ? `Edit — ${initial.id}` : "Add Emerging Risk"}</h3>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 2fr", gap:"1rem" }}>
+        <FInput label="ID"   value={f.id}   onChange={set("id")}   required placeholder="ER-006" />
+        <FInput label="Name" value={f.name} onChange={set("name")} required placeholder="Emerging risk name" />
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:"1rem" }}>
+        <FSelect label="Category"   value={f.category}   onChange={set("category")}
+          options={["Technology","Economic","Regulatory","Environment","Social","Political","Health","Other"]} />
+        <FSelect label="Likelihood (1-5)" value={String(f.likelihood)} onChange={set("likelihood")}
+          options={["1","2","3","4","5"]} />
+        <FSelect label="Impact (1-5)"     value={String(f.impact)}     onChange={set("impact")}
+          options={["1","2","3","4","5"]} />
+        <FSelect label="Action"           value={f.action}             onChange={set("action")}
+          options={["Monitor","Watch","Escalate","Mitigate","Accept"]} />
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
+        <FInput label="Time Horizon" value={f.horizon} onChange={set("horizon")} placeholder="e.g. 12-24 months" />
+        <FInput label="Owner"        value={f.owner}   onChange={set("owner")}   placeholder="e.g. CRO" />
+      </div>
+      <FTextarea label="Description" value={f.description} onChange={set("description")} rows={2} placeholder="Describe the emerging risk…" />
+      <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.5rem" }}>
+        <button onClick={()=>onSave(f)} disabled={saving}
+          style={{ padding:"0.65rem 1.75rem", background:C.amber, color:C.bg, border:"none", borderRadius:8, fontWeight:700, fontSize:"0.9rem", cursor:"pointer", opacity:saving?0.6:1 }}>
+          {saving?"Saving…":initial.id?"Update Risk":"Add Risk"}
+        </button>
+        <button onClick={onCancel} style={{ padding:"0.65rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, fontWeight:600, fontSize:"0.9rem", cursor:"pointer" }}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+function EmergingRisksAdmin() {
+  const [risks, setRisks]       = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [saving, setSaving]     = useState(false);
+  const [toast, setToast]       = useState(null);
+  const [mode, setMode]         = useState(null);
+  const [confirmDel, setConfirmDel] = useState(null);
+
+  function showToast(msg, type="ok") { setToast({ msg, type }); setTimeout(()=>setToast(null), 3500); }
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res  = await fetch(`${API}/api/dashboard`);
+      const data = await res.json();
+      const er = data.emergingRisks || [];
+      setRisks(er.length > 0 ? er : STATIC_EMERGING);
+    } catch { setRisks(STATIC_EMERGING); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(()=>{ load(); }, [load]);
+
+  async function handleSave(f) {
+    if (!f.id || !f.name) { showToast("ID and Name are required.", "err"); return; }
+    setSaving(true);
+    try {
+      const res  = await fetch(`${API}/api/dashboard`);
+      const data = await res.json();
+      if (!data.emergingRisks) data.emergingRisks = [];
+      const body = { ...f, likelihood:Number(f.likelihood)||3, impact:Number(f.impact)||3 };
+      const isEdit = mode?.id;
+      const idx    = data.emergingRisks.findIndex(r => r.id === f.id);
+      if (isEdit && idx >= 0) { data.emergingRisks[idx] = { ...data.emergingRisks[idx], ...body, updatedAt:new Date().toISOString() }; }
+      else { data.emergingRisks.push({ ...body, createdAt:new Date().toISOString() }); }
+      const saveRes = await fetch(`${API}/api/dashboard`, { method:"PUT", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(data) });
+      if (!saveRes.ok) throw new Error("Failed to save");
+      showToast(isEdit ? `✅ ${f.id} updated.` : `✅ ${f.id} added.`);
+      setMode(null); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  async function handleDelete(id) {
+    setSaving(true);
+    try {
+      const res  = await fetch(`${API}/api/dashboard`);
+      const data = await res.json();
+      if (data.emergingRisks) data.emergingRisks = data.emergingRisks.filter(r => r.id !== id);
+      const saveRes = await fetch(`${API}/api/dashboard`, { method:"PUT", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(data) });
+      if (!saveRes.ok) throw new Error("Failed to delete");
+      showToast(`🗑 ${id} deleted.`); setConfirmDel(null); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <div>
+      {toast && <div style={{ position:"fixed", top:16, right:16, zIndex:1000, padding:"0.75rem 1.25rem", borderRadius:8, background:toast.type==="ok"?"rgba(227,179,65,0.15)":"rgba(248,81,73,0.15)", border:`1px solid ${toast.type==="ok"?C.amber:C.red}`, color:toast.type==="ok"?C.amber:C.red, fontWeight:600, fontSize:"0.88rem" }}>{toast.msg}</div>}
+      {confirmDel && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", zIndex:999, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div style={{ background:C.card, border:`1px solid ${C.red}`, borderRadius:12, padding:"2rem", maxWidth:400, width:"90%" }}>
+            <h3 style={{ color:C.red, margin:"0 0 0.75rem" }}>Delete Emerging Risk</h3>
+            <p style={{ color:C.text, marginBottom:"1.5rem" }}>Delete <strong>{confirmDel}</strong>?</p>
+            <div style={{ display:"flex", gap:"0.75rem" }}>
+              <button onClick={()=>handleDelete(confirmDel)} disabled={saving} style={{ padding:"0.6rem 1.5rem", background:C.red, color:"#fff", border:"none", borderRadius:7, fontWeight:700, cursor:"pointer" }}>{saving?"Deleting…":"Yes, Delete"}</button>
+              <button onClick={()=>setConfirmDel(null)} style={{ padding:"0.6rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:7, cursor:"pointer" }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.25rem", flexWrap:"wrap", gap:"0.75rem" }}>
+        <div>
+          <h3 style={{ color:C.text, margin:"0 0 0.2rem", fontWeight:700 }}>Emerging Risks — Edit Mode</h3>
+          <p style={{ color:C.muted, fontSize:"0.82rem", margin:0 }}>{risks.length} emerging risks · {risks.filter(r=>r.action==="Escalate").length} escalated</p>
+        </div>
+        <div style={{ display:"flex", gap:"0.75rem" }}>
+          <button onClick={()=>setMode("add")} disabled={!!mode} style={{ padding:"0.6rem 1.25rem", background:C.amber, color:C.bg, border:"none", borderRadius:8, fontWeight:700, fontSize:"0.88rem", cursor:"pointer", opacity:mode?0.5:1 }}>+ Add</button>
+          <button onClick={load} style={{ padding:"0.6rem 0.9rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer", fontSize:"0.88rem" }}>↻ Refresh</button>
+        </div>
+      </div>
+      {mode==="add"         && <EmergingRiskForm onSave={handleSave} onCancel={()=>setMode(null)} saving={saving} />}
+      {mode && mode!=="add" && <EmergingRiskForm initial={mode} onSave={handleSave} onCancel={()=>setMode(null)} saving={saving} />}
+      {loading ? <div style={{ textAlign:"center", padding:"3rem", color:C.muted }}>Loading…</div> : (
+        <Card>
+          <Table
+            headers={["ID","Name","Category","Likelihood","Impact","Score","Horizon","Action","Actions"]}
+            rows={risks.map(r=>{
+              const score = (Number(r.likelihood)||0) * (Number(r.impact)||0);
+              return [
+                <span style={{ color:C.amber, fontWeight:700 }}>{r.id}</span>,
+                <span style={{ maxWidth:180, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={r.name}>{r.name}</span>,
+                <span style={{ color:C.muted, fontSize:"0.78rem" }}>{r.category}</span>,
+                <span style={{ color:C.amber, fontWeight:700 }}>{r.likelihood}/5</span>,
+                <span style={{ color:C.red, fontWeight:700 }}>{r.impact}/5</span>,
+                <span style={{ color:score>=15?C.red:score>=9?C.amber:C.green, fontWeight:800 }}>{score}</span>,
+                <span style={{ color:C.muted, fontSize:"0.78rem" }}>{r.horizon}</span>,
+                <Badge label={r.action} color={r.action==="Escalate"?"red":r.action==="Mitigate"?"amber":"blue"}/>,
+                <div style={{ display:"flex", gap:"0.5rem" }}>
+                  <button onClick={()=>setMode({ ...r })} disabled={!!mode} style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.blue, border:`1px solid ${C.blue}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Edit</button>
+                  <button onClick={()=>setConfirmDel(r.id)} disabled={!!mode} style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.red, border:`1px solid ${C.red}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Delete</button>
+                </div>,
+              ];
+            })}
+          />
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ─── APP ALIGNMENT ADMIN ──────────────────────────────────────────────────────
+const EMPTY_APP_ITEM = {
+  ref:"", objective:"", target:"", actual:"", status:"In Progress", quarter:"Q2",
+};
+
+function APPItemForm({ initial={}, onSave, onCancel, saving }) {
+  const [f, setF] = useState({ ...EMPTY_APP_ITEM, ...initial });
+  const set = k => v => setF(p=>({ ...p, [k]:v }));
+  return (
+    <div style={{ background:C.surface, border:`1px solid ${C.blue}`, borderRadius:10, padding:"1.5rem", marginBottom:"1.5rem" }}>
+      <h3 style={{ color:C.blue, fontWeight:700, margin:"0 0 1.25rem" }}>{initial.ref ? `Edit — ${initial.ref}` : "Add APP Item"}</h3>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 3fr", gap:"1rem" }}>
+        <FInput label="APP Ref"    value={f.ref}       onChange={set("ref")}       required placeholder="APP 1.1" />
+        <FInput label="Objective"  value={f.objective} onChange={set("objective")} required placeholder="Performance objective description" />
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:"1rem" }}>
+        <FInput  label="Target (%)"  value={f.target} onChange={set("target")} type="number" placeholder="95" />
+        <FInput  label="Actual (%)"  value={f.actual} onChange={set("actual")} type="number" placeholder="88" />
+        <FSelect label="Quarter"     value={f.quarter} onChange={set("quarter")} options={["Q1","Q2","Q3","Q4"]} />
+        <FSelect label="Status"      value={f.status}  onChange={set("status")}
+          options={["On Track","In Progress","Behind","Not Started","Complete"]} />
+      </div>
+      <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.5rem" }}>
+        <button onClick={()=>onSave(f)} disabled={saving}
+          style={{ padding:"0.65rem 1.75rem", background:C.blue, color:"#fff", border:"none", borderRadius:8, fontWeight:700, fontSize:"0.9rem", cursor:"pointer", opacity:saving?0.6:1 }}>
+          {saving?"Saving…":initial.ref?"Update Item":"Add Item"}
+        </button>
+        <button onClick={onCancel} style={{ padding:"0.65rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, fontWeight:600, fontSize:"0.9rem", cursor:"pointer" }}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+function APPAlignmentAdmin() {
+  const [items, setItems]       = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [saving, setSaving]     = useState(false);
+  const [toast, setToast]       = useState(null);
+  const [mode, setMode]         = useState(null);
+  const [confirmDel, setConfirmDel] = useState(null);
+
+  function showToast(msg, type="ok") { setToast({ msg, type }); setTimeout(()=>setToast(null), 3500); }
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res  = await fetch(`${API}/api/dashboard`);
+      const data = await res.json();
+      const ap = data.appAlignment || data.annualPerformancePlan || [];
+      setItems(ap.length > 0 ? ap : STATIC_APP);
+    } catch { setItems(STATIC_APP); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(()=>{ load(); }, [load]);
+
+  async function handleSave(f) {
+    if (!f.ref || !f.objective) { showToast("Ref and Objective are required.", "err"); return; }
+    setSaving(true);
+    try {
+      const res  = await fetch(`${API}/api/dashboard`);
+      const data = await res.json();
+      if (!data.appAlignment) data.appAlignment = [];
+      const body = { ...f, target:Number(f.target)||0, actual:Number(f.actual)||0 };
+      const isEdit = mode?.ref;
+      const idx    = data.appAlignment.findIndex(a => a.ref === f.ref);
+      if (isEdit && idx >= 0) { data.appAlignment[idx] = { ...data.appAlignment[idx], ...body, updatedAt:new Date().toISOString() }; }
+      else { data.appAlignment.push({ ...body, createdAt:new Date().toISOString() }); }
+      const saveRes = await fetch(`${API}/api/dashboard`, { method:"PUT", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(data) });
+      if (!saveRes.ok) throw new Error("Failed to save");
+      showToast(isEdit ? `✅ ${f.ref} updated.` : `✅ ${f.ref} added.`);
+      setMode(null); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  async function handleDelete(ref) {
+    setSaving(true);
+    try {
+      const res  = await fetch(`${API}/api/dashboard`);
+      const data = await res.json();
+      if (data.appAlignment) data.appAlignment = data.appAlignment.filter(a => a.ref !== ref);
+      const saveRes = await fetch(`${API}/api/dashboard`, { method:"PUT", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(data) });
+      if (!saveRes.ok) throw new Error("Failed to delete");
+      showToast(`🗑 ${ref} deleted.`); setConfirmDel(null); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <div>
+      {toast && <div style={{ position:"fixed", top:16, right:16, zIndex:1000, padding:"0.75rem 1.25rem", borderRadius:8, background:toast.type==="ok"?"rgba(63,185,80,0.15)":"rgba(248,81,73,0.15)", border:`1px solid ${toast.type==="ok"?C.green:C.red}`, color:toast.type==="ok"?C.green:C.red, fontWeight:600, fontSize:"0.88rem" }}>{toast.msg}</div>}
+      {confirmDel && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", zIndex:999, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div style={{ background:C.card, border:`1px solid ${C.red}`, borderRadius:12, padding:"2rem", maxWidth:400, width:"90%" }}>
+            <h3 style={{ color:C.red, margin:"0 0 0.75rem" }}>Delete APP Item</h3>
+            <p style={{ color:C.text, marginBottom:"1.5rem" }}>Delete <strong>{confirmDel}</strong>?</p>
+            <div style={{ display:"flex", gap:"0.75rem" }}>
+              <button onClick={()=>handleDelete(confirmDel)} disabled={saving} style={{ padding:"0.6rem 1.5rem", background:C.red, color:"#fff", border:"none", borderRadius:7, fontWeight:700, cursor:"pointer" }}>{saving?"Deleting…":"Yes, Delete"}</button>
+              <button onClick={()=>setConfirmDel(null)} style={{ padding:"0.6rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:7, cursor:"pointer" }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.25rem", flexWrap:"wrap", gap:"0.75rem" }}>
+        <div>
+          <h3 style={{ color:C.text, margin:"0 0 0.2rem", fontWeight:700 }}>APP Alignment — Edit Mode</h3>
+          <p style={{ color:C.muted, fontSize:"0.82rem", margin:0 }}>{items.length} items · {items.filter(a=>a.status==="On Track"||a.status==="Complete").length} on track</p>
+        </div>
+        <div style={{ display:"flex", gap:"0.75rem" }}>
+          <button onClick={()=>setMode("add")} disabled={!!mode} style={{ padding:"0.6rem 1.25rem", background:C.blue, color:"#fff", border:"none", borderRadius:8, fontWeight:700, fontSize:"0.88rem", cursor:"pointer", opacity:mode?0.5:1 }}>+ Add Item</button>
+          <button onClick={load} style={{ padding:"0.6rem 0.9rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer", fontSize:"0.88rem" }}>↻ Refresh</button>
+        </div>
+      </div>
+      {mode==="add"         && <APPItemForm onSave={handleSave} onCancel={()=>setMode(null)} saving={saving} />}
+      {mode && mode!=="add" && <APPItemForm initial={mode} onSave={handleSave} onCancel={()=>setMode(null)} saving={saving} />}
+      {loading ? <div style={{ textAlign:"center", padding:"3rem", color:C.muted }}>Loading…</div> : (
+        <Card>
+          <Table
+            headers={["Ref","Objective","Target","Actual","Progress","Quarter","Status","Actions"]}
+            rows={items.map(a=>[
+              <span style={{ color:C.blue, fontWeight:700, whiteSpace:"nowrap" }}>{a.ref}</span>,
+              <span style={{ maxWidth:220, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={a.objective}>{a.objective}</span>,
+              `${a.target}%`,
+              <span style={{ color:Number(a.actual)>=Number(a.target)?C.green:C.red, fontWeight:700 }}>{a.actual}%</span>,
+              <div style={{ minWidth:100 }}>
+                <ProgressBar value={Number(a.actual)||0} max={Number(a.target)||100} color={Number(a.actual)>=Number(a.target)?C.green:C.red}/>
+              </div>,
+              <Badge label={a.quarter} color="blue"/>,
+              <StatusBadge status={a.status}/>,
+              <div style={{ display:"flex", gap:"0.5rem" }}>
+                <button onClick={()=>setMode({ ...a })} disabled={!!mode} style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.blue, border:`1px solid ${C.blue}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Edit</button>
+                <button onClick={()=>setConfirmDel(a.ref)} disabled={!!mode} style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.red, border:`1px solid ${C.red}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Delete</button>
+              </div>,
+            ])}
+          />
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ─── BCM RESILIENCE ADMIN ─────────────────────────────────────────────────────
+const EMPTY_INCIDENT = {
+  id:"", title:"", date:"", type:"ICT System Outage", affectedUnit:"",
+  severity:"Medium", duration:"", rtoBreached:"No", rpoBreached:"No",
+  impact:"", actionsTaken:"", lessonsLearned:"", status:"Open",
+};
+
+function BCMIncidentForm({ initial={}, onSave, onCancel, saving }) {
+  const [f, setF] = useState({ ...EMPTY_INCIDENT, ...initial });
+  const set = k => v => setF(p=>({ ...p, [k]:v }));
+  return (
+    <div style={{ background:C.surface, border:`1px solid ${C.green}`, borderRadius:10, padding:"1.5rem", marginBottom:"1.5rem" }}>
+      <h3 style={{ color:C.green, fontWeight:700, margin:"0 0 1.25rem" }}>{initial.id ? `Edit — ${initial.id}` : "Add BCM Incident"}</h3>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 2fr", gap:"1rem" }}>
+        <FInput label="Incident ID" value={f.id}    onChange={set("id")}    required placeholder="INC-004" />
+        <FInput label="Title"       value={f.title} onChange={set("title")} required placeholder="Brief incident title" />
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:"1rem" }}>
+        <FInput  label="Date"          value={f.date}         onChange={set("date")}         type="date" />
+        <FSelect label="Type"          value={f.type}         onChange={set("type")}
+          options={["ICT System Outage","Power Failure","Data Breach Attempt","Network Failure","Physical Security","Pandemic/Health","Natural Disaster","Supplier Failure","Other"]} />
+        <FSelect label="Severity"      value={f.severity}     onChange={set("severity")}     options={["Low","Medium","High","Critical"]} />
+        <FInput  label="Duration"      value={f.duration}     onChange={set("duration")}     placeholder="e.g. 4 hours" />
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:"1rem" }}>
+        <FInput  label="Affected Unit"  value={f.affectedUnit}  onChange={set("affectedUnit")}  placeholder="e.g. All Departments" />
+        <FSelect label="RTO Breached"   value={f.rtoBreached}   onChange={set("rtoBreached")}   options={["No","Yes"]} />
+        <FSelect label="RPO Breached"   value={f.rpoBreached}   onChange={set("rpoBreached")}   options={["No","Yes"]} />
+        <FSelect label="Status"         value={f.status}        onChange={set("status")}        options={["Open","Contained","Resolved","Closed","Under Review"]} />
+      </div>
+      <FTextarea label="Impact Description" value={f.impact}        onChange={set("impact")}        rows={2} placeholder="Describe the business impact…" />
+      <FTextarea label="Actions Taken"      value={f.actionsTaken}  onChange={set("actionsTaken")}  rows={2} placeholder="What was done to resolve the incident…" />
+      <FTextarea label="Lessons Learned"    value={f.lessonsLearned}onChange={set("lessonsLearned")}rows={2} placeholder="Key learnings and recommendations…" />
+      <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.5rem" }}>
+        <button onClick={()=>onSave(f)} disabled={saving}
+          style={{ padding:"0.65rem 1.75rem", background:C.green, color:C.bg, border:"none", borderRadius:8, fontWeight:700, fontSize:"0.9rem", cursor:"pointer", opacity:saving?0.6:1 }}>
+          {saving?"Saving…":initial.id?"Update Incident":"Log Incident"}
+        </button>
+        <button onClick={onCancel} style={{ padding:"0.65rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, fontWeight:600, fontSize:"0.9rem", cursor:"pointer" }}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+function BCMResilienceAdmin() {
+  const [incidents, setIncidents] = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [saving, setSaving]       = useState(false);
+  const [toast, setToast]         = useState(null);
+  const [mode, setMode]           = useState(null);
+  const [confirmDel, setConfirmDel] = useState(null);
+
+  function showToast(msg, type="ok") { setToast({ msg, type }); setTimeout(()=>setToast(null), 3500); }
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res  = await fetch(`${API}/api/bcm/incidents`);
+      const data = await res.json();
+      setIncidents(Array.isArray(data) && data.length > 0 ? data : STATIC_BCM.incidents);
+    } catch { setIncidents(STATIC_BCM.incidents); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(()=>{ load(); }, [load]);
+
+  async function handleSave(f) {
+    if (!f.id || !f.title) { showToast("Incident ID and Title are required.", "err"); return; }
+    setSaving(true);
+    try {
+      const isEdit = mode?.id;
+      if (isEdit) {
+        const res  = await fetch(`${API}/api/dashboard`);
+        const data = await res.json();
+        if (!data.bcmResilience) data.bcmResilience = { incidents:[] };
+        if (!data.bcmResilience.incidents) data.bcmResilience.incidents = [];
+        const idx = data.bcmResilience.incidents.findIndex(i => i.id === f.id);
+        if (idx >= 0) { data.bcmResilience.incidents[idx] = { ...data.bcmResilience.incidents[idx], ...f, updatedAt:new Date().toISOString() }; }
+        const saveRes = await fetch(`${API}/api/dashboard`, { method:"PUT", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(data) });
+        if (!saveRes.ok) throw new Error("Failed to update");
+      } else {
+        const res = await fetch(`${API}/api/bcm/incidents`, { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(f) });
+        if (!res.ok) throw new Error((await res.json()).message||"Failed to add");
+      }
+      showToast(isEdit ? `✅ ${f.id} updated.` : `✅ ${f.id} logged.`);
+      setMode(null); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  async function handleDelete(id) {
+    setSaving(true);
+    try {
+      const res  = await fetch(`${API}/api/dashboard`);
+      const data = await res.json();
+      if (data.bcmResilience?.incidents) data.bcmResilience.incidents = data.bcmResilience.incidents.filter(i => i.id !== id);
+      const saveRes = await fetch(`${API}/api/dashboard`, { method:"PUT", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(data) });
+      if (!saveRes.ok) throw new Error("Failed to delete");
+      showToast(`🗑 ${id} deleted.`); setConfirmDel(null); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <div>
+      {toast && <div style={{ position:"fixed", top:16, right:16, zIndex:1000, padding:"0.75rem 1.25rem", borderRadius:8, background:toast.type==="ok"?"rgba(63,185,80,0.15)":"rgba(248,81,73,0.15)", border:`1px solid ${toast.type==="ok"?C.green:C.red}`, color:toast.type==="ok"?C.green:C.red, fontWeight:600, fontSize:"0.88rem" }}>{toast.msg}</div>}
+      {confirmDel && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", zIndex:999, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div style={{ background:C.card, border:`1px solid ${C.red}`, borderRadius:12, padding:"2rem", maxWidth:400, width:"90%" }}>
+            <h3 style={{ color:C.red, margin:"0 0 0.75rem" }}>Delete Incident</h3>
+            <p style={{ color:C.text, marginBottom:"1.5rem" }}>Delete <strong>{confirmDel}</strong>?</p>
+            <div style={{ display:"flex", gap:"0.75rem" }}>
+              <button onClick={()=>handleDelete(confirmDel)} disabled={saving} style={{ padding:"0.6rem 1.5rem", background:C.red, color:"#fff", border:"none", borderRadius:7, fontWeight:700, cursor:"pointer" }}>{saving?"Deleting…":"Yes, Delete"}</button>
+              <button onClick={()=>setConfirmDel(null)} style={{ padding:"0.6rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:7, cursor:"pointer" }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.25rem", flexWrap:"wrap", gap:"0.75rem" }}>
+        <div>
+          <h3 style={{ color:C.text, margin:"0 0 0.2rem", fontWeight:700 }}>BCM Incidents — Edit Mode</h3>
+          <p style={{ color:C.muted, fontSize:"0.82rem", margin:0 }}>{incidents.length} incidents · {incidents.filter(i=>i.status==="Open").length} open</p>
+        </div>
+        <div style={{ display:"flex", gap:"0.75rem" }}>
+          <button onClick={()=>setMode("add")} disabled={!!mode} style={{ padding:"0.6rem 1.25rem", background:C.green, color:C.bg, border:"none", borderRadius:8, fontWeight:700, fontSize:"0.88rem", cursor:"pointer", opacity:mode?0.5:1 }}>+ Log Incident</button>
+          <button onClick={load} style={{ padding:"0.6rem 0.9rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer", fontSize:"0.88rem" }}>↻ Refresh</button>
+        </div>
+      </div>
+      {mode==="add"         && <BCMIncidentForm onSave={handleSave} onCancel={()=>setMode(null)} saving={saving} />}
+      {mode && mode!=="add" && <BCMIncidentForm initial={mode} onSave={handleSave} onCancel={()=>setMode(null)} saving={saving} />}
+      {loading ? <div style={{ textAlign:"center", padding:"3rem", color:C.muted }}>Loading…</div> : (
+        <Card>
+          <Table
+            headers={["ID","Title","Date","Type","Severity","Duration","RTO Breached","Status","Actions"]}
+            rows={incidents.map(i=>[
+              <span style={{ color:C.green, fontWeight:700, whiteSpace:"nowrap" }}>{i.id}</span>,
+              <span style={{ maxWidth:160, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={i.title||i.type}>{i.title||i.type}</span>,
+              <span style={{ color:C.muted, fontSize:"0.78rem", whiteSpace:"nowrap" }}>{i.date}</span>,
+              <span style={{ color:C.muted, fontSize:"0.78rem" }}>{i.type}</span>,
+              <Badge label={i.severity||i.impact} color={i.severity==="Critical"||i.severity==="High"||i.impact==="High"?"red":i.severity==="Medium"||i.impact==="Medium"?"amber":"green"}/>,
+              i.duration||"—",
+              i.rtoBreached==="Yes"||i.rtoMet===false ? <Badge label="Yes" color="red"/> : <Badge label="No" color="green"/>,
+              <StatusBadge status={i.status||i.resolution}/>,
+              <div style={{ display:"flex", gap:"0.5rem" }}>
+                <button onClick={()=>setMode({ ...i })} disabled={!!mode} style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.blue, border:`1px solid ${C.blue}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Edit</button>
+                <button onClick={()=>setConfirmDel(i.id)} disabled={!!mode} style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.red, border:`1px solid ${C.red}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Delete</button>
+              </div>,
+            ])}
+          />
+        </Card>
+      )}
+    </div>
+  );
+}
+
 const MODULE_OPTIONS = [
   { value:"strategic",    label:"Strategic Risks",    component: StrategicRisksAdmin },
   { value:"kri",          label:"KRI Monitoring",     component: KRIMonitoringAdmin },
   { value:"treatment",    label:"Treatment Actions",  component: TreatmentActionsAdmin },
   { value:"uifw",         label:"UIFW Expenditure",   component: UIFWAdmin },
   { value:"fraud",        label:"Fraud & Ethics",     component: FraudEthicsAdmin },
-  { value:"departmental", label:"Departmental Risks", component: null },
-  { value:"thirdparty",   label:"Third-Party Risk",   component: null },
-  { value:"opportunities",label:"Opportunities",      component: null },
-  { value:"emerging",     label:"Emerging Risks",     component: null },
-  { value:"app",          label:"APP Alignment",      component: null },
-  { value:"bcm",          label:"BCM Resilience",     component: null },
+  { value:"departmental", label:"Departmental Risks", component: DepartmentalRisksAdmin },
+  { value:"thirdparty",   label:"Third-Party Risk",   component: ThirdPartyRiskAdmin },
+  { value:"opportunities",label:"Opportunities",      component: OpportunitiesAdmin },
+  { value:"emerging",     label:"Emerging Risks",     component: EmergingRisksAdmin },
+  { value:"app",          label:"APP Alignment",      component: APPAlignmentAdmin },
+  { value:"bcm",          label:"BCM Resilience",     component: BCMResilienceAdmin },
 ];
 
 function UploadSection() {
