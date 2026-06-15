@@ -1202,10 +1202,263 @@ function KRIMonitoringAdmin() {
   );
 }
 
+// ─── TREATMENT ACTIONS ADMIN ──────────────────────────────────────────────────
+const EMPTY_TREATMENT = {
+  id:"", riskId:"", action:"", owner:"", dueDate:"",
+  status:"Not Started", priority:"Medium", progress:0, budget:"",
+};
+
+function TreatmentForm({ initial={}, onSave, onCancel, saving }) {
+  const [f, setF] = useState({ ...EMPTY_TREATMENT, ...initial });
+  const set = k => v => setF(p=>({ ...p, [k]:v }));
+  return (
+    <div style={{ background:C.surface, border:`1px solid ${C.blue}`, borderRadius:10, padding:"1.5rem", marginBottom:"1.5rem" }}>
+      <h3 style={{ color:C.blue, fontWeight:700, margin:"0 0 1.25rem" }}>
+        {initial.id ? `Edit Action — ${initial.id}` : "Add New Treatment Action"}
+      </h3>
+
+      {/* Row 1 */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
+        <FInput label="Action ID"   value={f.id}     onChange={set("id")}     required placeholder="TA-009" />
+        <FInput label="Linked Risk" value={f.riskId} onChange={set("riskId")} required placeholder="e.g. SR-001" />
+      </div>
+
+      {/* Action description */}
+      <FTextarea label="Action Description" value={f.action} onChange={set("action")} rows={2} placeholder="Describe the treatment action…" />
+
+      {/* Row 2 */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
+        <FInput  label="Owner"    value={f.owner}   onChange={set("owner")}   placeholder="e.g. CIO" />
+        <FInput  label="Due Date" value={f.dueDate} onChange={set("dueDate")} type="date" />
+        <FInput  label="Budget (R)" value={f.budget} onChange={set("budget")} type="number" placeholder="e.g. 100000" />
+      </div>
+
+      {/* Row 3 */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
+        <FSelect label="Status" value={f.status} onChange={set("status")} required
+          options={["Not Started","In Progress","Near Complete","Complete","Overdue","On Hold"]} />
+        <FSelect label="Priority" value={f.priority} onChange={set("priority")}
+          options={["Critical","High","Medium","Low"]} />
+      </div>
+
+      {/* Progress slider */}
+      <div style={{ marginBottom:"0.85rem" }}>
+        <label style={{ ...labelSt, display:"flex", justifyContent:"space-between" }}>
+          <span>Progress</span>
+          <span style={{ color:C.blue, fontWeight:700 }}>{f.progress}%</span>
+        </label>
+        <input type="range" min={0} max={100} step={5} value={f.progress}
+          onChange={e=>set("progress")(Number(e.target.value))}
+          style={{ width:"100%", accentColor:C.blue, cursor:"pointer" }} />
+        <div style={{ display:"flex", justifyContent:"space-between", marginTop:4 }}>
+          {[0,25,50,75,100].map(v=>(
+            <span key={v} style={{ color:C.muted, fontSize:"0.7rem" }}>{v}%</span>
+          ))}
+        </div>
+        {/* Visual bar */}
+        <div style={{ marginTop:6 }}>
+          <ProgressBar value={Number(f.progress)} color={Number(f.progress)===100?C.green:Number(f.progress)>=75?C.amber:C.blue} />
+        </div>
+      </div>
+
+      {/* Buttons */}
+      <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.5rem" }}>
+        <button onClick={()=>onSave(f)} disabled={saving}
+          style={{ padding:"0.65rem 1.75rem", background:C.green, color:"#fff", border:"none", borderRadius:8, fontWeight:700, fontSize:"0.9rem", cursor:"pointer", opacity:saving?0.6:1 }}>
+          {saving ? "Saving…" : initial.id ? "Update Action" : "Add Action"}
+        </button>
+        <button onClick={onCancel}
+          style={{ padding:"0.65rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, fontWeight:600, fontSize:"0.9rem", cursor:"pointer" }}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function TreatmentActionsAdmin() {
+  const [actions, setActions]   = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [saving, setSaving]     = useState(false);
+  const [toast, setToast]       = useState(null);
+  const [mode, setMode]         = useState(null);
+  const [search, setSearch]     = useState("");
+  const [confirmDel, setConfirmDel] = useState(null);
+
+  function showToast(msg, type="ok") { setToast({ msg, type }); setTimeout(()=>setToast(null), 3500); }
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res  = await fetch(`${API}/api/treatments`);
+      const data = await res.json();
+      setActions(Array.isArray(data) && data.length > 0 ? data : STATIC_TREATMENTS);
+    } catch { setActions(STATIC_TREATMENTS); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(()=>{ load(); }, [load]);
+
+  async function handleSave(f) {
+    if (!f.id || !f.action) { showToast("Action ID and Description are required.", "err"); return; }
+    setSaving(true);
+    try {
+      const isEdit = mode?.id;
+      const body   = { ...f, progress: Number(f.progress)||0, budget: Number(f.budget)||0 };
+      const res = await fetch(
+        isEdit ? `${API}/api/treatments/${f.id}` : `${API}/api/treatments`,
+        { method: isEdit?"PUT":"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(body) }
+      );
+      if (!res.ok) throw new Error((await res.json()).message || "Server error");
+      showToast(isEdit ? `✅ ${f.id} updated.` : `✅ ${f.id} added.`);
+      setMode(null); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  async function handleDelete(id) {
+    setSaving(true);
+    try {
+      const res = await fetch(`${API}/api/treatments/${id}`, { method:"DELETE" });
+      if (!res.ok) throw new Error((await res.json()).message || "Server error");
+      showToast(`🗑 ${id} deleted.`); setConfirmDel(null); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  const filtered = actions.filter(a =>
+    (a.action||"").toLowerCase().includes(search.toLowerCase()) ||
+    (a.id||"").toLowerCase().includes(search.toLowerCase()) ||
+    (a.riskId||a.risk||"").toLowerCase().includes(search.toLowerCase()) ||
+    (a.owner||"").toLowerCase().includes(search.toLowerCase())
+  );
+
+  const priorityColor = p => p==="Critical"?C.red:p==="High"?"#e36209":p==="Medium"?C.amber:C.green;
+
+  return (
+    <div>
+      {/* Toast */}
+      {toast && (
+        <div style={{ position:"fixed", top:16, right:16, zIndex:1000, padding:"0.75rem 1.25rem", borderRadius:8,
+          background:toast.type==="ok"?"rgba(63,185,80,0.15)":"rgba(248,81,73,0.15)",
+          border:`1px solid ${toast.type==="ok"?C.green:C.red}`,
+          color:toast.type==="ok"?C.green:C.red, fontWeight:600, fontSize:"0.88rem" }}>
+          {toast.msg}
+        </div>
+      )}
+
+      {/* Delete confirm */}
+      {confirmDel && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", zIndex:999, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div style={{ background:C.card, border:`1px solid ${C.red}`, borderRadius:12, padding:"2rem", maxWidth:400, width:"90%" }}>
+            <h3 style={{ color:C.red, margin:"0 0 0.75rem" }}>Delete Treatment Action</h3>
+            <p style={{ color:C.text, marginBottom:"1.5rem" }}>Delete <strong>{confirmDel}</strong>? This cannot be undone.</p>
+            <div style={{ display:"flex", gap:"0.75rem" }}>
+              <button onClick={()=>handleDelete(confirmDel)} disabled={saving}
+                style={{ padding:"0.6rem 1.5rem", background:C.red, color:"#fff", border:"none", borderRadius:7, fontWeight:700, cursor:"pointer", opacity:saving?0.6:1 }}>
+                {saving?"Deleting…":"Yes, Delete"}
+              </button>
+              <button onClick={()=>setConfirmDel(null)}
+                style={{ padding:"0.6rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:7, cursor:"pointer" }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.25rem", flexWrap:"wrap", gap:"0.75rem" }}>
+        <div>
+          <h3 style={{ color:C.text, margin:"0 0 0.2rem", fontWeight:700 }}>Treatment Actions — Edit Mode</h3>
+          <p style={{ color:C.muted, fontSize:"0.82rem", margin:0 }}>
+            {actions.length} actions · {actions.filter(a=>a.status==="Complete").length} complete ·{" "}
+            {actions.filter(a=>a.status==="Not Started").length} not started
+          </p>
+        </div>
+        <div style={{ display:"flex", gap:"0.75rem", alignItems:"center" }}>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search actions…"
+            style={{ ...inputSt, width:200 }}/>
+          <button onClick={()=>setMode("add")} disabled={!!mode}
+            style={{ padding:"0.6rem 1.25rem", background:C.green, color:"#fff", border:"none", borderRadius:8, fontWeight:700, fontSize:"0.88rem", cursor:"pointer", opacity:mode?0.5:1 }}>
+            + Add Action
+          </button>
+          <button onClick={load}
+            style={{ padding:"0.6rem 0.9rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer", fontSize:"0.88rem" }}>
+            ↻ Refresh
+          </button>
+        </div>
+      </div>
+
+      {/* Summary KPI strip */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:"0.75rem", marginBottom:"1.25rem" }}>
+        {[
+          ["Total",        actions.length,                                              C.blue  ],
+          ["Complete",     actions.filter(a=>a.status==="Complete").length,             C.green ],
+          ["In Progress",  actions.filter(a=>["In Progress","Near Complete"].includes(a.status)).length, C.amber ],
+          ["Not Started",  actions.filter(a=>a.status==="Not Started").length,          C.muted ],
+          ["Overdue",      actions.filter(a=>a.status==="Overdue"||
+            (a.status!=="Complete"&&a.dueDate&&new Date(a.dueDate)<new Date())).length, C.red   ],
+        ].map(([l,v,c])=>(
+          <div key={l} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8, padding:"0.75rem 1rem", borderTop:`3px solid ${c}` }}>
+            <div style={{ color:C.muted, fontSize:"0.7rem", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.06em" }}>{l}</div>
+            <div style={{ color:c, fontSize:"1.5rem", fontWeight:800 }}>{v}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Form */}
+      {mode==="add"         && <TreatmentForm onSave={handleSave} onCancel={()=>setMode(null)} saving={saving} />}
+      {mode && mode!=="add" && <TreatmentForm initial={mode} onSave={handleSave} onCancel={()=>setMode(null)} saving={saving} />}
+
+      {/* Table */}
+      {loading ? (
+        <div style={{ textAlign:"center", padding:"3rem", color:C.muted }}>Loading actions from server…</div>
+      ) : (
+        <Card>
+          <Table
+            headers={["ID","Risk","Action","Owner","Due Date","Priority","Progress","Status","Actions"]}
+            rows={filtered.map(a=>{
+              const pct    = Number(a.progress)||0;
+              const overdue= a.status!=="Complete" && a.dueDate && new Date(a.dueDate) < new Date();
+              return [
+                <span style={{ color:C.blue, fontWeight:700, whiteSpace:"nowrap" }}>{a.id}</span>,
+                <span style={{ color:C.muted, fontSize:"0.78rem", whiteSpace:"nowrap" }}>{a.riskId||a.risk||"—"}</span>,
+                <span style={{ maxWidth:220, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={a.action}>{a.action}</span>,
+                <span style={{ whiteSpace:"nowrap" }}>{a.owner||"—"}</span>,
+                <span style={{ color:overdue?C.red:C.text, whiteSpace:"nowrap", fontWeight:overdue?700:400 }}>
+                  {overdue?"⚠ ":""}{a.dueDate||a.due||"—"}
+                </span>,
+                <span style={{ color:priorityColor(a.priority), fontWeight:700, fontSize:"0.78rem" }}>{a.priority||"—"}</span>,
+                <div style={{ minWidth:130 }}>
+                  <div style={{ color:pct===100?C.green:pct>=75?C.amber:C.blue, fontSize:"0.72rem", fontWeight:700, marginBottom:3 }}>{pct}%</div>
+                  <ProgressBar value={pct} color={pct===100?C.green:pct>=75?C.amber:C.blue} />
+                </div>,
+                <StatusBadge status={a.status}/>,
+                <div style={{ display:"flex", gap:"0.5rem" }}>
+                  <button onClick={()=>setMode({ ...a })} disabled={!!mode}
+                    style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.blue, border:`1px solid ${C.blue}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>
+                    Edit
+                  </button>
+                  <button onClick={()=>setConfirmDel(a.id)} disabled={!!mode}
+                    style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.red, border:`1px solid ${C.red}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>
+                    Delete
+                  </button>
+                </div>,
+              ];
+            })}
+          />
+          {filtered.length===0 && <p style={{ color:C.muted, textAlign:"center", padding:"2rem" }}>No actions match your search.</p>}
+        </Card>
+      )}
+    </div>
+  );
+}
+
 const MODULE_OPTIONS = [
   { value:"strategic",    label:"Strategic Risks",    component: StrategicRisksAdmin },
   { value:"kri",          label:"KRI Monitoring",     component: KRIMonitoringAdmin },
-  { value:"treatment",    label:"Treatment Actions",  component: null },
+  { value:"treatment",    label:"Treatment Actions",  component: TreatmentActionsAdmin },
   { value:"uifw",         label:"UIFW Expenditure",   component: null },
   { value:"fraud",        label:"Fraud & Ethics",     component: null },
   { value:"departmental", label:"Departmental Risks", component: null },
