@@ -377,7 +377,7 @@ app.post("/api/upload/:type", upload.single("file"), (req, res) => {
 const {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
   Header, Footer, AlignmentType, HeadingLevel, BorderStyle, WidthType,
-  ShadingType, VerticalAlign, PageNumber, PageBreak, LevelFormat,
+  ShadingType, VerticalAlign, PageBreak,
   TabStopType, TabStopPosition,
 } = require("docx");
 
@@ -847,7 +847,7 @@ async function generateReport(type, data) {
             children: [
               new TextRun({ text:"LGSETA — Confidential", font:"Arial", size:14, color:GREY }),
               new TextRun({ text:"\tPage ", font:"Arial", size:14, color:GREY }),
-              new PageNumber({ font:"Arial", size:14, color:GREY }),
+              new TextRun({ text:" ", font:"Arial", size:14, color:GREY }),
             ],
           })],
         }),
