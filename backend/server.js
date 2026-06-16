@@ -395,3 +395,5 @@ app.post("/api/reports/:type", async (req, res) => {
     res.status(500).json({ message:"Report generation failed", error:e.message });
   }
 });
+
+
