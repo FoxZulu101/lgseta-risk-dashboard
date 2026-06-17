@@ -833,6 +833,71 @@ function buildCompliance(data) {
   ];
 }
 
+function buildProjects(data) {
+  const pc        = data.projectsContracts || {};
+  const projects  = pc.projects  || [];
+  const contracts = pc.contracts || [];
+
+  const activeProj   = projects.filter(p=>p.status==="In Progress").length;
+  const highRiskProj = projects.filter(p=>p.riskRating==="High").length;
+  const totalBudget  = projects.reduce((s,p)=>s+(Number(p.budget)||0),0);
+  const totalSpent   = projects.reduce((s,p)=>s+(Number(p.spent)||0),0);
+  const atRiskContracts = contracts.filter(c=>
+    c.status==="Expiring Soon" || c.renewalStatus==="Review Required" || c.renewalStatus==="Do Not Renew" || Number(c.slaCompliance)<80
+  );
+
+  const W1 = [800,2800,1300,1100,1100,900,1026];
+  const W2 = [800,2600,2000,1100,900,1626];
+
+  return [
+    heading1("9. Project & Contract Risk"),
+    kpiTable([
+      ["Active Projects",    String(activeProj),                          NAVY  ],
+      ["High Risk Projects", String(highRiskProj),                         highRiskProj>0?RED:GREEN ],
+      ["Project Budget",     fmtM(totalBudget),                            BLUE  ],
+      ["Spent / Committed",  fmtM(totalSpent),                             AMBER ],
+      ["Contracts at Risk",  String(atRiskContracts.length),               atRiskContracts.length>0?RED:GREEN ],
+    ]),
+    new Paragraph({ spacing:{before:160,after:160}, children:[] }),
+
+    heading2("Project Portfolio"),
+    projects.length>0 ? new Table({
+      width:{ size:9026, type:WidthType.DXA }, columnWidths:W1,
+      rows:[
+        headerRow(["ID","Project","Type","Budget","Spent","Risk","Status"], W1),
+        ...projects.map(p => new TableRow({ children:[
+          cell(p.id,                { width:W1[0], size:16, color:BLUE, bold:true }),
+          cell(p.name,              { width:W1[1], size:16 }),
+          cell(p.type||"—",        { width:W1[2], size:16 }),
+          cell(fmtM(p.budget),      { width:W1[3], size:16, align:AlignmentType.CENTER }),
+          cell(fmtM(p.spent),       { width:W1[4], size:16, align:AlignmentType.CENTER }),
+          cell(p.riskRating||"—",  { width:W1[5], size:16, bold:true, color:p.riskRating==="High"?RED:p.riskRating==="Medium"?AMBER:GREEN }),
+          cell(p.status||"—",      { width:W1[6], size:16, bold:true, color:statusColor(p.status) }),
+        ]})),
+      ],
+    }) : para("No projects recorded for this period.", { color:GREY }),
+
+    new Paragraph({ spacing:{before:200,after:0}, children:[] }),
+    heading2("Contracts Requiring Attention"),
+    atRiskContracts.length>0 ? new Table({
+      width:{ size:9026, type:WidthType.DXA }, columnWidths:W2,
+      rows:[
+        headerRow(["ID","Contract","Supplier","SLA %","Risk","Renewal Status"], W2),
+        ...atRiskContracts.map(c => new TableRow({ children:[
+          cell(c.id,                { width:W2[0], size:16, color:AMBER, bold:true }),
+          cell(c.title,              { width:W2[1], size:16 }),
+          cell(c.supplier||"—",     { width:W2[2], size:16 }),
+          cell(`${c.slaCompliance||0}%`, { width:W2[3], size:16, align:AlignmentType.CENTER, bold:true, color:Number(c.slaCompliance)<75?RED:AMBER }),
+          cell(c.riskRating||"—",   { width:W2[4], size:16, bold:true, color:c.riskRating==="High"?RED:c.riskRating==="Medium"?AMBER:GREEN }),
+          cell(c.renewalStatus||"—",{ width:W2[5], size:16, bold:true, color:c.renewalStatus==="Do Not Renew"?RED:AMBER }),
+        ]})),
+      ],
+    }) : para("No contracts currently flagged for risk or renewal attention.", { color:GREY }),
+    new Paragraph({ spacing:{before:160,after:0}, children:[] }),
+    divider(),
+  ];
+}
+
 // ── Report configs ────────────────────────────────────────────────────────────
 const REPORT_CONFIGS = {
   excom: {
@@ -845,13 +910,13 @@ const REPORT_CONFIGS = {
     title:    "ARC Risk Report",
     subtitle: "Audit & Risk Committee — Quarterly GRC Report",
     audience: "Audit & Risk Committee",
-    sections: ["summary","toprisks","treatments","uifw","fraud","bcm","compliance"],
+    sections: ["summary","toprisks","treatments","uifw","fraud","bcm","compliance","projects"],
   },
   board: {
     title:    "Board GRC Report",
     subtitle: "Board of Directors — Quarterly GRC Overview",
     audience: "Board of Directors",
-    sections: ["summary","toprisks","treatments","uifw","fraud","bcm","app","compliance"],
+    sections: ["summary","toprisks","treatments","uifw","fraud","bcm","app","compliance","projects"],
   },
 };
 
@@ -869,6 +934,7 @@ async function generateReport(type, data) {
     bcm:        buildBCM,
     app:        buildAPP,
     compliance: buildCompliance,
+    projects:   buildProjects,
   };
 
   const children = [
