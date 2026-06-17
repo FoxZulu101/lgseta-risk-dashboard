@@ -4035,6 +4035,11 @@ function DeclarationsModule() {
           <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Declaration Dashboard</h1>
           <p style={{ color:C.muted, fontSize:"0.82rem", margin:"2px 0 0" }}>Ethics & Conflict of Interest · Q2 2026/27</p>
         </div>
+        <a href="/declare.html" target="_blank" rel="noopener"
+          style={{ padding:"0.6rem 1.25rem", background:C.purple, color:"#fff", borderRadius:8,
+            fontWeight:700, fontSize:"0.85rem", textDecoration:"none", whiteSpace:"nowrap" }}>
+          📤 Submit a Declaration
+        </a>
       </div>
 
       {/* KPI strip */}
