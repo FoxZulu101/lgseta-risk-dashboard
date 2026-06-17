@@ -2808,6 +2808,7 @@ const MODULE_OPTIONS = [
   { value:"app",          label:"APP Alignment",      component: APPAlignmentAdmin },
   { value:"bcm",          label:"BCM Resilience",     component: BCMResilienceAdmin },
   { value:"compliance",   label:"Compliance",         component: ComplianceAdmin },
+  { value:"projects",     label:"Projects & Contracts",component: ProjectsAdmin },
 ];
 
 function UploadSection() {
@@ -3538,6 +3539,395 @@ function ComplianceAdmin() {
   );
 }
 
+
+// ─── PROJECTS & CONTRACTS DATA ────────────────────────────────────────────────
+const STATIC_PROJECTS = {
+  projects: [
+    { id:"PRJ-001", name:"Municipal Finance Skills Academy Rollout", type:"Discretionary Grant", department:"Learning Programmes", manager:"L. Dlamini", budget:15500000, spent:8200000, startDate:"2026-01-15", endDate:"2026-09-30", status:"In Progress", riskRating:"Medium", milestonesTotal:8, milestonesComplete:4, description:"Establish finance academy for municipal CFO pipeline" },
+    { id:"PRJ-002", name:"AI Learner Placement Platform Pilot", type:"Internal/Capital", department:"ICT", manager:"J. Williams", budget:6200000, spent:1100000, startDate:"2026-03-01", endDate:"2027-03-31", status:"In Progress", riskRating:"High", milestonesTotal:6, milestonesComplete:1, description:"AI-powered learner-employer matching system" },
+    { id:"PRJ-003", name:"Provincial Assessment Centre Expansion", type:"Discretionary Grant", department:"ETQA", manager:"T. Mokoena", budget:12000000, spent:4500000, startDate:"2025-10-01", endDate:"2026-12-31", status:"In Progress", riskRating:"Medium", milestonesTotal:10, milestonesComplete:4, description:"PPP expansion of assessment centres to 4 new provinces" },
+    { id:"PRJ-004", name:"Core ICT Infrastructure Upgrade", type:"Internal/Capital", department:"ICT", manager:"J. Williams", budget:9800000, spent:7600000, startDate:"2025-08-01", endDate:"2026-08-31", status:"In Progress", riskRating:"High", milestonesTotal:5, milestonesComplete:3, description:"Cloud migration, DR upgrade and network resilience" },
+    { id:"PRJ-005", name:"Municipal Skills Intelligence Hub", type:"Internal/Capital", department:"Research / ICT", manager:"N. Khumalo", budget:8500000, spent:2100000, startDate:"2026-02-01", endDate:"2026-12-31", status:"In Progress", riskRating:"Medium", milestonesTotal:7, milestonesComplete:2, description:"Real-time skills intelligence platform for 257 municipalities" },
+    { id:"PRJ-006", name:"Head Office Accommodation Relocation", type:"Internal/Capital", department:"Facilities", manager:"P. van der Merwe", budget:4200000, spent:600000, startDate:"2026-06-01", endDate:"2027-01-31", status:"Planning", riskRating:"High", milestonesTotal:6, milestonesComplete:0, description:"Secure and fit out alternate office accommodation" },
+    { id:"PRJ-007", name:"Discretionary Grant Cycle 2026/27", type:"Discretionary Grant", department:"Grants", manager:"G. Mahlangu", budget:45000000, spent:18500000, startDate:"2026-04-01", endDate:"2027-03-31", status:"In Progress", riskRating:"High", milestonesTotal:4, milestonesComplete:1, description:"Annual discretionary grant disbursement to providers and employers" },
+    { id:"PRJ-008", name:"Learner Management System Modernisation", type:"Internal/Capital", department:"ICT / ETQA", manager:"T. Mokoena", budget:3600000, spent:3600000, startDate:"2025-04-01", endDate:"2026-03-31", status:"Complete", riskRating:"Low", milestonesTotal:5, milestonesComplete:5, description:"LMS platform upgrade and SAQA interface integration" },
+  ],
+  contracts: [
+    { id:"CT-001", title:"ICT Infrastructure & Support Services", supplier:"TechSystems SA (Pty) Ltd", type:"ICT Services", value:8500000, startDate:"2024-01-01", endDate:"2026-12-31", status:"Active", slaCompliance:78, owner:"CIO", riskRating:"High", renewalStatus:"Review Required", notes:"Single point of failure; sub-contractor not vetted" },
+    { id:"CT-002", title:"Municipal Finance Training Delivery", supplier:"LearnersFirst Training Academy", type:"Training Provider", value:4200000, startDate:"2025-04-01", endDate:"2026-09-30", status:"Under Review", slaCompliance:54, owner:"COO", riskRating:"High", renewalStatus:"Do Not Renew", notes:"Ghost learner allegations; financial distress signals" },
+    { id:"CT-003", title:"Cloud Hosting & Data Services", supplier:"CloudSecure Data Solutions", type:"Cloud Services", value:3600000, startDate:"2025-01-01", endDate:"2026-11-30", status:"Active", slaCompliance:88, owner:"CIO", riskRating:"High", renewalStatus:"Renew with Conditions", notes:"POPIA compliance not fully verified; offshore storage" },
+    { id:"CT-004", title:"Assessment Body Services — Regional", supplier:"MuniSkills Assessment Centre", type:"Assessment Body", value:2800000, startDate:"2025-04-01", endDate:"2027-03-31", status:"Active", slaCompliance:94, owner:"ETQA Manager", riskRating:"Medium", renewalStatus:"On Track", notes:"Assessor capacity constraints flagged for monitoring" },
+    { id:"CT-005", title:"Provincial Training Consortium Agreement", supplier:"Provincial Skills Consortium", type:"Training Provider", value:6100000, startDate:"2025-04-01", endDate:"2027-03-31", status:"Active", slaCompliance:81, owner:"COO", riskRating:"Medium", renewalStatus:"On Track", notes:"Delivery delays reported in 3 provinces" },
+    { id:"CT-006", title:"Physical Security Services", supplier:"FortressGuard Security Services", type:"Physical Security", value:1200000, startDate:"2025-07-01", endDate:"2027-06-30", status:"Active", slaCompliance:97, owner:"Facilities Manager", riskRating:"Low", renewalStatus:"On Track", notes:"No outstanding issues" },
+    { id:"CT-007", title:"External Audit Support Services", supplier:"AGSA / Appointed Audit Firm", type:"Audit", value:1850000, startDate:"2025-04-01", endDate:"2026-03-31", status:"Expiring Soon", slaCompliance:100, owner:"CFO", riskRating:"Low", renewalStatus:"Renewal in Progress", notes:"Standard annual audit engagement renewal" },
+    { id:"CT-008", title:"Legal Services Retainer", supplier:"External Legal Counsel", type:"Legal", value:950000, startDate:"2025-01-01", endDate:"2026-12-31", status:"Active", slaCompliance:91, owner:"Legal", riskRating:"Low", renewalStatus:"On Track", notes:"Litigation matters progressing as expected" },
+  ],
+};
+
+// ─── PROJECTS & CONTRACTS VIEW MODULE ─────────────────────────────────────────
+function ProjectsModule() {
+  const [sub, setSub]       = useState("projects");
+  const [search, setSearch] = useState("");
+  const [data, setData]     = useState(STATIC_PROJECTS);
+
+  useEffect(()=>{
+    fetch(`${API}/api/dashboard`).then(r=>r.json()).then(d=>{
+      if (d.projectsContracts) setData({ ...STATIC_PROJECTS, ...d.projectsContracts });
+    }).catch(()=>{});
+  },[]);
+
+  const projects = data.projects  || [];
+  const contracts = data.contracts || [];
+
+  const totalBudget   = projects.reduce((s,p)=>s+(Number(p.budget)||0),0);
+  const totalSpent    = projects.reduce((s,p)=>s+(Number(p.spent)||0),0);
+  const highRiskProj  = projects.filter(p=>p.riskRating==="High").length;
+  const activeProj    = projects.filter(p=>p.status==="In Progress").length;
+  const totalContractValue = contracts.reduce((s,c)=>s+(Number(c.value)||0),0);
+  const expiringSoon  = contracts.filter(c=>c.status==="Expiring Soon"||c.renewalStatus==="Review Required"||c.renewalStatus==="Do Not Renew").length;
+  const lowSLA        = contracts.filter(c=>Number(c.slaCompliance)<80).length;
+
+  const sc = s => {
+    const v=(s||"").toLowerCase();
+    if (v.includes("complete")||v==="on track"||v==="active") return C.green;
+    if (v.includes("review")||v==="planning"||v==="expiring soon") return C.amber;
+    if (v.includes("do not renew")||v==="overdue") return C.red;
+    return C.muted;
+  };
+
+  const filtered = arr => arr.filter(r=>JSON.stringify(r).toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:"0.5rem" }}>
+        <div>
+          <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Project & Contract Risk</h1>
+          <p style={{ color:C.muted, fontSize:"0.82rem", margin:"2px 0 0" }}>Project Portfolio · Contract & Commitment Register — Q2 2026/27</p>
+        </div>
+        <input placeholder="Search projects & contracts…" value={search} onChange={e=>setSearch(e.target.value)} style={{ ...inputSt, width:240 }}/>
+      </div>
+
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:"0.75rem" }}>
+        {[
+          ["Active Projects",   activeProj,                                  C.blue ],
+          ["High Risk Projects",highRiskProj,                                 highRiskProj>0?C.red:C.green ],
+          ["Project Budget",    `R${(totalBudget/1e6).toFixed(1)}M`,         C.purple ],
+          ["Spent / Committed", `R${(totalSpent/1e6).toFixed(1)}M`,          C.amber ],
+          ["Contract Value",    `R${(totalContractValue/1e6).toFixed(1)}M`, C.cyan ],
+          ["Contracts at Risk", expiringSoon+lowSLA,                          (expiringSoon+lowSLA)>0?C.red:C.green ],
+        ].map(([l,v,c])=>(
+          <div key={l} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8, padding:"0.75rem 1rem", borderTop:`3px solid ${c}` }}>
+            <div style={{ color:C.muted, fontSize:"0.65rem", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.06em" }}>{l}</div>
+            <div style={{ color:c, fontSize:"1.35rem", fontWeight:800 }}>{v}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display:"flex", borderBottom:`1px solid ${C.border}` }}>
+        {[["projects","📁 Project Portfolio"],["contracts","📜 Contract & Commitment Register"]].map(([id,label])=>(
+          <button key={id} onClick={()=>setSub(id)}
+            style={{ padding:"0.5rem 1.1rem", border:"none", background:"transparent", cursor:"pointer",
+              fontSize:"0.82rem", fontWeight:600, color:sub===id?C.text:C.muted,
+              borderBottom:sub===id?`2px solid ${C.blue}`:"2px solid transparent", whiteSpace:"nowrap" }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {sub==="projects" && (
+        <Card>
+          <Table
+            headers={["ID","Project","Type","Manager","Budget","Spent","Progress","Risk","Status"]}
+            rows={filtered(projects).map(p=>{
+              const pct = Math.round((p.milestonesComplete/Math.max(p.milestonesTotal,1))*100);
+              const spentPct = Math.round((Number(p.spent)/Math.max(Number(p.budget),1))*100);
+              return [
+                <span style={{ color:C.blue, fontWeight:700, fontSize:"0.75rem" }}>{p.id}</span>,
+                <div><div style={{ color:C.text, fontWeight:600, fontSize:"0.82rem" }}>{p.name}</div>
+                  <div style={{ color:C.muted, fontSize:"0.7rem" }}>{p.department}</div></div>,
+                <Badge label={p.type} color={p.type==="Discretionary Grant"?"amber":"blue"}/>,
+                p.manager,
+                <span style={{ color:C.text, fontWeight:700 }}>R{(Number(p.budget)/1e6).toFixed(1)}M</span>,
+                <span style={{ color:spentPct>90?C.red:C.muted }}>R{(Number(p.spent)/1e6).toFixed(1)}M ({spentPct}%)</span>,
+                <div style={{ minWidth:90 }}>
+                  <div style={{ fontSize:"0.72rem", color:C.muted, marginBottom:2 }}>{p.milestonesComplete}/{p.milestonesTotal} milestones</div>
+                  <ProgressBar value={pct} color={pct>=80?C.green:pct>=40?C.amber:C.red}/>
+                </div>,
+                <Badge label={p.riskRating} color={p.riskRating==="High"?"red":p.riskRating==="Medium"?"amber":"green"}/>,
+                <span style={{ color:sc(p.status), fontWeight:700, fontSize:"0.8rem" }}>{p.status}</span>,
+              ];
+            })}
+          />
+        </Card>
+      )}
+
+      {sub==="contracts" && (
+        <Card>
+          <Table
+            headers={["ID","Contract","Supplier","Value","End Date","SLA %","Risk","Renewal Status"]}
+            rows={filtered(contracts).map(c=>{
+              const daysLeft = Math.ceil((new Date(c.endDate)-new Date())/(1000*60*60*24));
+              return [
+                <span style={{ color:C.cyan, fontWeight:700, fontSize:"0.75rem" }}>{c.id}</span>,
+                <div><div style={{ color:C.text, fontWeight:600, fontSize:"0.82rem" }}>{c.title}</div>
+                  <div style={{ color:C.muted, fontSize:"0.7rem" }}>{c.type}</div></div>,
+                c.supplier,
+                <span style={{ color:C.text, fontWeight:700 }}>R{(Number(c.value)/1e6).toFixed(1)}M</span>,
+                <div>
+                  <div style={{ color:daysLeft<90?C.amber:C.text, fontWeight:daysLeft<90?700:400 }}>{c.endDate}</div>
+                  {daysLeft>0 && daysLeft<180 && <div style={{ color:daysLeft<90?C.red:C.amber, fontSize:"0.7rem" }}>{daysLeft} days left</div>}
+                </div>,
+                <span style={{ color:Number(c.slaCompliance)>=90?C.green:Number(c.slaCompliance)>=75?C.amber:C.red, fontWeight:700 }}>{c.slaCompliance}%</span>,
+                <Badge label={c.riskRating} color={c.riskRating==="High"?"red":c.riskRating==="Medium"?"amber":"green"}/>,
+                <span style={{ color:sc(c.renewalStatus), fontWeight:700, fontSize:"0.78rem" }}>{c.renewalStatus}</span>,
+              ];
+            })}
+          />
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ─── PROJECTS & CONTRACTS ADMIN ───────────────────────────────────────────────
+function ProjectsAdmin() {
+  const [view, setView]       = useState("projects");
+  const [items, setItems]     = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving]   = useState(false);
+  const [toast, setToast]     = useState(null);
+  const [mode, setMode]       = useState(null);
+  const [confirmDel, setConfirmDel] = useState(null);
+
+  function showToast(msg, type="ok") { setToast({ msg, type }); setTimeout(()=>setToast(null), 3500); }
+
+  const DEFAULTS = { projects:STATIC_PROJECTS.projects, contracts:STATIC_PROJECTS.contracts };
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res  = await fetch(`${API}/api/dashboard`);
+      const data = await res.json();
+      setItems((data.projectsContracts?.[view]) || DEFAULTS[view]);
+    } catch { setItems(DEFAULTS[view]); }
+    finally { setLoading(false); }
+  }, [view]);
+
+  useEffect(()=>{ load(); }, [load]);
+
+  async function saveToServer(updatedItems) {
+    const res  = await fetch(`${API}/api/dashboard`);
+    const data = await res.json();
+    if (!data.projectsContracts) data.projectsContracts = {};
+    data.projectsContracts[view] = updatedItems;
+    const saveRes = await fetch(`${API}/api/dashboard`, { method:"PUT", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(data) });
+    if (!saveRes.ok) throw new Error("Failed to save");
+  }
+
+  async function seedDemoData() {
+    setSaving(true);
+    try {
+      const res  = await fetch(`${API}/api/dashboard`);
+      const data = await res.json();
+      data.projectsContracts = { projects:STATIC_PROJECTS.projects, contracts:STATIC_PROJECTS.contracts };
+      const saveRes = await fetch(`${API}/api/dashboard`, { method:"PUT", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(data) });
+      if (!saveRes.ok) throw new Error("Failed to seed data");
+      showToast(`✅ Seeded ${STATIC_PROJECTS.projects.length} projects and ${STATIC_PROJECTS.contracts.length} contracts to server.`);
+      load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  async function handleSave(f) {
+    setSaving(true);
+    try {
+      const isEdit = mode?.id;
+      const updated = isEdit
+        ? items.map(i => i.id===f.id ? { ...i, ...f, updatedAt:new Date().toISOString() } : i)
+        : [...items, { ...f, createdAt:new Date().toISOString() }];
+      await saveToServer(updated);
+      showToast(isEdit ? `✅ ${f.id} updated.` : `✅ ${f.id} added.`);
+      setMode(null); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  async function handleDelete(id) {
+    setSaving(true);
+    try {
+      await saveToServer(items.filter(i => i.id !== id));
+      showToast(`🗑 ${id} deleted.`); setConfirmDel(null); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  function ProjectForm({ initial={}, onSave, onCancel, saving }) {
+    const EMPTY = { id:"", name:"", type:"Discretionary Grant", department:"", manager:"", budget:"", spent:"", startDate:"", endDate:"", status:"Planning", riskRating:"Medium", milestonesTotal:"1", milestonesComplete:"0", description:"" };
+    const [f, setF] = useState({ ...EMPTY, ...initial });
+    const set = k => v => setF(p=>({ ...p, [k]:v }));
+    return (
+      <div style={{ background:C.surface, border:`1px solid ${C.blue}`, borderRadius:10, padding:"1.5rem", marginBottom:"1.5rem" }}>
+        <h3 style={{ color:C.blue, fontWeight:700, margin:"0 0 1.25rem" }}>{initial.id?"Edit Project":"Add Project"}</h3>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 2fr", gap:"1rem" }}>
+          <FInput label="ID" value={f.id} onChange={set("id")} required placeholder="PRJ-009"/>
+          <FInput label="Project Name" value={f.name} onChange={set("name")} required placeholder="e.g. Digital Skills Programme"/>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
+          <FSelect label="Type" value={f.type} onChange={set("type")} options={["Discretionary Grant","Internal/Capital"]}/>
+          <FInput label="Department" value={f.department} onChange={set("department")} placeholder="e.g. ICT"/>
+          <FInput label="Project Manager" value={f.manager} onChange={set("manager")} placeholder="e.g. J. Smith"/>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:"1rem" }}>
+          <FInput label="Budget (R)" value={f.budget} onChange={set("budget")} type="number" placeholder="5000000"/>
+          <FInput label="Spent (R)" value={f.spent} onChange={set("spent")} type="number" placeholder="0"/>
+          <FInput label="Start Date" value={f.startDate} onChange={set("startDate")} type="date"/>
+          <FInput label="End Date" value={f.endDate} onChange={set("endDate")} type="date"/>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:"1rem" }}>
+          <FSelect label="Status" value={f.status} onChange={set("status")} options={["Planning","In Progress","On Hold","Complete","Cancelled"]}/>
+          <FSelect label="Risk Rating" value={f.riskRating} onChange={set("riskRating")} options={["High","Medium","Low"]}/>
+          <FInput label="Total Milestones" value={f.milestonesTotal} onChange={set("milestonesTotal")} type="number" placeholder="8"/>
+          <FInput label="Milestones Complete" value={f.milestonesComplete} onChange={set("milestonesComplete")} type="number" placeholder="0"/>
+        </div>
+        <FTextarea label="Description" value={f.description} onChange={set("description")} rows={2} placeholder="Brief project description…"/>
+        <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.5rem" }}>
+          <button onClick={()=>onSave(f)} disabled={saving} style={{ padding:"0.65rem 1.75rem", background:C.blue, color:"#fff", border:"none", borderRadius:8, fontWeight:700, cursor:"pointer", opacity:saving?0.6:1 }}>{saving?"Saving…":initial.id?"Update":"Add Project"}</button>
+          <button onClick={onCancel} style={{ padding:"0.65rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer" }}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
+
+  function ContractForm({ initial={}, onSave, onCancel, saving }) {
+    const EMPTY = { id:"", title:"", supplier:"", type:"ICT Services", value:"", startDate:"", endDate:"", status:"Active", slaCompliance:"100", owner:"", riskRating:"Medium", renewalStatus:"On Track", notes:"" };
+    const [f, setF] = useState({ ...EMPTY, ...initial });
+    const set = k => v => setF(p=>({ ...p, [k]:v }));
+    return (
+      <div style={{ background:C.surface, border:`1px solid ${C.cyan}`, borderRadius:10, padding:"1.5rem", marginBottom:"1.5rem" }}>
+        <h3 style={{ color:C.cyan, fontWeight:700, margin:"0 0 1.25rem" }}>{initial.id?"Edit Contract":"Add Contract"}</h3>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 2fr", gap:"1rem" }}>
+          <FInput label="ID" value={f.id} onChange={set("id")} required placeholder="CT-009"/>
+          <FInput label="Contract Title" value={f.title} onChange={set("title")} required placeholder="e.g. ICT Support Services"/>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr", gap:"1rem" }}>
+          <FInput label="Supplier" value={f.supplier} onChange={set("supplier")} placeholder="e.g. Acme (Pty) Ltd"/>
+          <FSelect label="Type" value={f.type} onChange={set("type")} options={["ICT Services","Training Provider","Assessment Body","Cloud Services","Physical Security","Audit","Legal","Consulting","Other"]}/>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
+          <FInput label="Contract Value (R)" value={f.value} onChange={set("value")} type="number" placeholder="2000000"/>
+          <FInput label="Start Date" value={f.startDate} onChange={set("startDate")} type="date"/>
+          <FInput label="End Date" value={f.endDate} onChange={set("endDate")} type="date"/>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:"1rem" }}>
+          <FSelect label="Status" value={f.status} onChange={set("status")} options={["Active","Under Review","Expiring Soon","Suspended","Terminated"]}/>
+          <FInput label="SLA Compliance %" value={f.slaCompliance} onChange={set("slaCompliance")} type="number" placeholder="95"/>
+          <FInput label="Owner" value={f.owner} onChange={set("owner")} placeholder="e.g. CIO"/>
+          <FSelect label="Risk Rating" value={f.riskRating} onChange={set("riskRating")} options={["High","Medium","Low"]}/>
+        </div>
+        <FSelect label="Renewal Status" value={f.renewalStatus} onChange={set("renewalStatus")} options={["On Track","Renewal in Progress","Review Required","Renew with Conditions","Do Not Renew"]}/>
+        <FTextarea label="Notes" value={f.notes} onChange={set("notes")} rows={2} placeholder="Key risk notes…"/>
+        <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.5rem" }}>
+          <button onClick={()=>onSave(f)} disabled={saving} style={{ padding:"0.65rem 1.75rem", background:C.cyan, color:C.bg, border:"none", borderRadius:8, fontWeight:700, cursor:"pointer", opacity:saving?0.6:1 }}>{saving?"Saving…":initial.id?"Update":"Add Contract"}</button>
+          <button onClick={onCancel} style={{ padding:"0.65rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer" }}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
+
+  const FormComponent = view==="projects" ? ProjectForm : ContractForm;
+  const addColor = view==="projects" ? C.blue : C.cyan;
+
+  return (
+    <div>
+      {toast && <div style={{ position:"fixed", top:16, right:16, zIndex:1000, padding:"0.75rem 1.25rem", borderRadius:8, background:toast.type==="ok"?"rgba(63,185,80,0.15)":"rgba(248,81,73,0.15)", border:`1px solid ${toast.type==="ok"?C.green:C.red}`, color:toast.type==="ok"?C.green:C.red, fontWeight:600, fontSize:"0.88rem" }}>{toast.msg}</div>}
+      {confirmDel && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", zIndex:999, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div style={{ background:C.card, border:`1px solid ${C.red}`, borderRadius:12, padding:"2rem", maxWidth:400, width:"90%" }}>
+            <h3 style={{ color:C.red, margin:"0 0 0.75rem" }}>Delete Item</h3>
+            <p style={{ color:C.text, marginBottom:"1.5rem" }}>Delete <strong>{confirmDel}</strong>?</p>
+            <div style={{ display:"flex", gap:"0.75rem" }}>
+              <button onClick={()=>handleDelete(confirmDel)} disabled={saving} style={{ padding:"0.6rem 1.5rem", background:C.red, color:"#fff", border:"none", borderRadius:7, fontWeight:700, cursor:"pointer" }}>{saving?"Deleting…":"Yes, Delete"}</button>
+              <button onClick={()=>setConfirmDel(null)} style={{ padding:"0.6rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:7, cursor:"pointer" }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ display:"flex", borderBottom:`1px solid ${C.border}`, marginBottom:"1.25rem" }}>
+        {[["projects","📁 Project Portfolio"],["contracts","📜 Contract Register"]].map(([k,l])=>(
+          <button key={k} onClick={()=>{ setView(k); setMode(null); }}
+            style={{ padding:"0.5rem 1.1rem", border:"none", background:"transparent", cursor:"pointer",
+              fontSize:"0.82rem", fontWeight:600, color:view===k?C.text:C.muted,
+              borderBottom:view===k?`2px solid ${C.blue}`:"2px solid transparent" }}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.25rem", flexWrap:"wrap", gap:"0.75rem" }}>
+        <div>
+          <h3 style={{ color:C.text, margin:"0 0 0.2rem", fontWeight:700 }}>
+            {view==="projects"?"Project Portfolio":"Contract & Commitment Register"} — Edit Mode
+          </h3>
+          <p style={{ color:C.muted, fontSize:"0.82rem", margin:0 }}>{items.length} items</p>
+        </div>
+        <div style={{ display:"flex", gap:"0.75rem" }}>
+          <button onClick={()=>setMode("add")} disabled={!!mode} style={{ padding:"0.6rem 1.25rem", background:addColor, color:addColor===C.blue?"#fff":C.bg, border:"none", borderRadius:8, fontWeight:700, fontSize:"0.88rem", cursor:"pointer", opacity:mode?0.5:1 }}>+ Add {view==="projects"?"Project":"Contract"}</button>
+          <button onClick={seedDemoData} disabled={saving||!!mode} title="Push demo projects & contracts to server"
+            style={{ padding:"0.6rem 1.1rem", background:"transparent", color:C.green, border:`1px solid ${C.green}`, borderRadius:8, fontWeight:700, fontSize:"0.88rem", cursor:"pointer", opacity:(saving||mode)?0.5:1 }}>
+            🌱 Seed Demo Data
+          </button>
+          <button onClick={load} style={{ padding:"0.6rem 0.9rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer", fontSize:"0.88rem" }}>↻ Refresh</button>
+        </div>
+      </div>
+
+      {mode==="add"         && <FormComponent onSave={handleSave} onCancel={()=>setMode(null)} saving={saving} />}
+      {mode && mode!=="add" && <FormComponent initial={mode} onSave={handleSave} onCancel={()=>setMode(null)} saving={saving} />}
+
+      {loading ? <div style={{ textAlign:"center", padding:"3rem", color:C.muted }}>Loading…</div> : (
+        <Card>
+          {view==="projects" && (
+            <Table
+              headers={["ID","Project","Type","Budget","Spent","Risk","Status","Actions"]}
+              rows={items.map(p=>[
+                <span style={{ color:C.blue, fontWeight:700, fontSize:"0.75rem" }}>{p.id}</span>,
+                <span style={{ maxWidth:180, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={p.name}>{p.name}</span>,
+                <Badge label={p.type} color={p.type==="Discretionary Grant"?"amber":"blue"}/>,
+                <span>R{(Number(p.budget)/1e6).toFixed(1)}M</span>,
+                <span>R{(Number(p.spent)/1e6).toFixed(1)}M</span>,
+                <Badge label={p.riskRating} color={p.riskRating==="High"?"red":p.riskRating==="Medium"?"amber":"green"}/>,
+                <span style={{ fontWeight:700, fontSize:"0.8rem" }}>{p.status}</span>,
+                <div style={{ display:"flex", gap:"0.5rem" }}>
+                  <button onClick={()=>setMode({ ...p })} disabled={!!mode} style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.blue, border:`1px solid ${C.blue}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Edit</button>
+                  <button onClick={()=>setConfirmDel(p.id)} disabled={!!mode} style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.red, border:`1px solid ${C.red}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Delete</button>
+                </div>,
+              ])}
+            />
+          )}
+          {view==="contracts" && (
+            <Table
+              headers={["ID","Contract","Supplier","Value","SLA %","Risk","Renewal","Actions"]}
+              rows={items.map(c=>[
+                <span style={{ color:C.cyan, fontWeight:700, fontSize:"0.75rem" }}>{c.id}</span>,
+                <span style={{ maxWidth:160, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={c.title}>{c.title}</span>,
+                c.supplier,
+                <span>R{(Number(c.value)/1e6).toFixed(1)}M</span>,
+                <span style={{ color:Number(c.slaCompliance)>=90?C.green:Number(c.slaCompliance)>=75?C.amber:C.red, fontWeight:700 }}>{c.slaCompliance}%</span>,
+                <Badge label={c.riskRating} color={c.riskRating==="High"?"red":c.riskRating==="Medium"?"amber":"green"}/>,
+                <span style={{ fontWeight:700, fontSize:"0.78rem" }}>{c.renewalStatus}</span>,
+                <div style={{ display:"flex", gap:"0.5rem" }}>
+                  <button onClick={()=>setMode({ ...c })} disabled={!!mode} style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.blue, border:`1px solid ${C.blue}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Edit</button>
+                  <button onClick={()=>setConfirmDel(c.id)} disabled={!!mode} style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.red, border:`1px solid ${C.red}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Delete</button>
+                </div>,
+              ])}
+            />
+          )}
+        </Card>
+      )}
+    </div>
+  );
+}
+
 // ─── SIDEBAR ──────────────────────────────────────────────────────────────────
 const NAV = [
   { id:"executive",     label:"Executive Overview",  icon:"🏛" },
@@ -3556,6 +3946,7 @@ const NAV = [
   { id:"app",           label:"APP Alignment",        icon:"📋" },
   { id:"predictive",    label:"Predictive Intel",     icon:"🔮" },
   { id:"compliance",    label:"Compliance",           icon:"⚖" },
+  { id:"projects",       label:"Projects & Contracts",  icon:"📁" },
   { id:"admin",         label:"Admin Panel",          icon:"⚙" },
 ];
 
@@ -3566,6 +3957,7 @@ const MODULES = {
   fraud:FraudEthics, departmental:DepartmentalRisks, uifw:UIFWExpenditure,
   thirdparty:ThirdPartyRisk, app:APPAlignment, predictive:PredictiveIntel,
   compliance:ComplianceModule,
+  projects:  ProjectsModule,
   admin:AdminTab,
 };
 
