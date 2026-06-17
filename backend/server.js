@@ -852,11 +852,11 @@ function buildProjects(data) {
   return [
     heading1("9. Project & Contract Risk"),
     kpiTable([
-      ["Active Projects",    String(activeProj),                          NAVY  ],
-      ["High Risk Projects", String(highRiskProj),                         highRiskProj>0?RED:GREEN ],
-      ["Project Budget",     fmtM(totalBudget),                            BLUE  ],
-      ["Spent / Committed",  fmtM(totalSpent),                             AMBER ],
-      ["Contracts at Risk",  String(atRiskContracts.length),               atRiskContracts.length>0?RED:GREEN ],
+      ["Active Projects",    String(activeProj),    "",                NAVY  ],
+      ["High Risk Projects", String(highRiskProj),  "",                 highRiskProj>0?RED:GREEN ],
+      ["Project Budget",     fmtM(totalBudget),      "",                BLUE  ],
+      ["Spent / Committed",  fmtM(totalSpent),       "",                AMBER ],
+      ["Contracts at Risk",  String(atRiskContracts.length), "Review required", atRiskContracts.length>0?RED:GREEN ],
     ]),
     new Paragraph({ spacing:{before:160,after:160}, children:[] }),
 
