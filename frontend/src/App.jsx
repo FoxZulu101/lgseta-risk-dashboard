@@ -2807,6 +2807,8 @@ const MODULE_OPTIONS = [
   { value:"emerging",     label:"Emerging Risks",     component: EmergingRisksAdmin },
   { value:"app",          label:"APP Alignment",      component: APPAlignmentAdmin },
   { value:"bcm",          label:"BCM Resilience",     component: BCMResilienceAdmin },
+  { value:"compliance",   label:"Compliance",         component: ComplianceAdmin },
+  { value:"compliance",   label:"Compliance",         component: ComplianceAdmin },
 ];
 
 function UploadSection() {
@@ -3079,6 +3081,442 @@ function AdminTab() {
   );
 }
 
+
+// ─── COMPLIANCE DATA ──────────────────────────────────────────────────────────
+const STATIC_COMPLIANCE = {
+  universe: [
+    { id:"CU-001", legislation:"Public Finance Management Act (PFMA)", act:"Act 1 of 1999", category:"Financial", owner:"CFO", riskRating:"High", complianceStatus:"Partial", lastReview:"2026-03-31", nextReview:"2026-09-30", findings:2, notes:"Section 38 & 51 requirements partially met" },
+    { id:"CU-002", legislation:"Skills Development Levies Act (SDL)", act:"Act 9 of 1999", category:"Core Mandate", owner:"CEO", riskRating:"High", complianceStatus:"Compliant", lastReview:"2026-03-31", nextReview:"2026-09-30", findings:0, notes:"Levy collection and disbursement on track" },
+    { id:"CU-003", legislation:"Skills Development Act (SDA)", act:"Act 97 of 1998", category:"Core Mandate", owner:"COO", riskRating:"High", complianceStatus:"Partial", lastReview:"2026-02-28", nextReview:"2026-08-31", findings:1, notes:"SETA functions per Section 10 — APP targets behind" },
+    { id:"CU-004", legislation:"Protection of Personal Information Act (POPIA)", act:"Act 4 of 2013", category:"Data Protection", owner:"CIO", riskRating:"High", complianceStatus:"Partial", lastReview:"2026-04-15", nextReview:"2026-10-15", findings:3, notes:"Information Officer designated; PAIA manual outdated" },
+    { id:"CU-005", legislation:"King IV Report on Corporate Governance", act:"King IV 2016", category:"Governance", owner:"CEO", riskRating:"Medium", complianceStatus:"Partial", lastReview:"2026-03-01", nextReview:"2026-09-01", findings:2, notes:"16 of 17 principles applied; Principle 13 in progress" },
+    { id:"CU-006", legislation:"DHET Sector Skills Plan Directive", act:"DHET 2025/26", category:"Regulatory", owner:"COO", riskRating:"High", complianceStatus:"Compliant", lastReview:"2026-01-31", nextReview:"2026-07-31", findings:0, notes:"SSP submitted and approved by DHET" },
+    { id:"CU-007", legislation:"Labour Relations Act (LRA)", act:"Act 66 of 1995", category:"Human Resources", owner:"HR Executive", riskRating:"Medium", complianceStatus:"Compliant", lastReview:"2026-02-15", nextReview:"2026-08-15", findings:0, notes:"Employment contracts and disciplinary procedures aligned" },
+    { id:"CU-008", legislation:"Basic Conditions of Employment Act (BCEA)", act:"Act 75 of 1997", category:"Human Resources", owner:"HR Executive", riskRating:"Low", complianceStatus:"Compliant", lastReview:"2026-02-15", nextReview:"2026-08-15", findings:0, notes:"Leave policies and working hours compliant" },
+    { id:"CU-009", legislation:"B-BBEE Act", act:"Act 53 of 2003", category:"Transformation", owner:"CEO", riskRating:"Medium", complianceStatus:"Compliant", lastReview:"2026-03-31", nextReview:"2026-09-30", findings:0, notes:"Level 2 verification current" },
+    { id:"CU-010", legislation:"Prevention & Combating of Corrupt Activities Act", act:"Act 12 of 2004", category:"Fraud & Ethics", owner:"Legal", riskRating:"High", complianceStatus:"Compliant", lastReview:"2026-03-01", nextReview:"2026-09-01", findings:0, notes:"Fraud prevention plan in place; hotline operational" },
+    { id:"CU-011", legislation:"Promotion of Access to Information Act (PAIA)", act:"Act 2 of 2000", category:"Data Protection", owner:"Legal", riskRating:"Low", complianceStatus:"Non-Compliant", lastReview:"2025-12-31", nextReview:"2026-06-30", findings:1, notes:"PAIA manual overdue for update" },
+    { id:"CU-012", legislation:"Public Audit Act", act:"Act 25 of 2004", category:"Governance", owner:"CFO", riskRating:"High", complianceStatus:"Compliant", lastReview:"2026-03-31", nextReview:"2026-09-30", findings:0, notes:"AGSA access and cooperation maintained" },
+  ],
+  calendar: [
+    { id:"CC-001", obligation:"Annual Report submission to DHET", legislation:"SDL Act / PFMA", dueDate:"2026-07-31", owner:"CEO", status:"Upcoming", priority:"Critical", category:"Reporting", notes:"Full annual report including AFS" },
+    { id:"CC-002", obligation:"Quarterly Performance Report Q2", legislation:"PFMA / APP", dueDate:"2026-07-15", owner:"COO", status:"Upcoming", priority:"High", category:"Reporting", notes:"Submit to DHET within 30 days of quarter end" },
+    { id:"CC-003", obligation:"PAIA Manual Review & Update", legislation:"PAIA Act 2 of 2000", dueDate:"2026-06-30", owner:"Legal", status:"Overdue", priority:"High", category:"Regulatory", notes:"Manual not updated since 2024" },
+    { id:"CC-004", obligation:"B-BBEE Verification Certificate Renewal", legislation:"B-BBEE Act", dueDate:"2026-09-30", owner:"CEO", status:"Upcoming", priority:"Medium", category:"Compliance", notes:"Current certificate expires September 2026" },
+    { id:"CC-005", obligation:"POPIA Compliance Audit", legislation:"POPIA Act 4 of 2013", dueDate:"2026-08-31", owner:"CIO", status:"Upcoming", priority:"High", category:"Data Protection", notes:"Annual internal POPIA audit" },
+    { id:"CC-006", obligation:"Tax Clearance Certificate Renewal", legislation:"SARS / PFMA", dueDate:"2026-07-31", owner:"CFO", status:"Upcoming", priority:"High", category:"Financial", notes:"Required for procurement above threshold" },
+    { id:"CC-007", obligation:"Board Self-Assessment (King IV)", legislation:"King IV 2016", dueDate:"2026-09-30", owner:"CEO", status:"Upcoming", priority:"Medium", category:"Governance", notes:"Annual board effectiveness assessment" },
+    { id:"CC-008", obligation:"Sector Skills Plan (SSP) Update", legislation:"SDL Act / SDA", dueDate:"2026-09-30", owner:"COO", status:"Upcoming", priority:"High", category:"Core Mandate", notes:"Annual SSP update submission to DHET" },
+    { id:"CC-009", obligation:"Interim Financial Statements", legislation:"PFMA Section 55", dueDate:"2026-07-31", owner:"CFO", status:"Upcoming", priority:"Critical", category:"Financial", notes:"Six-month interim statements to National Treasury" },
+    { id:"CC-010", obligation:"Employment Equity Report", legislation:"Employment Equity Act", dueDate:"2026-10-01", owner:"HR Executive", status:"Upcoming", priority:"Medium", category:"Human Resources", notes:"Annual EE report to Department of Labour" },
+    { id:"CC-011", obligation:"Workplace Skills Plan (WSP) Submission", legislation:"SDL Act", dueDate:"2026-06-30", owner:"HR Executive", status:"Overdue", priority:"High", category:"Core Mandate", notes:"Annual WSP and ATR submission — currently overdue" },
+    { id:"CC-012", obligation:"AGSA Engagement — Interim Audit", legislation:"PFMA / PAA", dueDate:"2026-08-15", owner:"CFO", status:"Upcoming", priority:"Critical", category:"Audit", notes:"Prepare for AGSA interim audit fieldwork" },
+  ],
+  monitoring: [
+    { id:"CM-001", requirement:"PFMA Section 38 — Internal Controls", legislation:"PFMA", status:"Partial", evidence:"Internal audit reports", lastChecked:"2026-05-31", nextCheck:"2026-08-31", owner:"CFO", riskLevel:"High", actionRequired:"Strengthen SCM and payment controls" },
+    { id:"CM-002", requirement:"PFMA Section 55 — Annual Report", legislation:"PFMA", status:"In Progress", evidence:"Draft annual report", lastChecked:"2026-06-01", nextCheck:"2026-07-31", owner:"CEO", riskLevel:"High", actionRequired:"Finalise AFS and performance report" },
+    { id:"CM-003", requirement:"SDL Act — Levy Disbursement (mandatory grants)", legislation:"SDL Act", status:"Compliant", evidence:"Payment records", lastChecked:"2026-05-31", nextCheck:"2026-08-31", owner:"COO", riskLevel:"Low", actionRequired:"None — maintain current controls" },
+    { id:"CM-004", requirement:"SDL Act — Discretionary Grant Allocation", legislation:"SDL Act", status:"Partial", evidence:"Grant agreements", lastChecked:"2026-05-31", nextCheck:"2026-08-31", owner:"COO", riskLevel:"Medium", actionRequired:"Accelerate DG commitments to meet 90% target" },
+    { id:"CM-005", requirement:"POPIA — Information Officer Designation", legislation:"POPIA", status:"Compliant", evidence:"POPIA registration", lastChecked:"2026-04-30", nextCheck:"2026-10-31", owner:"CIO", riskLevel:"Low", actionRequired:"None" },
+    { id:"CM-006", requirement:"POPIA — Privacy Notices & Consent", legislation:"POPIA", status:"Partial", evidence:"Website privacy policy", lastChecked:"2026-04-30", nextCheck:"2026-07-31", owner:"CIO", riskLevel:"High", actionRequired:"Update learner consent forms and supplier agreements" },
+    { id:"CM-007", requirement:"King IV — Board Composition", legislation:"King IV", status:"Compliant", evidence:"Board charter", lastChecked:"2026-03-31", nextCheck:"2026-09-30", owner:"CEO", riskLevel:"Low", actionRequired:"None" },
+    { id:"CM-008", requirement:"King IV — Risk Governance (Principle 11)", legislation:"King IV", status:"Compliant", evidence:"Risk committee TOR", lastChecked:"2026-03-31", nextCheck:"2026-09-30", owner:"CEO", riskLevel:"Low", actionRequired:"None" },
+    { id:"CM-009", requirement:"DHET Directive — Quarterly Reporting", legislation:"DHET", status:"In Progress", evidence:"Q2 report draft", lastChecked:"2026-06-14", nextCheck:"2026-07-15", owner:"COO", riskLevel:"High", actionRequired:"Finalise Q2 report by 15 July" },
+    { id:"CM-010", requirement:"LRA — Disciplinary Procedures", legislation:"LRA", status:"Compliant", evidence:"HR policy manual", lastChecked:"2026-02-28", nextCheck:"2026-08-31", owner:"HR Executive", riskLevel:"Low", actionRequired:"None" },
+  ],
+};
+
+// ─── COMPLIANCE VIEW MODULE ───────────────────────────────────────────────────
+function ComplianceModule() {
+  const [sub, setSub]       = useState("universe");
+  const [search, setSearch] = useState("");
+  const [data, setData]     = useState(STATIC_COMPLIANCE);
+
+  useEffect(()=>{
+    fetch(`${API}/api/dashboard`).then(r=>r.json()).then(d=>{
+      if (d.compliance) setData({ ...STATIC_COMPLIANCE, ...d.compliance });
+    }).catch(()=>{});
+  },[]);
+
+  const univ = data.universe  || [];
+  const cal  = data.calendar  || [];
+  const mon  = data.monitoring || [];
+
+  const compliant    = univ.filter(u=>u.complianceStatus==="Compliant").length;
+  const nonCompliant = univ.filter(u=>u.complianceStatus==="Non-Compliant").length;
+  const partial      = univ.filter(u=>u.complianceStatus==="Partial").length;
+  const overdue      = cal.filter(c=>c.status==="Overdue").length;
+  const totalFindings= univ.reduce((s,u)=>s+(Number(u.findings)||0),0);
+
+  const sc = s => {
+    const v=(s||"").toLowerCase();
+    return v==="compliant"?C.green:v.includes("non")||v==="overdue"?C.red:v==="partial"||v.includes("progress")||v==="upcoming"?C.amber:C.muted;
+  };
+
+  const filtered = arr => arr.filter(r=>JSON.stringify(r).toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:"0.5rem" }}>
+        <div>
+          <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Compliance Management</h1>
+          <p style={{ color:C.muted, fontSize:"0.82rem", margin:"2px 0 0" }}>Universe · Calendar · Monitoring — Q2 2026/27</p>
+        </div>
+        <input placeholder="Search compliance…" value={search} onChange={e=>setSearch(e.target.value)} style={{ ...inputSt, width:220 }}/>
+      </div>
+
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:"0.75rem" }}>
+        {[["Total Laws",univ.length,C.blue],["Compliant",compliant,C.green],["Partial",partial,C.amber],
+          ["Non-Compliant",nonCompliant,C.red],["Findings",totalFindings,totalFindings>0?C.red:C.green],["Overdue",overdue,overdue>0?C.red:C.green]
+        ].map(([l,v,c])=>(
+          <div key={l} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8, padding:"0.75rem 1rem", borderTop:`3px solid ${c}` }}>
+            <div style={{ color:C.muted, fontSize:"0.65rem", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.06em" }}>{l}</div>
+            <div style={{ color:c, fontSize:"1.5rem", fontWeight:800 }}>{v}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display:"flex", borderBottom:`1px solid ${C.border}` }}>
+        {[["universe","📋 Compliance Universe"],["calendar","📅 Compliance Calendar"],["monitoring","✅ Compliance Monitoring"]].map(([id,label])=>(
+          <button key={id} onClick={()=>setSub(id)}
+            style={{ padding:"0.5rem 1.1rem", border:"none", background:"transparent", cursor:"pointer",
+              fontSize:"0.82rem", fontWeight:600, color:sub===id?C.text:C.muted,
+              borderBottom:sub===id?`2px solid ${C.blue}`:"2px solid transparent", whiteSpace:"nowrap" }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {sub==="universe" && (
+        <Card>
+          <Table
+            headers={["ID","Legislation","Category","Owner","Risk","Status","Findings","Next Review"]}
+            rows={filtered(univ).map(u=>[
+              <span style={{ color:C.blue, fontWeight:700, fontSize:"0.75rem" }}>{u.id}</span>,
+              <div><div style={{ color:C.text, fontWeight:600, fontSize:"0.82rem" }}>{u.legislation}</div>
+                <div style={{ color:C.muted, fontSize:"0.7rem" }}>{u.notes}</div></div>,
+              <Badge label={u.category} color="blue"/>,
+              u.owner,
+              <Badge label={u.riskRating} color={u.riskRating==="High"?"red":u.riskRating==="Medium"?"amber":"green"}/>,
+              <span style={{ color:sc(u.complianceStatus), fontWeight:700, fontSize:"0.8rem" }}>{u.complianceStatus}</span>,
+              <span style={{ color:Number(u.findings)>0?C.red:C.green, fontWeight:700 }}>{u.findings}</span>,
+              <span style={{ color:C.muted, fontSize:"0.78rem" }}>{u.nextReview}</span>,
+            ])}
+          />
+        </Card>
+      )}
+
+      {sub==="calendar" && (
+        <Card>
+          <Table
+            headers={["ID","Obligation","Legislation","Due Date","Owner","Priority","Status"]}
+            rows={filtered([...cal].sort((a,b)=>new Date(a.dueDate)-new Date(b.dueDate))).map(c=>{
+              const isOverdue = c.status==="Overdue" || new Date(c.dueDate)<new Date();
+              const days = Math.ceil((new Date(c.dueDate)-new Date())/(1000*60*60*24));
+              return [
+                <span style={{ color:C.amber, fontWeight:700, fontSize:"0.75rem" }}>{c.id}</span>,
+                <div><div style={{ color:C.text, fontWeight:600, fontSize:"0.82rem" }}>{c.obligation}</div>
+                  <div style={{ color:C.muted, fontSize:"0.7rem" }}>{c.notes}</div></div>,
+                <span style={{ color:C.muted, fontSize:"0.78rem" }}>{c.legislation}</span>,
+                <div>
+                  <div style={{ color:isOverdue?C.red:days<=14?C.amber:C.text, fontWeight:700, fontSize:"0.82rem" }}>{c.dueDate}</div>
+                  {!isOverdue&&<div style={{ color:days<=14?C.amber:C.muted, fontSize:"0.7rem" }}>{days} days left</div>}
+                  {isOverdue && <div style={{ color:C.red, fontSize:"0.7rem", fontWeight:700 }}>OVERDUE</div>}
+                </div>,
+                c.owner,
+                <Badge label={c.priority} color={c.priority==="Critical"?"red":c.priority==="High"?"amber":"blue"}/>,
+                <span style={{ color:sc(c.status), fontWeight:700, fontSize:"0.8rem" }}>{c.status}</span>,
+              ];
+            })}
+          />
+        </Card>
+      )}
+
+      {sub==="monitoring" && (
+        <Card>
+          <Table
+            headers={["ID","Requirement","Legislation","Owner","Risk","Status","Action Required","Next Check"]}
+            rows={filtered(mon).map(m=>[
+              <span style={{ color:C.green, fontWeight:700, fontSize:"0.75rem" }}>{m.id}</span>,
+              <span style={{ color:C.text, fontWeight:600, fontSize:"0.82rem", maxWidth:180, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={m.requirement}>{m.requirement}</span>,
+              <Badge label={m.legislation} color="blue"/>,
+              m.owner,
+              <Badge label={m.riskLevel} color={m.riskLevel==="High"?"red":m.riskLevel==="Medium"?"amber":"green"}/>,
+              <span style={{ color:sc(m.status), fontWeight:700, fontSize:"0.8rem" }}>{m.status}</span>,
+              <span style={{ color:C.muted, fontSize:"0.78rem", maxWidth:160, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={m.actionRequired}>{m.actionRequired}</span>,
+              <span style={{ color:C.muted, fontSize:"0.78rem" }}>{m.nextCheck}</span>,
+            ])}
+          />
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ─── COMPLIANCE ADMIN ─────────────────────────────────────────────────────────
+function ComplianceAdmin() {
+  const [view, setView]     = useState("universe");
+  const [items, setItems]   = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving]   = useState(false);
+  const [toast, setToast]     = useState(null);
+  const [mode, setMode]       = useState(null);
+  const [confirmDel, setConfirmDel] = useState(null);
+
+  function showToast(msg, type="ok") { setToast({ msg, type }); setTimeout(()=>setToast(null), 3500); }
+
+  const DEFAULTS = { universe:STATIC_COMPLIANCE.universe, calendar:STATIC_COMPLIANCE.calendar, monitoring:STATIC_COMPLIANCE.monitoring };
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res  = await fetch(`${API}/api/dashboard`);
+      const data = await res.json();
+      setItems((data.compliance?.[view]) || DEFAULTS[view]);
+    } catch { setItems(DEFAULTS[view]); }
+    finally { setLoading(false); }
+  }, [view]);
+
+  useEffect(()=>{ load(); }, [load]);
+
+  async function saveToServer(updatedItems) {
+    const res  = await fetch(`${API}/api/dashboard`);
+    const data = await res.json();
+    if (!data.compliance) data.compliance = {};
+    data.compliance[view] = updatedItems;
+    const saveRes = await fetch(`${API}/api/dashboard`, { method:"PUT", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(data) });
+    if (!saveRes.ok) throw new Error("Failed to save");
+  }
+
+  const idField = view==="calendar"?"id":view==="monitoring"?"id":"id";
+
+  async function handleSave(f) {
+    setSaving(true);
+    try {
+      const isEdit = mode?.id;
+      const updated = isEdit
+        ? items.map(i => i.id===f.id ? { ...i, ...f, updatedAt:new Date().toISOString() } : i)
+        : [...items, { ...f, createdAt:new Date().toISOString() }];
+      await saveToServer(updated);
+      showToast(isEdit ? `✅ ${f.id} updated.` : `✅ ${f.id} added.`);
+      setMode(null); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  async function handleDelete(id) {
+    setSaving(true);
+    try {
+      await saveToServer(items.filter(i => i.id !== id));
+      showToast(`🗑 ${id} deleted.`); setConfirmDel(null); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  function UniverseForm({ initial={}, onSave, onCancel, saving }) {
+    const EMPTY = { id:"", legislation:"", act:"", category:"Financial", owner:"", riskRating:"Medium", complianceStatus:"Partial", lastReview:"", nextReview:"", findings:"0", notes:"" };
+    const [f, setF] = useState({ ...EMPTY, ...initial });
+    const set = k => v => setF(p=>({ ...p, [k]:v }));
+    return (
+      <div style={{ background:C.surface, border:`1px solid ${C.blue}`, borderRadius:10, padding:"1.5rem", marginBottom:"1.5rem" }}>
+        <h3 style={{ color:C.blue, fontWeight:700, margin:"0 0 1.25rem" }}>{initial.id?"Edit Legislation":"Add Legislation"}</h3>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 2fr", gap:"1rem" }}>
+          <FInput label="ID" value={f.id} onChange={set("id")} required placeholder="CU-013"/>
+          <FInput label="Legislation Name" value={f.legislation} onChange={set("legislation")} required placeholder="e.g. Public Audit Act"/>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
+          <FInput label="Act / Reference" value={f.act} onChange={set("act")} placeholder="e.g. Act 25 of 2004"/>
+          <FSelect label="Category" value={f.category} onChange={set("category")} options={["Financial","Core Mandate","Data Protection","Governance","Regulatory","Human Resources","Transformation","Fraud & Ethics"]}/>
+          <FInput label="Owner" value={f.owner} onChange={set("owner")} placeholder="e.g. CFO"/>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:"1rem" }}>
+          <FSelect label="Risk Rating" value={f.riskRating} onChange={set("riskRating")} options={["High","Medium","Low"]}/>
+          <FSelect label="Status" value={f.complianceStatus} onChange={set("complianceStatus")} options={["Compliant","Partial","Non-Compliant","Not Assessed"]}/>
+          <FInput label="Findings" value={f.findings} onChange={set("findings")} type="number" placeholder="0"/>
+          <FInput label="Next Review" value={f.nextReview} onChange={set("nextReview")} type="date"/>
+        </div>
+        <FTextarea label="Notes" value={f.notes} onChange={set("notes")} rows={2} placeholder="Key compliance notes…"/>
+        <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.5rem" }}>
+          <button onClick={()=>onSave(f)} disabled={saving} style={{ padding:"0.65rem 1.75rem", background:C.blue, color:"#fff", border:"none", borderRadius:8, fontWeight:700, cursor:"pointer", opacity:saving?0.6:1 }}>{saving?"Saving…":initial.id?"Update":"Add"}</button>
+          <button onClick={onCancel} style={{ padding:"0.65rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer" }}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
+
+  function CalendarForm({ initial={}, onSave, onCancel, saving }) {
+    const EMPTY = { id:"", obligation:"", legislation:"", dueDate:"", owner:"", status:"Upcoming", priority:"High", category:"Reporting", notes:"" };
+    const [f, setF] = useState({ ...EMPTY, ...initial });
+    const set = k => v => setF(p=>({ ...p, [k]:v }));
+    return (
+      <div style={{ background:C.surface, border:`1px solid ${C.amber}`, borderRadius:10, padding:"1.5rem", marginBottom:"1.5rem" }}>
+        <h3 style={{ color:C.amber, fontWeight:700, margin:"0 0 1.25rem" }}>{initial.id?"Edit Item":"Add Calendar Item"}</h3>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 2fr", gap:"1rem" }}>
+          <FInput label="ID" value={f.id} onChange={set("id")} required placeholder="CC-013"/>
+          <FInput label="Obligation" value={f.obligation} onChange={set("obligation")} required placeholder="e.g. Annual financial statements"/>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
+          <FInput label="Legislation" value={f.legislation} onChange={set("legislation")} placeholder="e.g. PFMA"/>
+          <FInput label="Due Date" value={f.dueDate} onChange={set("dueDate")} type="date"/>
+          <FInput label="Owner" value={f.owner} onChange={set("owner")} placeholder="e.g. CFO"/>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
+          <FSelect label="Status" value={f.status} onChange={set("status")} options={["Upcoming","In Progress","Overdue","Complete"]}/>
+          <FSelect label="Priority" value={f.priority} onChange={set("priority")} options={["Critical","High","Medium","Low"]}/>
+          <FSelect label="Category" value={f.category} onChange={set("category")} options={["Reporting","Regulatory","Financial","Audit","Governance","Data Protection","Core Mandate","Human Resources","Compliance"]}/>
+        </div>
+        <FTextarea label="Notes" value={f.notes} onChange={set("notes")} rows={2} placeholder="Additional notes…"/>
+        <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.5rem" }}>
+          <button onClick={()=>onSave(f)} disabled={saving} style={{ padding:"0.65rem 1.75rem", background:C.amber, color:C.bg, border:"none", borderRadius:8, fontWeight:700, cursor:"pointer", opacity:saving?0.6:1 }}>{saving?"Saving…":initial.id?"Update":"Add"}</button>
+          <button onClick={onCancel} style={{ padding:"0.65rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer" }}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
+
+  function MonitoringForm({ initial={}, onSave, onCancel, saving }) {
+    const EMPTY = { id:"", requirement:"", legislation:"", owner:"", riskLevel:"Medium", status:"Partial", evidence:"", lastChecked:"", nextCheck:"", actionRequired:"" };
+    const [f, setF] = useState({ ...EMPTY, ...initial });
+    const set = k => v => setF(p=>({ ...p, [k]:v }));
+    return (
+      <div style={{ background:C.surface, border:`1px solid ${C.green}`, borderRadius:10, padding:"1.5rem", marginBottom:"1.5rem" }}>
+        <h3 style={{ color:C.green, fontWeight:700, margin:"0 0 1.25rem" }}>{initial.id?"Edit Monitoring Item":"Add Monitoring Item"}</h3>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 2fr", gap:"1rem" }}>
+          <FInput label="ID" value={f.id} onChange={set("id")} required placeholder="CM-011"/>
+          <FInput label="Requirement" value={f.requirement} onChange={set("requirement")} required placeholder="e.g. PFMA Section 38 — Internal Controls"/>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
+          <FInput label="Legislation" value={f.legislation} onChange={set("legislation")} placeholder="e.g. PFMA"/>
+          <FInput label="Owner" value={f.owner} onChange={set("owner")} placeholder="e.g. CFO"/>
+          <FSelect label="Risk Level" value={f.riskLevel} onChange={set("riskLevel")} options={["High","Medium","Low"]}/>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
+          <FSelect label="Status" value={f.status} onChange={set("status")} options={["Compliant","Partial","Non-Compliant","In Progress","Not Assessed"]}/>
+          <FInput label="Last Checked" value={f.lastChecked} onChange={set("lastChecked")} type="date"/>
+          <FInput label="Next Check" value={f.nextCheck} onChange={set("nextCheck")} type="date"/>
+        </div>
+        <FInput label="Evidence" value={f.evidence} onChange={set("evidence")} placeholder="e.g. Internal audit report ref IA-2026-03"/>
+        <FTextarea label="Action Required" value={f.actionRequired} onChange={set("actionRequired")} rows={2} placeholder="Describe action required…"/>
+        <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.5rem" }}>
+          <button onClick={()=>onSave(f)} disabled={saving} style={{ padding:"0.65rem 1.75rem", background:C.green, color:C.bg, border:"none", borderRadius:8, fontWeight:700, cursor:"pointer", opacity:saving?0.6:1 }}>{saving?"Saving…":initial.id?"Update":"Add"}</button>
+          <button onClick={onCancel} style={{ padding:"0.65rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer" }}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
+
+  const FormComponent = view==="universe" ? UniverseForm : view==="calendar" ? CalendarForm : MonitoringForm;
+  const addColor = view==="universe" ? C.blue : view==="calendar" ? C.amber : C.green;
+
+  return (
+    <div>
+      {toast && <div style={{ position:"fixed", top:16, right:16, zIndex:1000, padding:"0.75rem 1.25rem", borderRadius:8, background:toast.type==="ok"?"rgba(63,185,80,0.15)":"rgba(248,81,73,0.15)", border:`1px solid ${toast.type==="ok"?C.green:C.red}`, color:toast.type==="ok"?C.green:C.red, fontWeight:600, fontSize:"0.88rem" }}>{toast.msg}</div>}
+      {confirmDel && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", zIndex:999, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div style={{ background:C.card, border:`1px solid ${C.red}`, borderRadius:12, padding:"2rem", maxWidth:400, width:"90%" }}>
+            <h3 style={{ color:C.red, margin:"0 0 0.75rem" }}>Delete Item</h3>
+            <p style={{ color:C.text, marginBottom:"1.5rem" }}>Delete <strong>{confirmDel}</strong>?</p>
+            <div style={{ display:"flex", gap:"0.75rem" }}>
+              <button onClick={()=>handleDelete(confirmDel)} disabled={saving} style={{ padding:"0.6rem 1.5rem", background:C.red, color:"#fff", border:"none", borderRadius:7, fontWeight:700, cursor:"pointer" }}>{saving?"Deleting…":"Yes, Delete"}</button>
+              <button onClick={()=>setConfirmDel(null)} style={{ padding:"0.6rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:7, cursor:"pointer" }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ display:"flex", borderBottom:`1px solid ${C.border}`, marginBottom:"1.25rem" }}>
+        {[["universe","📋 Universe"],["calendar","📅 Calendar"],["monitoring","✅ Monitoring"]].map(([k,l])=>(
+          <button key={k} onClick={()=>{ setView(k); setMode(null); }}
+            style={{ padding:"0.5rem 1.1rem", border:"none", background:"transparent", cursor:"pointer",
+              fontSize:"0.82rem", fontWeight:600, color:view===k?C.text:C.muted,
+              borderBottom:view===k?`2px solid ${C.blue}`:"2px solid transparent" }}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.25rem", flexWrap:"wrap", gap:"0.75rem" }}>
+        <div>
+          <h3 style={{ color:C.text, margin:"0 0 0.2rem", fontWeight:700 }}>
+            Compliance {view.charAt(0).toUpperCase()+view.slice(1)} — Edit Mode
+          </h3>
+          <p style={{ color:C.muted, fontSize:"0.82rem", margin:0 }}>{items.length} items</p>
+        </div>
+        <div style={{ display:"flex", gap:"0.75rem" }}>
+          <button onClick={()=>setMode("add")} disabled={!!mode} style={{ padding:"0.6rem 1.25rem", background:addColor, color:addColor===C.blue?"#fff":C.bg, border:"none", borderRadius:8, fontWeight:700, fontSize:"0.88rem", cursor:"pointer", opacity:mode?0.5:1 }}>+ Add Item</button>
+          <button onClick={load} style={{ padding:"0.6rem 0.9rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer", fontSize:"0.88rem" }}>↻ Refresh</button>
+        </div>
+      </div>
+
+      {mode==="add"         && <FormComponent onSave={handleSave} onCancel={()=>setMode(null)} saving={saving} />}
+      {mode && mode!=="add" && <FormComponent initial={mode} onSave={handleSave} onCancel={()=>setMode(null)} saving={saving} />}
+
+      {loading ? <div style={{ textAlign:"center", padding:"3rem", color:C.muted }}>Loading…</div> : (
+        <Card>
+          {view==="universe" && (
+            <Table
+              headers={["ID","Legislation","Category","Risk","Status","Findings","Next Review","Actions"]}
+              rows={items.map(u=>[
+                <span style={{ color:C.blue, fontWeight:700, fontSize:"0.75rem" }}>{u.id}</span>,
+                <span style={{ maxWidth:200, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={u.legislation}>{u.legislation}</span>,
+                <Badge label={u.category} color="blue"/>,
+                <Badge label={u.riskRating} color={u.riskRating==="High"?"red":u.riskRating==="Medium"?"amber":"green"}/>,
+                <span style={{ color:u.complianceStatus==="Compliant"?C.green:u.complianceStatus==="Non-Compliant"?C.red:C.amber, fontWeight:700, fontSize:"0.8rem" }}>{u.complianceStatus}</span>,
+                <span style={{ color:Number(u.findings)>0?C.red:C.green, fontWeight:700 }}>{u.findings}</span>,
+                <span style={{ color:C.muted, fontSize:"0.78rem" }}>{u.nextReview}</span>,
+                <div style={{ display:"flex", gap:"0.5rem" }}>
+                  <button onClick={()=>setMode({ ...u })} disabled={!!mode} style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.blue, border:`1px solid ${C.blue}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Edit</button>
+                  <button onClick={()=>setConfirmDel(u.id)} disabled={!!mode} style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.red, border:`1px solid ${C.red}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Delete</button>
+                </div>,
+              ])}
+            />
+          )}
+          {view==="calendar" && (
+            <Table
+              headers={["ID","Obligation","Legislation","Due Date","Owner","Priority","Status","Actions"]}
+              rows={[...items].sort((a,b)=>new Date(a.dueDate)-new Date(b.dueDate)).map(c=>{
+                const isOverdue = c.status==="Overdue"||new Date(c.dueDate)<new Date();
+                return [
+                  <span style={{ color:C.amber, fontWeight:700, fontSize:"0.75rem" }}>{c.id}</span>,
+                  <span style={{ maxWidth:180, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={c.obligation}>{c.obligation}</span>,
+                  <span style={{ color:C.muted, fontSize:"0.78rem" }}>{c.legislation}</span>,
+                  <span style={{ color:isOverdue?C.red:C.text, fontWeight:isOverdue?700:400 }}>{c.dueDate}{isOverdue?" ⚠":""}</span>,
+                  c.owner,
+                  <Badge label={c.priority} color={c.priority==="Critical"?"red":c.priority==="High"?"amber":"blue"}/>,
+                  <span style={{ color:isOverdue?C.red:c.status==="Complete"?C.green:C.amber, fontWeight:700, fontSize:"0.8rem" }}>{c.status}</span>,
+                  <div style={{ display:"flex", gap:"0.5rem" }}>
+                    <button onClick={()=>setMode({ ...c })} disabled={!!mode} style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.blue, border:`1px solid ${C.blue}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Edit</button>
+                    <button onClick={()=>setConfirmDel(c.id)} disabled={!!mode} style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.red, border:`1px solid ${C.red}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Delete</button>
+                  </div>,
+                ];
+              })}
+            />
+          )}
+          {view==="monitoring" && (
+            <Table
+              headers={["ID","Requirement","Legislation","Owner","Risk","Status","Action Required","Next Check","Actions"]}
+              rows={items.map(m=>[
+                <span style={{ color:C.green, fontWeight:700, fontSize:"0.75rem" }}>{m.id}</span>,
+                <span style={{ maxWidth:160, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={m.requirement}>{m.requirement}</span>,
+                <Badge label={m.legislation} color="blue"/>,
+                m.owner,
+                <Badge label={m.riskLevel} color={m.riskLevel==="High"?"red":m.riskLevel==="Medium"?"amber":"green"}/>,
+                <span style={{ color:m.status==="Compliant"?C.green:m.status==="Non-Compliant"?C.red:C.amber, fontWeight:700, fontSize:"0.8rem" }}>{m.status}</span>,
+                <span style={{ color:C.muted, fontSize:"0.78rem", maxWidth:140, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={m.actionRequired}>{m.actionRequired}</span>,
+                <span style={{ color:C.muted, fontSize:"0.78rem" }}>{m.nextCheck}</span>,
+                <div style={{ display:"flex", gap:"0.5rem" }}>
+                  <button onClick={()=>setMode({ ...m })} disabled={!!mode} style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.blue, border:`1px solid ${C.blue}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Edit</button>
+                  <button onClick={()=>setConfirmDel(m.id)} disabled={!!mode} style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.red, border:`1px solid ${C.red}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Delete</button>
+                </div>,
+              ])}
+            />
+          )}
+        </Card>
+      )}
+    </div>
+  );
+}
+
 // ─── SIDEBAR ──────────────────────────────────────────────────────────────────
 const NAV = [
   { id:"executive",     label:"Executive Overview",  icon:"🏛" },
@@ -3096,6 +3534,8 @@ const NAV = [
   { id:"thirdparty",    label:"Third-Party Risk",     icon:"🤝" },
   { id:"app",           label:"APP Alignment",        icon:"📋" },
   { id:"predictive",    label:"Predictive Intel",     icon:"🔮" },
+  { id:"compliance",    label:"Compliance",           icon:"⚖" },
+  { id:"compliance",    label:"Compliance",           icon:"⚖" },
   { id:"admin",         label:"Admin Panel",          icon:"⚙" },
 ];
 
