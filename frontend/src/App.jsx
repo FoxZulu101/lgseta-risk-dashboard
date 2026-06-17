@@ -3287,6 +3287,24 @@ function ComplianceAdmin() {
     if (!saveRes.ok) throw new Error("Failed to save");
   }
 
+  async function seedDemoData() {
+    setSaving(true);
+    try {
+      const res  = await fetch(`${API}/api/dashboard`);
+      const data = await res.json();
+      data.compliance = {
+        universe:   STATIC_COMPLIANCE.universe,
+        calendar:   STATIC_COMPLIANCE.calendar,
+        monitoring: STATIC_COMPLIANCE.monitoring,
+      };
+      const saveRes = await fetch(`${API}/api/dashboard`, { method:"PUT", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(data) });
+      if (!saveRes.ok) throw new Error("Failed to seed data");
+      showToast(`✅ Seeded ${STATIC_COMPLIANCE.universe.length} legislation items, ${STATIC_COMPLIANCE.calendar.length} calendar items, ${STATIC_COMPLIANCE.monitoring.length} monitoring items to server.`);
+      load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
   const idField = view==="calendar"?"id":view==="monitoring"?"id":"id";
 
   async function handleSave(f) {
@@ -3443,6 +3461,10 @@ function ComplianceAdmin() {
         </div>
         <div style={{ display:"flex", gap:"0.75rem" }}>
           <button onClick={()=>setMode("add")} disabled={!!mode} style={{ padding:"0.6rem 1.25rem", background:addColor, color:addColor===C.blue?"#fff":C.bg, border:"none", borderRadius:8, fontWeight:700, fontSize:"0.88rem", cursor:"pointer", opacity:mode?0.5:1 }}>+ Add Item</button>
+          <button onClick={seedDemoData} disabled={saving||!!mode} title="Push all 12 universe + 12 calendar + 10 monitoring demo items to the server"
+            style={{ padding:"0.6rem 1.1rem", background:"transparent", color:C.green, border:`1px solid ${C.green}`, borderRadius:8, fontWeight:700, fontSize:"0.88rem", cursor:"pointer", opacity:(saving||mode)?0.5:1 }}>
+            🌱 Seed Demo Data
+          </button>
           <button onClick={load} style={{ padding:"0.6rem 0.9rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer", fontSize:"0.88rem" }}>↻ Refresh</button>
         </div>
       </div>
