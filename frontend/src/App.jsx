@@ -2809,6 +2809,7 @@ const MODULE_OPTIONS = [
   { value:"bcm",          label:"BCM Resilience",     component: BCMResilienceAdmin },
   { value:"compliance",   label:"Compliance",         component: ComplianceAdmin },
   { value:"projects",     label:"Projects & Contracts",component: ProjectsAdmin },
+  { value:"declarations", label:"Declarations",         component: DeclarationsAdmin },
 ];
 
 function UploadSection() {
@@ -3928,6 +3929,507 @@ function ProjectsAdmin() {
   );
 }
 
+
+// ─── DECLARATIONS DATA ────────────────────────────────────────────────────────
+const DECLARATION_CATEGORIES = [
+  "Conflict of Interest","Outside Position","Personal Relationship",
+  "Gift & Hospitality","Income & Financial Interest","Political & Campaign Activities",
+  "Supplier / Vendor Relationship","Procurement Disclosure","Assets / Property Interest",
+  "Related Party Disclosure","Annual / Ad Hoc Declarations",
+];
+
+const STATIC_DECLARATIONS = [
+  { id:"DEC-001", type:"Conflict of Interest", employee:"T. Mokoena", department:"ETQA", description:"Board member of training provider receiving LGSETA grant funding", relatedParty:"MuniSkills Assessment Centre", financialValue:"", dateSubmitted:"2026-04-15", periodCovered:"2026/27", status:"Approved", riskLevel:"High", managerReview:"Approved", complianceReview:"Approved", approvalStatus:"Approved", mitigationAction:"Recused from all procurement decisions involving MuniSkills", dueDate:"", supportingDocs:"Declaration form signed", notes:"Annual renewal required" },
+  { id:"DEC-002", type:"Gift & Hospitality", employee:"N. Khumalo", department:"Research / ICT", description:"Received conference sponsorship (flights + accommodation) from TechSystems SA", relatedParty:"TechSystems SA (Pty) Ltd", financialValue:"12500", dateSubmitted:"2026-03-20", periodCovered:"2026/27", status:"Approved", riskLevel:"Medium", managerReview:"Approved", complianceReview:"Approved", approvalStatus:"Approved", mitigationAction:"Disclosed and approved; no procurement role held", dueDate:"", supportingDocs:"Gift register entry", notes:"Below R15,000 threshold" },
+  { id:"DEC-003", type:"Outside Position", employee:"G. Mahlangu", department:"Grants", description:"Director of family-owned training company not contracted to LGSETA", relatedParty:"Mahlangu Skills Academy (Pty) Ltd", financialValue:"", dateSubmitted:"2026-02-10", periodCovered:"2026/27", status:"Approved", riskLevel:"Medium", managerReview:"Approved", complianceReview:"Approved", approvalStatus:"Approved", mitigationAction:"Annual renewal; company must not apply for LGSETA grants", dueDate:"2027-02-10", supportingDocs:"CIPC registration certificate", notes:"No conflict currently; monitor annually" },
+  { id:"DEC-004", type:"Income & Financial Interest", employee:"P. van der Merwe", department:"Facilities", description:"Spouse employed by facilities management company bidding on LGSETA contract", relatedParty:"Premier Facilities Group", financialValue:"", dateSubmitted:"2026-05-02", periodCovered:"2026/27", status:"Under Review", riskLevel:"High", managerReview:"Pending", complianceReview:"Pending", approvalStatus:"Pending", mitigationAction:"Recusal from tender evaluation committee pending", dueDate:"2026-07-15", supportingDocs:"Declaration form", notes:"Awaiting Legal review" },
+  { id:"DEC-005", type:"Procurement Disclosure", employee:"T. Mahlangu", department:"SCM", description:"Previous employment with supplier currently on LGSETA preferred supplier list", relatedParty:"CapCity Consulting (Pty) Ltd", financialValue:"", dateSubmitted:"2026-01-15", periodCovered:"2026/27", status:"Approved", riskLevel:"High", managerReview:"Approved", complianceReview:"Approved", approvalStatus:"Approved", mitigationAction:"Recused from all CapCity evaluations and contract management", dueDate:"2027-01-15", supportingDocs:"Employment history confirmation", notes:"Permanent recusal in place" },
+  { id:"DEC-006", type:"Personal Relationship", employee:"S. Nkosi", department:"HR", description:"Sibling applies for vacant HR Officer position", relatedParty:"Sibling — J. Nkosi", financialValue:"", dateSubmitted:"2026-06-01", periodCovered:"2026/27", status:"Approved", riskLevel:"Medium", managerReview:"Approved", complianceReview:"Approved", approvalStatus:"Approved", mitigationAction:"Recused from recruitment panel; external HR to manage process", dueDate:"", supportingDocs:"Declaration form", notes:"Application in progress" },
+  { id:"DEC-007", type:"Gift & Hospitality", employee:"L. Dlamini", department:"Learning Programmes", description:"Training provider offered tickets to PSL football match (value unknown)", relatedParty:"LearnersFirst Training Academy", financialValue:"2500", dateSubmitted:"2026-06-10", periodCovered:"2026/27", status:"Rejected", riskLevel:"High", managerReview:"Rejected", complianceReview:"Rejected", approvalStatus:"Rejected", mitigationAction:"Tickets returned; disciplinary warning issued", dueDate:"", supportingDocs:"Email evidence attached", notes:"Provider under investigation for ghost learners" },
+  { id:"DEC-008", type:"Annual / Ad Hoc Declarations", employee:"J. Williams", department:"ICT", description:"Annual declaration — no conflicts or interests to declare", relatedParty:"None", financialValue:"", dateSubmitted:"2026-04-01", periodCovered:"2026/27", status:"Approved", riskLevel:"Low", managerReview:"Approved", complianceReview:"Approved", approvalStatus:"Approved", mitigationAction:"No action required", dueDate:"2027-04-01", supportingDocs:"Signed declaration form", notes:"Clean annual declaration" },
+  { id:"DEC-009", type:"Supplier / Vendor Relationship", employee:"M. Sithole", department:"Finance", description:"Personal friend is owner of accounting firm submitting quotation for LGSETA audit", relatedParty:"Sithole & Associates", financialValue:"", dateSubmitted:"2026-05-20", periodCovered:"2026/27", status:"Under Review", riskLevel:"High", managerReview:"Pending", complianceReview:"Pending", approvalStatus:"Pending", mitigationAction:"Pending compliance review and recusal decision", dueDate:"2026-07-31", supportingDocs:"Declaration form", notes:"Urgent — quote evaluation imminent" },
+  { id:"DEC-010", type:"Assets / Property Interest", employee:"C. Khumalo", department:"Corporate Services", description:"Owns property being considered for LGSETA provincial office lease", relatedParty:"CK Property Holdings", financialValue:"18000", dateSubmitted:"2026-03-10", periodCovered:"2026/27", status:"Rejected", riskLevel:"High", managerReview:"Rejected", complianceReview:"Rejected", approvalStatus:"Rejected", mitigationAction:"Property excluded from evaluation; disciplinary process initiated", dueDate:"", supportingDocs:"Title deed", notes:"Referred to Ethics Committee" },
+];
+
+// ─── DECLARATION WORKFLOW STATUS HELPERS ─────────────────────────────────────
+function WorkflowBadge({ status }) {
+  const map = {
+    "Submitted":     { color:C.blue,   bg:"rgba(88,166,255,0.12)" },
+    "Under Review":  { color:C.amber,  bg:"rgba(227,179,65,0.12)" },
+    "Approved":      { color:C.green,  bg:"rgba(63,185,80,0.12)"  },
+    "Rejected":      { color:C.red,    bg:"rgba(248,81,73,0.12)"  },
+    "Pending":       { color:C.muted,  bg:"rgba(110,118,129,0.12)"},
+    "Overdue":       { color:C.red,    bg:"rgba(248,81,73,0.12)"  },
+  };
+  const s = map[status] || map["Pending"];
+  return (
+    <span style={{ background:s.bg, color:s.color, border:`1px solid ${s.color}`, borderRadius:4,
+      padding:"2px 8px", fontSize:"0.75rem", fontWeight:700, whiteSpace:"nowrap" }}>
+      {status}
+    </span>
+  );
+}
+
+function WorkflowPipeline({ status }) {
+  const steps = ["Submitted","Under Review","Approved"];
+  const idx   = steps.indexOf(status);
+  const rejected = status === "Rejected";
+  return (
+    <div style={{ display:"flex", alignItems:"center", gap:4, flexWrap:"nowrap" }}>
+      {steps.map((s, i) => {
+        const done    = rejected ? false : i < idx;
+        const current = rejected ? (s==="Under Review") : i===idx;
+        const color   = rejected && s==="Approved" ? C.red : done ? C.green : current ? C.blue : C.border;
+        return (
+          <React.Fragment key={s}>
+            <div style={{ fontSize:"0.65rem", fontWeight:700, color:done?C.green:current?C.blue:C.muted,
+              whiteSpace:"nowrap", borderBottom:`2px solid ${color}`, paddingBottom:1 }}>
+              {rejected && i===2 ? "Rejected" : s}
+            </div>
+            {i<steps.length-1 && <div style={{ color:C.border, fontSize:"0.7rem" }}>→</div>}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── DECLARATION MODULE VIEW ──────────────────────────────────────────────────
+function DeclarationsModule() {
+  const [sub, setSub]         = useState("dashboard");
+  const [search, setSearch]   = useState("");
+  const [filterType, setFilterType]     = useState("All");
+  const [filterStatus, setFilterStatus] = useState("All");
+  const [selected, setSelected]         = useState(null);
+  const [data, setData]       = useState(STATIC_DECLARATIONS);
+
+  useEffect(()=>{
+    fetch(`${API}/api/dashboard`).then(r=>r.json()).then(d=>{
+      if (d.declarations?.length > 0) setData(d.declarations);
+    }).catch(()=>{});
+  },[]);
+
+  const approved    = data.filter(d=>d.status==="Approved").length;
+  const underReview = data.filter(d=>d.status==="Under Review").length;
+  const rejected    = data.filter(d=>d.status==="Rejected").length;
+  const highRisk    = data.filter(d=>d.riskLevel==="High").length;
+  const pending     = data.filter(d=>d.approvalStatus==="Pending").length;
+  const overdue     = data.filter(d=>d.dueDate && new Date(d.dueDate)<new Date() && d.status!=="Approved").length;
+
+  const filtered = data.filter(d=>
+    (filterType==="All" || d.type===filterType) &&
+    (filterStatus==="All" || d.status===filterStatus) &&
+    JSON.stringify(d).toLowerCase().includes(search.toLowerCase())
+  );
+
+  // Category breakdown
+  const byCategory = DECLARATION_CATEGORIES.map(cat=>({
+    cat, count:data.filter(d=>d.type===cat).length
+  })).filter(x=>x.count>0).sort((a,b)=>b.count-a.count);
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
+      {/* Header */}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:"0.5rem" }}>
+        <div>
+          <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Declaration Dashboard</h1>
+          <p style={{ color:C.muted, fontSize:"0.82rem", margin:"2px 0 0" }}>Ethics & Conflict of Interest · Q2 2026/27</p>
+        </div>
+      </div>
+
+      {/* KPI strip */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:"0.75rem" }}>
+        {[
+          ["Total Declarations", data.length,    C.blue  ],
+          ["Approved",           approved,        C.green ],
+          ["Under Review",       underReview,     C.amber ],
+          ["Rejected",           rejected,        C.red   ],
+          ["High Risk",          highRisk,        C.red   ],
+          ["Overdue Actions",    overdue,         overdue>0?C.red:C.green ],
+        ].map(([l,v,c])=>(
+          <div key={l} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8, padding:"0.75rem 1rem", borderTop:`3px solid ${c}` }}>
+            <div style={{ color:C.muted, fontSize:"0.65rem", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.06em" }}>{l}</div>
+            <div style={{ color:c, fontSize:"1.5rem", fontWeight:800 }}>{v}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Sub tabs */}
+      <div style={{ display:"flex", borderBottom:`1px solid ${C.border}` }}>
+        {[["dashboard","📊 Overview"],["register","📋 Declaration Register"],["pending","⏳ Pending Review"]].map(([id,label])=>(
+          <button key={id} onClick={()=>{ setSub(id); setSelected(null); }}
+            style={{ padding:"0.5rem 1.1rem", border:"none", background:"transparent", cursor:"pointer",
+              fontSize:"0.82rem", fontWeight:600, color:sub===id?C.text:C.muted,
+              borderBottom:sub===id?`2px solid ${C.blue}`:"2px solid transparent", whiteSpace:"nowrap" }}>
+            {label}{id==="pending"&&pending>0?<span style={{ marginLeft:5, background:C.red, color:"#fff", borderRadius:10, padding:"1px 6px", fontSize:"0.65rem" }}>{pending}</span>:null}
+          </button>
+        ))}
+      </div>
+
+      {/* OVERVIEW */}
+      {sub==="dashboard" && (
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1.25rem" }}>
+          {/* By Category */}
+          <Card>
+            <h3 style={{ color:C.text, fontWeight:700, margin:"0 0 1rem", fontSize:"0.95rem" }}>Declarations by Category</h3>
+            {byCategory.map(({ cat, count })=>(
+              <div key={cat} style={{ display:"flex", alignItems:"center", gap:"0.75rem", marginBottom:"0.6rem" }}>
+                <div style={{ flex:1, color:C.muted, fontSize:"0.8rem", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{cat}</div>
+                <div style={{ width:100 }}><ProgressBar value={count} max={data.length} color={C.blue}/></div>
+                <div style={{ color:C.blue, fontWeight:700, fontSize:"0.85rem", minWidth:20, textAlign:"right" }}>{count}</div>
+              </div>
+            ))}
+          </Card>
+
+          {/* High Risk declarations */}
+          <Card>
+            <h3 style={{ color:C.text, fontWeight:700, margin:"0 0 1rem", fontSize:"0.95rem" }}>🔴 High Risk Declarations</h3>
+            {data.filter(d=>d.riskLevel==="High").map(d=>(
+              <div key={d.id} onClick={()=>{ setSub("register"); setSelected(d); }}
+                style={{ padding:"0.75rem", background:C.surface, borderRadius:8, marginBottom:"0.5rem", cursor:"pointer",
+                  border:`1px solid ${d.status==="Rejected"?C.red:d.status==="Approved"?C.green:C.amber}` }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+                  <div>
+                    <div style={{ color:C.blue, fontWeight:700, fontSize:"0.75rem" }}>{d.id}</div>
+                    <div style={{ color:C.text, fontWeight:600, fontSize:"0.82rem" }}>{d.employee}</div>
+                    <div style={{ color:C.muted, fontSize:"0.75rem" }}>{d.type}</div>
+                  </div>
+                  <WorkflowBadge status={d.status}/>
+                </div>
+              </div>
+            ))}
+          </Card>
+
+          {/* Status breakdown */}
+          <Card>
+            <h3 style={{ color:C.text, fontWeight:700, margin:"0 0 1rem", fontSize:"0.95rem" }}>Status Breakdown</h3>
+            {[["Approved",approved,C.green],["Under Review",underReview,C.amber],["Rejected",rejected,C.red]].map(([l,v,c])=>(
+              <div key={l} style={{ display:"flex", alignItems:"center", gap:"0.75rem", marginBottom:"0.75rem" }}>
+                <div style={{ width:10, height:10, borderRadius:"50%", background:c, flexShrink:0 }}/>
+                <div style={{ flex:1, color:C.muted, fontSize:"0.82rem" }}>{l}</div>
+                <div style={{ minWidth:80 }}><ProgressBar value={v} max={data.length} color={c}/></div>
+                <div style={{ color:c, fontWeight:800, fontSize:"1rem", minWidth:24, textAlign:"right" }}>{v}</div>
+              </div>
+            ))}
+          </Card>
+
+          {/* Pending actions */}
+          <Card>
+            <h3 style={{ color:C.text, fontWeight:700, margin:"0 0 1rem", fontSize:"0.95rem" }}>⏳ Pending Review Actions</h3>
+            {data.filter(d=>d.approvalStatus==="Pending").length===0
+              ? <p style={{ color:C.green, fontSize:"0.85rem" }}>✅ No declarations pending review.</p>
+              : data.filter(d=>d.approvalStatus==="Pending").map(d=>(
+                  <div key={d.id} style={{ padding:"0.75rem", background:C.surface, borderRadius:8, marginBottom:"0.5rem", border:`1px solid ${C.amber}` }}>
+                    <div style={{ display:"flex", justifyContent:"space-between" }}>
+                      <div>
+                        <div style={{ color:C.amber, fontWeight:700, fontSize:"0.75rem" }}>{d.id} · {d.employee}</div>
+                        <div style={{ color:C.muted, fontSize:"0.75rem" }}>{d.type}</div>
+                      </div>
+                      {d.dueDate && <div style={{ color:new Date(d.dueDate)<new Date()?C.red:C.amber, fontSize:"0.75rem", fontWeight:700 }}>Due: {d.dueDate}</div>}
+                    </div>
+                  </div>
+                ))
+            }
+          </Card>
+        </div>
+      )}
+
+      {/* REGISTER */}
+      {sub==="register" && (
+        <div>
+          {/* Detail panel */}
+          {selected && (
+            <div style={{ background:C.card, border:`1px solid ${C.blue}`, borderRadius:12, padding:"1.5rem", marginBottom:"1.25rem" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"1rem" }}>
+                <div>
+                  <div style={{ display:"flex", gap:"0.75rem", alignItems:"center", marginBottom:"0.3rem" }}>
+                    <span style={{ color:C.blue, fontWeight:800, fontSize:"1rem" }}>{selected.id}</span>
+                    <WorkflowBadge status={selected.status}/>
+                    <Badge label={selected.riskLevel} color={selected.riskLevel==="High"?"red":selected.riskLevel==="Medium"?"amber":"green"}/>
+                  </div>
+                  <h3 style={{ color:C.text, margin:"0 0 0.25rem", fontWeight:700 }}>{selected.type}</h3>
+                  <p style={{ color:C.muted, margin:0, fontSize:"0.85rem" }}>{selected.employee} · {selected.department}</p>
+                </div>
+                <button onClick={()=>setSelected(null)} style={{ background:"transparent", border:"none", color:C.muted, cursor:"pointer", fontSize:"1.2rem" }}>✕</button>
+              </div>
+              <WorkflowPipeline status={selected.status}/>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem", marginTop:"1rem" }}>
+                <div><div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700 }}>Related Party</div><div style={{ color:C.text, fontSize:"0.85rem" }}>{selected.relatedParty||"—"}</div></div>
+                <div><div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700 }}>Financial Value</div><div style={{ color:C.text, fontSize:"0.85rem" }}>{selected.financialValue?`R${Number(selected.financialValue).toLocaleString()}`:"—"}</div></div>
+                <div><div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700 }}>Date Submitted</div><div style={{ color:C.text, fontSize:"0.85rem" }}>{selected.dateSubmitted||"—"}</div></div>
+                <div><div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700 }}>Manager Review</div><div style={{ color:selected.managerReview==="Approved"?C.green:selected.managerReview==="Rejected"?C.red:C.amber, fontWeight:700, fontSize:"0.85rem" }}>{selected.managerReview||"—"}</div></div>
+                <div><div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700 }}>Compliance Review</div><div style={{ color:selected.complianceReview==="Approved"?C.green:selected.complianceReview==="Rejected"?C.red:C.amber, fontWeight:700, fontSize:"0.85rem" }}>{selected.complianceReview||"—"}</div></div>
+                <div><div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700 }}>Due Date</div><div style={{ color:selected.dueDate&&new Date(selected.dueDate)<new Date()?C.red:C.text, fontSize:"0.85rem" }}>{selected.dueDate||"—"}</div></div>
+              </div>
+              <div style={{ marginTop:"0.75rem" }}>
+                <div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700, marginBottom:"0.25rem" }}>Description</div>
+                <div style={{ color:C.text, fontSize:"0.85rem", lineHeight:1.6 }}>{selected.description}</div>
+              </div>
+              <div style={{ marginTop:"0.75rem" }}>
+                <div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700, marginBottom:"0.25rem" }}>Mitigation Action</div>
+                <div style={{ color:C.text, fontSize:"0.85rem", lineHeight:1.6, padding:"0.5rem 0.75rem", background:C.surface, borderRadius:6, borderLeft:`3px solid ${C.green}` }}>{selected.mitigationAction||"—"}</div>
+              </div>
+              {selected.notes && <div style={{ marginTop:"0.75rem" }}>
+                <div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700, marginBottom:"0.25rem" }}>Notes</div>
+                <div style={{ color:C.muted, fontSize:"0.82rem" }}>{selected.notes}</div>
+              </div>}
+            </div>
+          )}
+
+          {/* Filters */}
+          <div style={{ display:"flex", gap:"0.75rem", marginBottom:"1rem", flexWrap:"wrap" }}>
+            <input placeholder="Search declarations…" value={search} onChange={e=>setSearch(e.target.value)} style={{ ...inputSt, width:200 }}/>
+            <select value={filterType} onChange={e=>setFilterType(e.target.value)} style={inputSt}>
+              <option value="All">All Types</option>
+              {DECLARATION_CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}
+            </select>
+            <select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)} style={inputSt}>
+              {["All","Approved","Under Review","Rejected"].map(s=><option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+
+          <Card>
+            <Table
+              headers={["ID","Type","Employee","Department","Risk","Status","Workflow","Date"]}
+              rows={filtered.map(d=>[
+                <span style={{ color:C.blue, fontWeight:700, fontSize:"0.75rem", cursor:"pointer" }} onClick={()=>setSelected(d)}>{d.id}</span>,
+                <span style={{ fontSize:"0.78rem", color:C.muted }}>{d.type}</span>,
+                <span style={{ fontWeight:600 }}>{d.employee}</span>,
+                d.department,
+                <Badge label={d.riskLevel} color={d.riskLevel==="High"?"red":d.riskLevel==="Medium"?"amber":"green"}/>,
+                <WorkflowBadge status={d.status}/>,
+                <WorkflowPipeline status={d.status}/>,
+                <span style={{ color:C.muted, fontSize:"0.75rem" }}>{d.dateSubmitted}</span>,
+              ])}
+            />
+          </Card>
+        </div>
+      )}
+
+      {/* PENDING REVIEW */}
+      {sub==="pending" && (
+        <div>
+          {data.filter(d=>d.approvalStatus==="Pending").length===0 ? (
+            <Card><p style={{ color:C.green, textAlign:"center", padding:"2rem", fontWeight:700 }}>✅ No declarations pending review.</p></Card>
+          ) : (
+            <Card>
+              <Table
+                headers={["ID","Type","Employee","Department","Risk","Submitted","Due Date","Action Required"]}
+                rows={data.filter(d=>d.approvalStatus==="Pending").map(d=>{
+                  const isOverdue = d.dueDate && new Date(d.dueDate)<new Date();
+                  return [
+                    <span style={{ color:C.amber, fontWeight:700, fontSize:"0.75rem" }}>{d.id}</span>,
+                    <span style={{ fontSize:"0.78rem" }}>{d.type}</span>,
+                    <span style={{ fontWeight:600 }}>{d.employee}</span>,
+                    d.department,
+                    <Badge label={d.riskLevel} color={d.riskLevel==="High"?"red":d.riskLevel==="Medium"?"amber":"green"}/>,
+                    d.dateSubmitted,
+                    <span style={{ color:isOverdue?C.red:C.amber, fontWeight:700 }}>{d.dueDate||"ASAP"}{isOverdue?" ⚠":""}</span>,
+                    <span style={{ color:C.muted, fontSize:"0.75rem", maxWidth:160, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={d.mitigationAction}>{d.mitigationAction||"Review required"}</span>,
+                  ];
+                })}
+              />
+            </Card>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── DECLARATIONS ADMIN ───────────────────────────────────────────────────────
+function DeclarationsAdmin() {
+  const [items, setItems]     = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving]   = useState(false);
+  const [toast, setToast]     = useState(null);
+  const [mode, setMode]       = useState(null);
+  const [confirmDel, setConfirmDel] = useState(null);
+  const [search, setSearch]   = useState("");
+
+  function showToast(msg, type="ok") { setToast({ msg, type }); setTimeout(()=>setToast(null), 3500); }
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res  = await fetch(`${API}/api/dashboard`);
+      const data = await res.json();
+      setItems(data.declarations?.length > 0 ? data.declarations : STATIC_DECLARATIONS);
+    } catch { setItems(STATIC_DECLARATIONS); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(()=>{ load(); }, [load]);
+
+  async function saveToServer(updatedItems) {
+    const res  = await fetch(`${API}/api/dashboard`);
+    const data = await res.json();
+    data.declarations = updatedItems;
+    const saveRes = await fetch(`${API}/api/dashboard`, { method:"PUT", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(data) });
+    if (!saveRes.ok) throw new Error("Failed to save");
+  }
+
+  async function seedDemoData() {
+    setSaving(true);
+    try {
+      const res  = await fetch(`${API}/api/dashboard`);
+      const data = await res.json();
+      data.declarations = STATIC_DECLARATIONS;
+      const saveRes = await fetch(`${API}/api/dashboard`, { method:"PUT", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(data) });
+      if (!saveRes.ok) throw new Error("Failed to seed");
+      showToast(`✅ Seeded ${STATIC_DECLARATIONS.length} declarations to server.`);
+      load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  async function handleSave(f) {
+    if (!f.id || !f.employee) { showToast("ID and Employee are required.", "err"); return; }
+    setSaving(true);
+    try {
+      const isEdit = mode?.id;
+      const updated = isEdit
+        ? items.map(i => i.id===f.id ? { ...i, ...f, updatedAt:new Date().toISOString() } : i)
+        : [...items, { ...f, createdAt:new Date().toISOString() }];
+      await saveToServer(updated);
+      showToast(isEdit ? `✅ ${f.id} updated.` : `✅ ${f.id} added.`);
+      setMode(null); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  async function handleDelete(id) {
+    setSaving(true);
+    try {
+      await saveToServer(items.filter(i=>i.id!==id));
+      showToast(`🗑 ${id} deleted.`); setConfirmDel(null); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  async function updateStatus(id, newStatus) {
+    setSaving(true);
+    try {
+      const approvalStatus = newStatus==="Approved"||newStatus==="Rejected" ? newStatus : "Pending";
+      const updated = items.map(i => i.id===id ? { ...i, status:newStatus, approvalStatus, managerReview:newStatus==="Approved"||newStatus==="Rejected"?newStatus:"Pending", complianceReview:newStatus==="Approved"||newStatus==="Rejected"?newStatus:"Pending", updatedAt:new Date().toISOString() } : i);
+      await saveToServer(updated);
+      showToast(`✅ ${id} status updated to ${newStatus}.`);
+      load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  function DeclarationForm({ initial={}, onSave, onCancel, saving }) {
+    const EMPTY = { id:"", type:"Conflict of Interest", employee:"", department:"", description:"", relatedParty:"", financialValue:"", dateSubmitted:"", periodCovered:"2026/27", status:"Submitted", riskLevel:"Medium", managerReview:"Pending", complianceReview:"Pending", approvalStatus:"Pending", mitigationAction:"", dueDate:"", supportingDocs:"", notes:"" };
+    const [f, setF] = useState({ ...EMPTY, ...initial });
+    const set = k => v => setF(p=>({ ...p, [k]:v }));
+    return (
+      <div style={{ background:C.surface, border:`1px solid ${C.purple}`, borderRadius:10, padding:"1.5rem", marginBottom:"1.5rem" }}>
+        <h3 style={{ color:C.purple, fontWeight:700, margin:"0 0 1.25rem" }}>{initial.id?"Edit Declaration":"Log New Declaration"}</h3>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 2fr", gap:"1rem" }}>
+          <FInput label="Declaration ID" value={f.id} onChange={set("id")} required placeholder="DEC-011"/>
+          <FSelect label="Declaration Type" value={f.type} onChange={set("type")} options={DECLARATION_CATEGORIES}/>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
+          <FInput label="Employee / Official" value={f.employee} onChange={set("employee")} required placeholder="e.g. T. Mokoena"/>
+          <FInput label="Department" value={f.department} onChange={set("department")} placeholder="e.g. ETQA"/>
+          <FInput label="Period Covered" value={f.periodCovered} onChange={set("periodCovered")} placeholder="e.g. 2026/27"/>
+        </div>
+        <FTextarea label="Description" value={f.description} onChange={set("description")} rows={2} placeholder="Describe the declaration in detail…"/>
+        <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr", gap:"1rem" }}>
+          <FInput label="Related Party" value={f.relatedParty} onChange={set("relatedParty")} placeholder="Name of related entity or person"/>
+          <FInput label="Financial Value (R)" value={f.financialValue} onChange={set("financialValue")} type="number" placeholder="0"/>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:"1rem" }}>
+          <FInput label="Date Submitted" value={f.dateSubmitted} onChange={set("dateSubmitted")} type="date"/>
+          <FSelect label="Risk Level" value={f.riskLevel} onChange={set("riskLevel")} options={["High","Medium","Low"]}/>
+          <FSelect label="Status" value={f.status} onChange={set("status")} options={["Submitted","Under Review","Approved","Rejected"]}/>
+          <FInput label="Due Date" value={f.dueDate} onChange={set("dueDate")} type="date"/>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
+          <FSelect label="Manager Review" value={f.managerReview} onChange={set("managerReview")} options={["Pending","Approved","Rejected"]}/>
+          <FSelect label="Compliance Review" value={f.complianceReview} onChange={set("complianceReview")} options={["Pending","Approved","Rejected"]}/>
+          <FSelect label="Approval Status" value={f.approvalStatus} onChange={set("approvalStatus")} options={["Pending","Approved","Rejected"]}/>
+        </div>
+        <FTextarea label="Mitigation Action" value={f.mitigationAction} onChange={set("mitigationAction")} rows={2} placeholder="Describe the mitigation or recusal action taken…"/>
+        <FInput label="Supporting Documents" value={f.supportingDocs} onChange={set("supportingDocs")} placeholder="e.g. Signed declaration form, CIPC cert"/>
+        <FTextarea label="Notes" value={f.notes} onChange={set("notes")} rows={1} placeholder="Additional notes…"/>
+        <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.5rem" }}>
+          <button onClick={()=>onSave(f)} disabled={saving} style={{ padding:"0.65rem 1.75rem", background:C.purple, color:"#fff", border:"none", borderRadius:8, fontWeight:700, cursor:"pointer", opacity:saving?0.6:1 }}>{saving?"Saving…":initial.id?"Update":"Log Declaration"}</button>
+          <button onClick={onCancel} style={{ padding:"0.65rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer" }}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
+
+  const filtered = items.filter(i=>JSON.stringify(i).toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div>
+      {toast && <div style={{ position:"fixed", top:16, right:16, zIndex:1000, padding:"0.75rem 1.25rem", borderRadius:8, background:toast.type==="ok"?"rgba(163,113,247,0.15)":"rgba(248,81,73,0.15)", border:`1px solid ${toast.type==="ok"?C.purple:C.red}`, color:toast.type==="ok"?C.purple:C.red, fontWeight:600, fontSize:"0.88rem" }}>{toast.msg}</div>}
+      {confirmDel && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", zIndex:999, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div style={{ background:C.card, border:`1px solid ${C.red}`, borderRadius:12, padding:"2rem", maxWidth:400, width:"90%" }}>
+            <h3 style={{ color:C.red, margin:"0 0 0.75rem" }}>Delete Declaration</h3>
+            <p style={{ color:C.text, marginBottom:"1.5rem" }}>Delete <strong>{confirmDel}</strong>? This cannot be undone.</p>
+            <div style={{ display:"flex", gap:"0.75rem" }}>
+              <button onClick={()=>handleDelete(confirmDel)} disabled={saving} style={{ padding:"0.6rem 1.5rem", background:C.red, color:"#fff", border:"none", borderRadius:7, fontWeight:700, cursor:"pointer" }}>{saving?"Deleting…":"Yes, Delete"}</button>
+              <button onClick={()=>setConfirmDel(null)} style={{ padding:"0.6rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:7, cursor:"pointer" }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.25rem", flexWrap:"wrap", gap:"0.75rem" }}>
+        <div>
+          <h3 style={{ color:C.text, margin:"0 0 0.2rem", fontWeight:700 }}>Declaration Register — Edit Mode</h3>
+          <p style={{ color:C.muted, fontSize:"0.82rem", margin:0 }}>{items.length} declarations · {items.filter(i=>i.approvalStatus==="Pending").length} pending review</p>
+        </div>
+        <div style={{ display:"flex", gap:"0.75rem", alignItems:"center" }}>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search…" style={{ ...inputSt, width:180 }}/>
+          <button onClick={()=>setMode("add")} disabled={!!mode} style={{ padding:"0.6rem 1.25rem", background:C.purple, color:"#fff", border:"none", borderRadius:8, fontWeight:700, fontSize:"0.88rem", cursor:"pointer", opacity:mode?0.5:1 }}>+ Log Declaration</button>
+          <button onClick={seedDemoData} disabled={saving||!!mode} style={{ padding:"0.6rem 1.1rem", background:"transparent", color:C.green, border:`1px solid ${C.green}`, borderRadius:8, fontWeight:700, fontSize:"0.88rem", cursor:"pointer", opacity:(saving||mode)?0.5:1 }}>🌱 Seed Demo Data</button>
+          <button onClick={load} style={{ padding:"0.6rem 0.9rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer", fontSize:"0.88rem" }}>↻ Refresh</button>
+        </div>
+      </div>
+
+      {mode==="add"         && <DeclarationForm onSave={handleSave} onCancel={()=>setMode(null)} saving={saving} />}
+      {mode && mode!=="add" && <DeclarationForm initial={mode} onSave={handleSave} onCancel={()=>setMode(null)} saving={saving} />}
+
+      {loading ? <div style={{ textAlign:"center", padding:"3rem", color:C.muted }}>Loading…</div> : (
+        <Card>
+          <Table
+            headers={["ID","Type","Employee","Dept","Risk","Status","Manager","Compliance","Actions"]}
+            rows={filtered.map(d=>[
+              <span style={{ color:C.purple, fontWeight:700, fontSize:"0.75rem" }}>{d.id}</span>,
+              <span style={{ fontSize:"0.75rem", color:C.muted, maxWidth:120, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={d.type}>{d.type}</span>,
+              <span style={{ fontWeight:600, fontSize:"0.82rem" }}>{d.employee}</span>,
+              <span style={{ fontSize:"0.78rem" }}>{d.department}</span>,
+              <Badge label={d.riskLevel} color={d.riskLevel==="High"?"red":d.riskLevel==="Medium"?"amber":"green"}/>,
+              <WorkflowBadge status={d.status}/>,
+              <span style={{ color:d.managerReview==="Approved"?C.green:d.managerReview==="Rejected"?C.red:C.amber, fontWeight:700, fontSize:"0.75rem" }}>{d.managerReview}</span>,
+              <span style={{ color:d.complianceReview==="Approved"?C.green:d.complianceReview==="Rejected"?C.red:C.amber, fontWeight:700, fontSize:"0.75rem" }}>{d.complianceReview}</span>,
+              <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap" }}>
+                {d.status==="Under Review" && (
+                  <>
+                    <button onClick={()=>updateStatus(d.id,"Approved")} disabled={saving} style={{ padding:"0.25rem 0.6rem", background:C.green, color:"#fff", border:"none", borderRadius:5, fontSize:"0.72rem", fontWeight:700, cursor:"pointer" }}>✓</button>
+                    <button onClick={()=>updateStatus(d.id,"Rejected")} disabled={saving} style={{ padding:"0.25rem 0.6rem", background:C.red, color:"#fff", border:"none", borderRadius:5, fontSize:"0.72rem", fontWeight:700, cursor:"pointer" }}>✗</button>
+                  </>
+                )}
+                {d.status==="Submitted" && (
+                  <button onClick={()=>updateStatus(d.id,"Under Review")} disabled={saving} style={{ padding:"0.25rem 0.6rem", background:C.amber, color:C.bg, border:"none", borderRadius:5, fontSize:"0.72rem", fontWeight:700, cursor:"pointer" }}>Review</button>
+                )}
+                <button onClick={()=>setMode({ ...d })} disabled={!!mode} style={{ padding:"0.25rem 0.6rem", background:"transparent", color:C.blue, border:`1px solid ${C.blue}`, borderRadius:5, fontSize:"0.72rem", cursor:"pointer", opacity:mode?0.4:1 }}>Edit</button>
+                <button onClick={()=>setConfirmDel(d.id)} disabled={!!mode} style={{ padding:"0.25rem 0.6rem", background:"transparent", color:C.red, border:`1px solid ${C.red}`, borderRadius:5, fontSize:"0.72rem", cursor:"pointer", opacity:mode?0.4:1 }}>Del</button>
+              </div>,
+            ])}
+          />
+        </Card>
+      )}
+    </div>
+  );
+}
+
 // ─── SIDEBAR ──────────────────────────────────────────────────────────────────
 const NAV = [
   { id:"executive",     label:"Executive Overview",  icon:"🏛" },
@@ -3946,6 +4448,7 @@ const NAV = [
   { id:"app",           label:"APP Alignment",        icon:"📋" },
   { id:"predictive",    label:"Predictive Intel",     icon:"🔮" },
   { id:"compliance",    label:"Compliance",           icon:"⚖" },
+  { id:"declarations",   label:"Declarations",          icon:"📝" },
   { id:"projects",       label:"Projects & Contracts",  icon:"📁" },
   { id:"admin",         label:"Admin Panel",          icon:"⚙" },
 ];
@@ -3957,6 +4460,7 @@ const MODULES = {
   fraud:FraudEthics, departmental:DepartmentalRisks, uifw:UIFWExpenditure,
   thirdparty:ThirdPartyRisk, app:APPAlignment, predictive:PredictiveIntel,
   compliance:ComplianceModule,
+  declarations:DeclarationsModule,
   projects:  ProjectsModule,
   admin:AdminTab,
 };
