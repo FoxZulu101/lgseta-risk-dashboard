@@ -2929,7 +2929,7 @@ function ReportsTab() {
       audience: "Audit & Risk Committee",
       color:    C.amber,
       icon:     "⚖",
-      sections: ["Executive Summary & KPIs","Top 10 Strategic Risks","Treatment Action Status","UIFW Exposure","Fraud & Ethics Register","BCM Status"],
+      sections: ["Executive Summary & KPIs","Top 10 Strategic Risks","Treatment Action Status","UIFW Exposure","Fraud & Ethics Register","BCM Status","Compliance"],
       desc:     "Detailed GRC report for the Audit & Risk Committee. Includes fraud, BCM and full UIFW analysis.",
     },
     {
@@ -2938,7 +2938,7 @@ function ReportsTab() {
       audience: "Board of Directors",
       color:    C.purple,
       icon:     "🎯",
-      sections: ["Executive Summary & KPIs","Top 10 Strategic Risks","Treatment Action Status","UIFW Exposure","Fraud & Ethics Register","BCM Status","APP Alignment"],
+      sections: ["Executive Summary & KPIs","Top 10 Strategic Risks","Treatment Action Status","UIFW Exposure","Fraud & Ethics Register","BCM Status","APP Alignment","Compliance"],
       desc:     "Full GRC overview for the Board. All sections included with APP performance alignment.",
     },
   ];

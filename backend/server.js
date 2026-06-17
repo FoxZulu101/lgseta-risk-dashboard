@@ -772,6 +772,67 @@ function buildAPP(data) {
   ];
 }
 
+function buildCompliance(data) {
+  const comp     = data.compliance || {};
+  const universe = comp.universe   || [];
+  const calendar = comp.calendar   || [];
+  const compliant    = universe.filter(u=>u.complianceStatus==="Compliant").length;
+  const nonCompliant = universe.filter(u=>u.complianceStatus==="Non-Compliant").length;
+  const partial       = universe.filter(u=>u.complianceStatus==="Partial").length;
+  const overdueItems  = calendar.filter(c=>c.status==="Overdue" || new Date(c.dueDate)<new Date());
+  const upcoming      = calendar.filter(c=>c.status!=="Complete" && !overdueItems.includes(c))
+                                  .sort((a,b)=>new Date(a.dueDate)-new Date(b.dueDate)).slice(0,8);
+
+  const W1 = [900,3300,1200,1200,900,1526];
+  const W2 = [900,3000,1500,1200,1226];
+
+  return [
+    heading1("8. Compliance Management"),
+    kpiTable([
+      ["Total Legislation", String(universe.length), "",                NAVY  ],
+      ["Compliant",          String(compliant),        "",                GREEN ],
+      ["Partial",            String(partial),          "",                AMBER ],
+      ["Non-Compliant",      String(nonCompliant),     "Require action",  nonCompliant>0?RED:GREEN ],
+      ["Overdue Obligations",String(overdueItems.length), "",            overdueItems.length>0?RED:GREEN ],
+    ]),
+    new Paragraph({ spacing:{before:160,after:160}, children:[] }),
+
+    heading2("Compliance Universe"),
+    universe.length>0 ? new Table({
+      width:{ size:9026, type:WidthType.DXA }, columnWidths:W1,
+      rows:[
+        headerRow(["ID","Legislation","Category","Owner","Risk","Status"], W1),
+        ...universe.map(u => new TableRow({ children:[
+          cell(u.id,                { width:W1[0], size:16, color:BLUE, bold:true }),
+          cell(u.legislation,       { width:W1[1], size:16 }),
+          cell(u.category||"—",    { width:W1[2], size:16 }),
+          cell(u.owner||"—",       { width:W1[3], size:16 }),
+          cell(u.riskRating||"—",  { width:W1[4], size:16, bold:true, color:u.riskRating==="High"?RED:u.riskRating==="Medium"?AMBER:GREEN }),
+          cell(u.complianceStatus||"—", { width:W1[5], size:16, bold:true, color:statusColor(u.complianceStatus) }),
+        ]})),
+      ],
+    }) : para("No compliance universe items recorded.", { color:GREY }),
+
+    new Paragraph({ spacing:{before:200,after:0}, children:[] }),
+    heading2("Upcoming & Overdue Compliance Obligations"),
+    (overdueItems.length+upcoming.length)>0 ? new Table({
+      width:{ size:9026, type:WidthType.DXA }, columnWidths:W2,
+      rows:[
+        headerRow(["ID","Obligation","Legislation","Due Date","Status"], W2),
+        ...[...overdueItems, ...upcoming].map(c => new TableRow({ children:[
+          cell(c.id,            { width:W2[0], size:16, color:AMBER, bold:true }),
+          cell(c.obligation,    { width:W2[1], size:16 }),
+          cell(c.legislation||"—", { width:W2[2], size:16 }),
+          cell(c.dueDate||"—",  { width:W2[3], size:16, bold:overdueItems.includes(c), color:overdueItems.includes(c)?RED:"1F2937" }),
+          cell(overdueItems.includes(c)?"Overdue":c.status||"—", { width:W2[4], size:16, bold:true, color:overdueItems.includes(c)?RED:statusColor(c.status) }),
+        ]})),
+      ],
+    }) : para("No upcoming or overdue compliance obligations.", { color:GREY }),
+    new Paragraph({ spacing:{before:160,after:0}, children:[] }),
+    divider(),
+  ];
+}
+
 // ── Report configs ────────────────────────────────────────────────────────────
 const REPORT_CONFIGS = {
   excom: {
@@ -784,13 +845,13 @@ const REPORT_CONFIGS = {
     title:    "ARC Risk Report",
     subtitle: "Audit & Risk Committee — Quarterly GRC Report",
     audience: "Audit & Risk Committee",
-    sections: ["summary","toprisks","treatments","uifw","fraud","bcm"],
+    sections: ["summary","toprisks","treatments","uifw","fraud","bcm","compliance"],
   },
   board: {
     title:    "Board GRC Report",
     subtitle: "Board of Directors — Quarterly GRC Overview",
     audience: "Board of Directors",
-    sections: ["summary","toprisks","treatments","uifw","fraud","bcm","app"],
+    sections: ["summary","toprisks","treatments","uifw","fraud","bcm","app","compliance"],
   },
 };
 
@@ -807,6 +868,7 @@ async function generateReport(type, data) {
     fraud:      buildFraud,
     bcm:        buildBCM,
     app:        buildAPP,
+    compliance: buildCompliance,
   };
 
   const children = [
