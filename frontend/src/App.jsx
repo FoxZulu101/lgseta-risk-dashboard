@@ -2808,7 +2808,6 @@ const MODULE_OPTIONS = [
   { value:"app",          label:"APP Alignment",      component: APPAlignmentAdmin },
   { value:"bcm",          label:"BCM Resilience",     component: BCMResilienceAdmin },
   { value:"compliance",   label:"Compliance",         component: ComplianceAdmin },
-  { value:"compliance",   label:"Compliance",         component: ComplianceAdmin },
 ];
 
 function UploadSection() {
@@ -3535,7 +3534,6 @@ const NAV = [
   { id:"app",           label:"APP Alignment",        icon:"📋" },
   { id:"predictive",    label:"Predictive Intel",     icon:"🔮" },
   { id:"compliance",    label:"Compliance",           icon:"⚖" },
-  { id:"compliance",    label:"Compliance",           icon:"⚖" },
   { id:"admin",         label:"Admin Panel",          icon:"⚙" },
 ];
 
@@ -3545,6 +3543,7 @@ const MODULES = {
   treatment:TreatmentActions, assurance:CombinedAssurance, bcm:BCMResilience,
   fraud:FraudEthics, departmental:DepartmentalRisks, uifw:UIFWExpenditure,
   thirdparty:ThirdPartyRisk, app:APPAlignment, predictive:PredictiveIntel,
+  compliance:ComplianceModule,
   admin:AdminTab,
 };
 
