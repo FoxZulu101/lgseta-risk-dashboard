@@ -2808,6 +2808,7 @@ const MODULE_OPTIONS = [
   { value:"app",          label:"APP Alignment",      component: APPAlignmentAdmin },
   { value:"bcm",          label:"BCM Resilience",     component: BCMResilienceAdmin },
   { value:"compliance",   label:"Compliance",         component: ComplianceAdmin },
+  { value:"iam",          label:"Identity & Access",    component: IAMAdmin },
   { value:"projects",     label:"Projects & Contracts",component: ProjectsAdmin },
   { value:"declarations", label:"Declarations",         component: DeclarationsAdmin },
 ];
@@ -2931,7 +2932,7 @@ function ReportsTab() {
       audience: "Audit & Risk Committee",
       color:    C.amber,
       icon:     "⚖",
-      sections: ["Executive Summary & KPIs","Top 10 Strategic Risks","Treatment Action Status","UIFW Exposure","Fraud & Ethics Register","BCM Status","Compliance","Project & Contract Risk"],
+      sections: ["Executive Summary & KPIs","Top 10 Strategic Risks","Treatment Action Status","UIFW Exposure","Fraud & Ethics Register","BCM Status","Compliance","Project & Contract Risk","Identity & Access Management"],
       desc:     "Detailed GRC report for the Audit & Risk Committee. Includes fraud, BCM and full UIFW analysis.",
     },
     {
@@ -2940,7 +2941,7 @@ function ReportsTab() {
       audience: "Board of Directors",
       color:    C.purple,
       icon:     "🎯",
-      sections: ["Executive Summary & KPIs","Top 10 Strategic Risks","Treatment Action Status","UIFW Exposure","Fraud & Ethics Register","BCM Status","APP Alignment","Compliance","Project & Contract Risk"],
+      sections: ["Executive Summary & KPIs","Top 10 Strategic Risks","Treatment Action Status","UIFW Exposure","Fraud & Ethics Register","BCM Status","APP Alignment","Compliance","Project & Contract Risk","Identity & Access Management"],
       desc:     "Full GRC overview for the Board. All sections included with APP performance alignment.",
     },
   ];
@@ -4435,6 +4436,537 @@ function DeclarationsAdmin() {
   );
 }
 
+
+// ─── IAM DATA ─────────────────────────────────────────────────────────────────
+const STATIC_IAM = {
+  users: [
+    { id:"USR-001", name:"N. Khumalo", department:"Research / ICT", jobTitle:"ICT Manager", systems:["SAP HR","Financial System","Azure Portal","LMS","AGSA Portal"], accessLevel:"Admin", status:"Active", lastReview:"2026-03-31", nextReview:"2026-09-30", mfaEnabled:true, accountCreated:"2023-01-15", riskRating:"High", notes:"CIO delegate — full system access required" },
+    { id:"USR-002", name:"T. Mokoena", department:"ETQA", jobTitle:"Senior Manager: ETQA", systems:["LMS","SAQA Interface","Grants System"], accessLevel:"Standard", status:"Active", lastReview:"2026-03-31", nextReview:"2026-09-30", mfaEnabled:true, accountCreated:"2022-06-01", riskRating:"Medium", notes:"" },
+    { id:"USR-003", name:"G. Mahlangu", department:"Grants", jobTitle:"Grants Manager", systems:["Grants System","Financial System","Banking Portal"], accessLevel:"Elevated", status:"Active", lastReview:"2026-03-31", nextReview:"2026-09-30", mfaEnabled:true, accountCreated:"2021-03-10", riskRating:"High", notes:"Dual authorisation required for payments above R500k" },
+    { id:"USR-004", name:"P. van der Merwe", department:"Facilities", jobTitle:"Facilities Manager", systems:["Facilities System","Email"], accessLevel:"Standard", status:"Active", lastReview:"2026-03-31", nextReview:"2026-09-30", mfaEnabled:false, accountCreated:"2020-08-20", riskRating:"Low", notes:"MFA not yet enrolled — action required" },
+    { id:"USR-005", name:"T. Mahlangu", department:"SCM", jobTitle:"SCM Manager", systems:["SCM System","Supplier Portal","Financial System"], accessLevel:"Elevated", status:"Active", lastReview:"2026-03-31", nextReview:"2026-09-30", mfaEnabled:true, accountCreated:"2019-11-05", riskRating:"High", notes:"Segregation of duties review pending" },
+    { id:"USR-006", name:"S. Nkosi", department:"HR", jobTitle:"HR Manager", systems:["SAP HR","Payroll System","Recruitment Portal"], accessLevel:"Elevated", status:"Active", lastReview:"2026-01-31", nextReview:"2026-07-31", mfaEnabled:true, accountCreated:"2021-07-15", riskRating:"Medium", notes:"" },
+    { id:"USR-007", name:"L. Dlamini", department:"Learning Programmes", jobTitle:"Manager: Learning Programmes", systems:["LMS","Grants System","Email"], accessLevel:"Standard", status:"Active", lastReview:"2026-03-31", nextReview:"2026-09-30", mfaEnabled:true, accountCreated:"2022-02-28", riskRating:"Low", notes:"" },
+    { id:"USR-008", name:"Former Employee", department:"Finance", jobTitle:"Finance Officer", systems:["Financial System","SAP HR"], accessLevel:"Standard", status:"Suspended", lastReview:"2026-05-01", nextReview:"2026-06-01", mfaEnabled:false, accountCreated:"2020-01-10", riskRating:"Critical", notes:"URGENT: Account not fully revoked — termination date 2026-04-30" },
+    { id:"USR-009", name:"M. Sithole", department:"Finance", jobTitle:"Senior Finance Officer", systems:["Financial System","Banking Portal","SAP HR"], accessLevel:"Elevated", status:"Active", lastReview:"2026-01-31", nextReview:"2026-07-31", mfaEnabled:true, accountCreated:"2023-04-01", riskRating:"High", notes:"Overdue for access review" },
+    { id:"USR-010", name:"Service Account: LMS-SYNC", department:"ICT", jobTitle:"System Service Account", systems:["LMS","SAQA Interface"], accessLevel:"Service", status:"Active", lastReview:"2026-03-31", nextReview:"2026-09-30", mfaEnabled:false, accountCreated:"2022-01-01", riskRating:"Medium", notes:"Non-human account — password rotation overdue" },
+  ],
+  privileged: [
+    { id:"PAM-001", account:"sa_lgseta_admin", type:"Local Admin", system:"Windows Servers", owner:"N. Khumalo", department:"ICT", justification:"Server administration and patch management", lastPasswordChange:"2026-02-15", passwordExpiry:"2026-08-15", lastUsed:"2026-06-10", sessionRecorded:true, checkedOut:false, status:"Active", riskRating:"Critical", notes:"Password vault managed" },
+    { id:"PAM-002", account:"azure_global_admin", type:"Cloud Admin", system:"Azure Portal", owner:"N. Khumalo", department:"ICT", justification:"Cloud infrastructure management", lastPasswordChange:"2026-01-10", passwordExpiry:"2026-07-10", lastUsed:"2026-06-12", sessionRecorded:true, checkedOut:false, status:"Active", riskRating:"Critical", notes:"MFA enforced; conditional access policy active" },
+    { id:"PAM-003", account:"sap_basis_admin", type:"Application Admin", system:"SAP HR", owner:"N. Khumalo", department:"ICT", justification:"SAP basis administration and user management", lastPasswordChange:"2026-03-01", passwordExpiry:"2026-09-01", lastUsed:"2026-05-28", sessionRecorded:true, checkedOut:false, status:"Active", riskRating:"Critical", notes:"Shared account — individual accountability risk" },
+    { id:"PAM-004", account:"fin_sys_super", type:"Application Admin", system:"Financial System", owner:"T. Mokoena", department:"Finance", justification:"Financial system configuration and year-end processing", lastPasswordChange:"2025-12-01", passwordExpiry:"2026-06-01", lastUsed:"2026-04-15", sessionRecorded:false, checkedOut:false, status:"Expired", riskRating:"Critical", notes:"PASSWORD EXPIRED — immediate rotation required" },
+    { id:"PAM-005", account:"lms_admin", type:"Application Admin", system:"LMS Platform", owner:"T. Mokoena", department:"ETQA", justification:"LMS configuration, user management and reporting", lastPasswordChange:"2026-04-01", passwordExpiry:"2026-10-01", lastUsed:"2026-06-01", sessionRecorded:true, checkedOut:false, status:"Active", riskRating:"High", notes:"" },
+    { id:"PAM-006", account:"network_admin", type:"Network Admin", system:"LAN/WAN Infrastructure", owner:"N. Khumalo", department:"ICT", justification:"Network configuration and monitoring", lastPasswordChange:"2026-03-15", passwordExpiry:"2026-09-15", lastUsed:"2026-06-08", sessionRecorded:true, checkedOut:false, status:"Active", riskRating:"Critical", notes:"" },
+  ],
+  reviews: [
+    { id:"REV-001", reviewer:"CIO", reviewCycle:"Semi-Annual", system:"All Systems", scope:"Full user access review", startDate:"2026-04-01", dueDate:"2026-04-30", status:"Overdue", usersReviewed:47, usersTotal:68, actionsRaised:8, actionsResolved:3, findings:"5 accounts with excessive access; 2 terminated user accounts active", certifiedBy:"", certifiedDate:"", notes:"Extended deadline — CFO accounts still pending" },
+    { id:"REV-002", reviewer:"Finance Manager", reviewCycle:"Quarterly", system:"Financial System", scope:"Financial system access certification", startDate:"2026-04-01", dueDate:"2026-04-15", status:"Complete", usersReviewed:12, usersTotal:12, actionsRaised:2, actionsResolved:2, findings:"1 access level downgrade; 1 user removed", certifiedBy:"CFO", certifiedDate:"2026-04-14", notes:"Clean certification — no critical findings" },
+    { id:"REV-003", reviewer:"HR Executive", reviewCycle:"Semi-Annual", system:"SAP HR / Payroll", scope:"HR and payroll system access review", startDate:"2026-05-01", dueDate:"2026-05-31", status:"In Progress", usersReviewed:8, usersTotal:15, actionsRaised:1, actionsResolved:0, findings:"1 terminated employee account still active", certifiedBy:"", certifiedDate:"", notes:"Urgent: USR-008 account must be revoked immediately" },
+    { id:"REV-004", reviewer:"SCM Manager", reviewCycle:"Quarterly", system:"SCM / Supplier Portal", scope:"Procurement system access review", startDate:"2026-06-01", dueDate:"2026-06-30", status:"In Progress", usersReviewed:4, usersTotal:8, actionsRaised:3, actionsResolved:1, findings:"Segregation of duties violations in SCM approval workflow", certifiedBy:"", certifiedDate:"", notes:"CFO to review and certify" },
+    { id:"REV-005", reviewer:"CIO", reviewCycle:"Annual", system:"Azure / Cloud", scope:"Privileged cloud access review", startDate:"2026-03-01", dueDate:"2026-03-31", status:"Overdue", usersReviewed:3, usersTotal:6, actionsRaised:4, actionsResolved:2, findings:"2 orphaned service accounts; 1 expired PAM credential", certifiedBy:"", certifiedDate:"", notes:"PAM-004 critical finding unresolved" },
+  ],
+};
+
+// ─── IAM MODULE VIEW ──────────────────────────────────────────────────────────
+function IAMModule() {
+  const [sub, setSub]       = useState("dashboard");
+  const [search, setSearch] = useState("");
+  const [data, setData]     = useState(STATIC_IAM);
+
+  useEffect(()=>{
+    fetch(`${API}/api/dashboard`).then(r=>r.json()).then(d=>{
+      if (d.iam) setData({ ...STATIC_IAM, ...d.iam });
+    }).catch(()=>{});
+  },[]);
+
+  const users     = data.users     || [];
+  const privileged = data.privileged || [];
+  const reviews   = data.reviews   || [];
+
+  const activeUsers    = users.filter(u=>u.status==="Active").length;
+  const suspendedUsers = users.filter(u=>u.status==="Suspended").length;
+  const criticalUsers  = users.filter(u=>u.riskRating==="Critical"||u.riskRating==="High").length;
+  const noMFA          = users.filter(u=>!u.mfaEnabled&&u.status==="Active").length;
+  const expiredPAM     = privileged.filter(p=>p.status==="Expired").length;
+  const overdueReviews = reviews.filter(r=>r.status==="Overdue").length;
+
+  const sc = s => {
+    const v=(s||"").toLowerCase();
+    if (v==="active"||v==="complete") return C.green;
+    if (v==="suspended"||v==="expired"||v==="overdue"||v==="critical") return C.red;
+    if (v==="in progress"||v==="elevated") return C.amber;
+    return C.muted;
+  };
+
+  const filtered = arr => arr.filter(r=>JSON.stringify(r).toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:"0.5rem" }}>
+        <div>
+          <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Identity & Access Management</h1>
+          <p style={{ color:C.muted, fontSize:"0.82rem", margin:"2px 0 0" }}>User Access · Privileged Accounts · Access Reviews — Q2 2026/27</p>
+        </div>
+        <input placeholder="Search IAM…" value={search} onChange={e=>setSearch(e.target.value)} style={{ ...inputSt, width:220 }}/>
+      </div>
+
+      {/* KPI strip */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:"0.75rem" }}>
+        {[
+          ["Total Users",       users.length,    C.blue  ],
+          ["Active",            activeUsers,      C.green ],
+          ["Suspended/Inactive",suspendedUsers,   suspendedUsers>0?C.red:C.green ],
+          ["No MFA (Active)",   noMFA,            noMFA>0?C.red:C.green ],
+          ["PAM Expired",       expiredPAM,       expiredPAM>0?C.red:C.green ],
+          ["Overdue Reviews",   overdueReviews,   overdueReviews>0?C.red:C.green ],
+        ].map(([l,v,c])=>(
+          <div key={l} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8, padding:"0.75rem 1rem", borderTop:`3px solid ${c}` }}>
+            <div style={{ color:C.muted, fontSize:"0.65rem", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.06em" }}>{l}</div>
+            <div style={{ color:c, fontSize:"1.5rem", fontWeight:800 }}>{v}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Alert banners for critical items */}
+      {(suspendedUsers>0||expiredPAM>0||noMFA>0) && (
+        <div style={{ display:"flex", flexDirection:"column", gap:"0.5rem" }}>
+          {users.filter(u=>u.status==="Suspended"&&u.riskRating==="Critical").map(u=>(
+            <div key={u.id} style={{ background:"rgba(248,81,73,0.1)", border:`1px solid ${C.red}`, borderRadius:8, padding:"0.75rem 1rem", fontSize:"0.82rem", color:C.red, fontWeight:600 }}>
+              🚨 <strong>{u.id} — {u.name}</strong>: {u.notes}
+            </div>
+          ))}
+          {privileged.filter(p=>p.status==="Expired").map(p=>(
+            <div key={p.id} style={{ background:"rgba(248,81,73,0.1)", border:`1px solid ${C.red}`, borderRadius:8, padding:"0.75rem 1rem", fontSize:"0.82rem", color:C.red, fontWeight:600 }}>
+              🔐 <strong>{p.id} — {p.account}</strong>: {p.notes}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Sub tabs */}
+      <div style={{ display:"flex", borderBottom:`1px solid ${C.border}` }}>
+        {[
+          ["users","👤 User Access Register"],
+          ["privileged","🔐 Privileged Access (PAM)"],
+          ["reviews","📋 Access Reviews"],
+        ].map(([id,label])=>(
+          <button key={id} onClick={()=>setSub(id)}
+            style={{ padding:"0.5rem 1.1rem", border:"none", background:"transparent", cursor:"pointer",
+              fontSize:"0.82rem", fontWeight:600, color:sub===id?C.text:C.muted,
+              borderBottom:sub===id?`2px solid ${C.blue}`:"2px solid transparent", whiteSpace:"nowrap" }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* USER ACCESS REGISTER */}
+      {sub==="users" && (
+        <Card>
+          <Table
+            headers={["ID","Name","Department","Systems","Access Level","MFA","Risk","Status","Next Review"]}
+            rows={filtered(users).map(u=>[
+              <span style={{ color:C.blue, fontWeight:700, fontSize:"0.75rem" }}>{u.id}</span>,
+              <div><div style={{ fontWeight:600, fontSize:"0.82rem" }}>{u.name}</div><div style={{ color:C.muted, fontSize:"0.7rem" }}>{u.jobTitle}</div></div>,
+              u.department,
+              <div style={{ display:"flex", flexWrap:"wrap", gap:3 }}>
+                {(u.systems||[]).slice(0,3).map(s=>(
+                  <span key={s} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:3, padding:"1px 5px", fontSize:"0.65rem", color:C.muted }}>{s}</span>
+                ))}
+                {u.systems?.length>3 && <span style={{ fontSize:"0.65rem", color:C.muted }}>+{u.systems.length-3}</span>}
+              </div>,
+              <Badge label={u.accessLevel} color={u.accessLevel==="Admin"||u.accessLevel==="Service"?"red":u.accessLevel==="Elevated"?"amber":"green"}/>,
+              <span style={{ color:u.mfaEnabled?C.green:C.red, fontWeight:700, fontSize:"0.8rem" }}>{u.mfaEnabled?"✓ On":"✗ Off"}</span>,
+              <Badge label={u.riskRating} color={u.riskRating==="Critical"||u.riskRating==="High"?"red":u.riskRating==="Medium"?"amber":"green"}/>,
+              <span style={{ color:sc(u.status), fontWeight:700, fontSize:"0.8rem" }}>{u.status}</span>,
+              <span style={{ color:new Date(u.nextReview)<new Date()?C.red:C.muted, fontSize:"0.75rem" }}>{u.nextReview}</span>,
+            ])}
+          />
+        </Card>
+      )}
+
+      {/* PRIVILEGED ACCESS */}
+      {sub==="privileged" && (
+        <Card>
+          <Table
+            headers={["ID","Account","Type","System","Owner","Last Used","Expiry","Recorded","Status"]}
+            rows={filtered(privileged).map(p=>[
+              <span style={{ color:C.red, fontWeight:700, fontSize:"0.75rem" }}>{p.id}</span>,
+              <span style={{ fontFamily:"monospace", fontSize:"0.78rem", color:C.amber }}>{p.account}</span>,
+              <Badge label={p.type} color="blue"/>,
+              p.system,
+              p.owner,
+              <span style={{ color:C.muted, fontSize:"0.75rem" }}>{p.lastUsed}</span>,
+              <span style={{ color:new Date(p.passwordExpiry)<new Date()?C.red:C.amber, fontWeight:700, fontSize:"0.75rem" }}>{p.passwordExpiry}</span>,
+              <span style={{ color:p.sessionRecorded?C.green:C.red, fontWeight:700, fontSize:"0.78rem" }}>{p.sessionRecorded?"✓":"✗"}</span>,
+              <span style={{ color:sc(p.status), fontWeight:700, fontSize:"0.8rem" }}>{p.status}</span>,
+            ])}
+          />
+        </Card>
+      )}
+
+      {/* ACCESS REVIEWS */}
+      {sub==="reviews" && (
+        <Card>
+          <Table
+            headers={["ID","System","Reviewer","Cycle","Due Date","Progress","Actions","Status","Certified By"]}
+            rows={filtered(reviews).map(r=>{
+              const pct = Math.round((r.usersReviewed/Math.max(r.usersTotal,1))*100);
+              const isOverdue = r.status==="Overdue"||new Date(r.dueDate)<new Date();
+              return [
+                <span style={{ color:C.blue, fontWeight:700, fontSize:"0.75rem" }}>{r.id}</span>,
+                <div><div style={{ fontWeight:600, fontSize:"0.82rem" }}>{r.system}</div><div style={{ color:C.muted, fontSize:"0.7rem" }}>{r.scope}</div></div>,
+                r.reviewer,
+                <span style={{ color:C.muted, fontSize:"0.75rem" }}>{r.reviewCycle}</span>,
+                <span style={{ color:isOverdue?C.red:C.text, fontWeight:isOverdue?700:400, fontSize:"0.78rem" }}>{r.dueDate}{isOverdue&&r.status!=="Complete"?" ⚠":""}</span>,
+                <div style={{ minWidth:100 }}>
+                  <div style={{ fontSize:"0.7rem", color:C.muted, marginBottom:2 }}>{r.usersReviewed}/{r.usersTotal} users</div>
+                  <ProgressBar value={pct} color={pct===100?C.green:pct>50?C.amber:C.red}/>
+                </div>,
+                <span style={{ color:r.actionsRaised>r.actionsResolved?C.red:C.green, fontWeight:700, fontSize:"0.78rem" }}>{r.actionsResolved}/{r.actionsRaised} resolved</span>,
+                <span style={{ color:sc(r.status), fontWeight:700, fontSize:"0.8rem" }}>{r.status}</span>,
+                <span style={{ color:r.certifiedBy?C.green:C.muted, fontSize:"0.75rem" }}>{r.certifiedBy||"Pending"}</span>,
+              ];
+            })}
+          />
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ─── IAM ADMIN ────────────────────────────────────────────────────────────────
+function IAMAdmin() {
+  const [view, setView]       = useState("users");
+  const [items, setItems]     = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving]   = useState(false);
+  const [toast, setToast]     = useState(null);
+  const [mode, setMode]       = useState(null);
+  const [confirmDel, setConfirmDel] = useState(null);
+
+  function showToast(msg, type="ok") { setToast({ msg, type }); setTimeout(()=>setToast(null), 3500); }
+
+  const DEFAULTS = { users:STATIC_IAM.users, privileged:STATIC_IAM.privileged, reviews:STATIC_IAM.reviews };
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res  = await fetch(`${API}/api/dashboard`);
+      const data = await res.json();
+      setItems((data.iam?.[view]) || DEFAULTS[view]);
+    } catch { setItems(DEFAULTS[view]); }
+    finally { setLoading(false); }
+  }, [view]);
+
+  useEffect(()=>{ load(); }, [load]);
+
+  async function saveToServer(updatedItems) {
+    const res  = await fetch(`${API}/api/dashboard`);
+    const data = await res.json();
+    if (!data.iam) data.iam = {};
+    data.iam[view] = updatedItems;
+    const saveRes = await fetch(`${API}/api/dashboard`, { method:"PUT", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(data) });
+    if (!saveRes.ok) throw new Error("Failed to save");
+  }
+
+  async function seedDemoData() {
+    setSaving(true);
+    try {
+      const res  = await fetch(`${API}/api/dashboard`);
+      const data = await res.json();
+      data.iam = { users:STATIC_IAM.users, privileged:STATIC_IAM.privileged, reviews:STATIC_IAM.reviews };
+      const saveRes = await fetch(`${API}/api/dashboard`, { method:"PUT", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(data) });
+      if (!saveRes.ok) throw new Error("Failed to seed");
+      showToast(`✅ Seeded ${STATIC_IAM.users.length} users, ${STATIC_IAM.privileged.length} PAM accounts, ${STATIC_IAM.reviews.length} reviews.`);
+      load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  async function handleSave(f) {
+    setSaving(true);
+    try {
+      const isEdit = mode?.id;
+      const updated = isEdit
+        ? items.map(i => i.id===f.id ? { ...i, ...f, updatedAt:new Date().toISOString() } : i)
+        : [...items, { ...f, createdAt:new Date().toISOString() }];
+      await saveToServer(updated);
+      showToast(isEdit ? `✅ ${f.id} updated.` : `✅ ${f.id} added.`);
+      setMode(null); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  async function handleDelete(id) {
+    setSaving(true);
+    try {
+      await saveToServer(items.filter(i=>i.id!==id));
+      showToast(`🗑 ${id} deleted.`); setConfirmDel(null); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  function UserForm({ initial={}, onSave, onCancel, saving }) {
+    const EMPTY = { id:"", name:"", department:"", jobTitle:"", systems:"", accessLevel:"Standard", status:"Active", lastReview:"", nextReview:"", mfaEnabled:false, accountCreated:"", riskRating:"Medium", notes:"" };
+    const [f, setF] = useState({ ...EMPTY, ...initial, systems:Array.isArray(initial.systems)?initial.systems.join(", "):initial.systems||"" });
+    const set = k => v => setF(p=>({ ...p, [k]:v }));
+    return (
+      <div style={{ background:C.surface, border:`1px solid ${C.blue}`, borderRadius:10, padding:"1.5rem", marginBottom:"1.5rem" }}>
+        <h3 style={{ color:C.blue, fontWeight:700, margin:"0 0 1.25rem" }}>{initial.id?"Edit User":"Add User"}</h3>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 2fr", gap:"1rem" }}>
+          <FInput label="User ID" value={f.id} onChange={set("id")} required placeholder="USR-011"/>
+          <FInput label="Full Name" value={f.name} onChange={set("name")} required placeholder="e.g. J. Smith"/>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
+          <FInput label="Department" value={f.department} onChange={set("department")} placeholder="e.g. Finance"/>
+          <FInput label="Job Title" value={f.jobTitle} onChange={set("jobTitle")} placeholder="e.g. Finance Officer"/>
+        </div>
+        <FInput label="Systems Access (comma-separated)" value={f.systems} onChange={set("systems")} placeholder="e.g. Financial System, SAP HR, Email"/>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:"1rem" }}>
+          <FSelect label="Access Level" value={f.accessLevel} onChange={set("accessLevel")} options={["Standard","Elevated","Admin","Service","Read-Only"]}/>
+          <FSelect label="Status" value={f.status} onChange={set("status")} options={["Active","Suspended","Inactive","Locked"]}/>
+          <FSelect label="Risk Rating" value={f.riskRating} onChange={set("riskRating")} options={["Critical","High","Medium","Low"]}/>
+          <div style={{ marginBottom:"0.85rem" }}>
+            <label style={labelSt}>MFA Enabled</label>
+            <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.4rem" }}>
+              {["Yes","No"].map(opt=>(
+                <label key={opt} style={{ display:"flex", alignItems:"center", gap:"0.4rem", cursor:"pointer", color:C.muted, fontSize:"0.85rem" }}>
+                  <input type="radio" name="mfa" value={opt} checked={(f.mfaEnabled?"Yes":"No")===opt} onChange={()=>setF(p=>({ ...p, mfaEnabled:opt==="Yes" }))}/>
+                  {opt}
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
+          <FInput label="Account Created" value={f.accountCreated} onChange={set("accountCreated")} type="date"/>
+          <FInput label="Last Review" value={f.lastReview} onChange={set("lastReview")} type="date"/>
+          <FInput label="Next Review" value={f.nextReview} onChange={set("nextReview")} type="date"/>
+        </div>
+        <FTextarea label="Notes" value={f.notes} onChange={set("notes")} rows={2} placeholder="Access justification or risk notes…"/>
+        <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.5rem" }}>
+          <button onClick={()=>onSave({ ...f, systems:f.systems.split(",").map(s=>s.trim()).filter(Boolean) })} disabled={saving}
+            style={{ padding:"0.65rem 1.75rem", background:C.blue, color:"#fff", border:"none", borderRadius:8, fontWeight:700, cursor:"pointer", opacity:saving?0.6:1 }}>
+            {saving?"Saving…":initial.id?"Update":"Add User"}
+          </button>
+          <button onClick={onCancel} style={{ padding:"0.65rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer" }}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
+
+  function PAMForm({ initial={}, onSave, onCancel, saving }) {
+    const EMPTY = { id:"", account:"", type:"Local Admin", system:"", owner:"", department:"", justification:"", lastPasswordChange:"", passwordExpiry:"", lastUsed:"", sessionRecorded:false, checkedOut:false, status:"Active", riskRating:"Critical", notes:"" };
+    const [f, setF] = useState({ ...EMPTY, ...initial });
+    const set = k => v => setF(p=>({ ...p, [k]:v }));
+    return (
+      <div style={{ background:C.surface, border:`1px solid ${C.red}`, borderRadius:10, padding:"1.5rem", marginBottom:"1.5rem" }}>
+        <h3 style={{ color:C.red, fontWeight:700, margin:"0 0 1.25rem" }}>{initial.id?"Edit PAM Account":"Add Privileged Account"}</h3>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 2fr", gap:"1rem" }}>
+          <FInput label="PAM ID" value={f.id} onChange={set("id")} required placeholder="PAM-007"/>
+          <FInput label="Account Name" value={f.account} onChange={set("account")} required placeholder="e.g. sa_backup_admin"/>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
+          <FSelect label="Account Type" value={f.type} onChange={set("type")} options={["Local Admin","Domain Admin","Cloud Admin","Application Admin","Network Admin","Database Admin","Service Account"]}/>
+          <FInput label="System" value={f.system} onChange={set("system")} placeholder="e.g. Windows Servers"/>
+          <FSelect label="Risk Rating" value={f.riskRating} onChange={set("riskRating")} options={["Critical","High","Medium"]}/>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
+          <FInput label="Account Owner" value={f.owner} onChange={set("owner")} placeholder="e.g. N. Khumalo"/>
+          <FInput label="Department" value={f.department} onChange={set("department")} placeholder="e.g. ICT"/>
+        </div>
+        <FTextarea label="Business Justification" value={f.justification} onChange={set("justification")} rows={2} placeholder="Why is this privileged account required?"/>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
+          <FInput label="Last Password Change" value={f.lastPasswordChange} onChange={set("lastPasswordChange")} type="date"/>
+          <FInput label="Password Expiry" value={f.passwordExpiry} onChange={set("passwordExpiry")} type="date"/>
+          <FInput label="Last Used" value={f.lastUsed} onChange={set("lastUsed")} type="date"/>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
+          <FSelect label="Status" value={f.status} onChange={set("status")} options={["Active","Expired","Suspended","Decommissioned"]}/>
+          <div style={{ marginBottom:"0.85rem" }}>
+            <label style={labelSt}>Session Recorded</label>
+            <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.4rem" }}>
+              {["Yes","No"].map(opt=>(
+                <label key={opt} style={{ display:"flex", alignItems:"center", gap:"0.4rem", cursor:"pointer", color:C.muted, fontSize:"0.85rem" }}>
+                  <input type="radio" name="rec" value={opt} checked={(f.sessionRecorded?"Yes":"No")===opt} onChange={()=>setF(p=>({ ...p, sessionRecorded:opt==="Yes" }))}/>
+                  {opt}
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+        <FTextarea label="Notes / Risk Notes" value={f.notes} onChange={set("notes")} rows={2} placeholder="Security notes or action required…"/>
+        <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.5rem" }}>
+          <button onClick={()=>onSave(f)} disabled={saving}
+            style={{ padding:"0.65rem 1.75rem", background:C.red, color:"#fff", border:"none", borderRadius:8, fontWeight:700, cursor:"pointer", opacity:saving?0.6:1 }}>
+            {saving?"Saving…":initial.id?"Update":"Add PAM Account"}
+          </button>
+          <button onClick={onCancel} style={{ padding:"0.65rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer" }}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
+
+  function ReviewForm({ initial={}, onSave, onCancel, saving }) {
+    const EMPTY = { id:"", reviewer:"", reviewCycle:"Quarterly", system:"", scope:"", startDate:"", dueDate:"", status:"In Progress", usersReviewed:"0", usersTotal:"0", actionsRaised:"0", actionsResolved:"0", findings:"", certifiedBy:"", certifiedDate:"", notes:"" };
+    const [f, setF] = useState({ ...EMPTY, ...initial });
+    const set = k => v => setF(p=>({ ...p, [k]:v }));
+    return (
+      <div style={{ background:C.surface, border:`1px solid ${C.green}`, borderRadius:10, padding:"1.5rem", marginBottom:"1.5rem" }}>
+        <h3 style={{ color:C.green, fontWeight:700, margin:"0 0 1.25rem" }}>{initial.id?"Edit Review":"Add Access Review"}</h3>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 2fr", gap:"1rem" }}>
+          <FInput label="Review ID" value={f.id} onChange={set("id")} required placeholder="REV-006"/>
+          <FInput label="System / Scope" value={f.system} onChange={set("system")} required placeholder="e.g. Financial System"/>
+        </div>
+        <FInput label="Review Scope Description" value={f.scope} onChange={set("scope")} placeholder="e.g. Full user access certification"/>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
+          <FInput label="Reviewer" value={f.reviewer} onChange={set("reviewer")} placeholder="e.g. CIO"/>
+          <FSelect label="Review Cycle" value={f.reviewCycle} onChange={set("reviewCycle")} options={["Monthly","Quarterly","Semi-Annual","Annual","Ad Hoc"]}/>
+          <FSelect label="Status" value={f.status} onChange={set("status")} options={["Not Started","In Progress","Overdue","Complete"]}/>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
+          <FInput label="Start Date" value={f.startDate} onChange={set("startDate")} type="date"/>
+          <FInput label="Due Date" value={f.dueDate} onChange={set("dueDate")} type="date"/>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:"1rem" }}>
+          <FInput label="Users Reviewed" value={f.usersReviewed} onChange={set("usersReviewed")} type="number" placeholder="0"/>
+          <FInput label="Total Users" value={f.usersTotal} onChange={set("usersTotal")} type="number" placeholder="0"/>
+          <FInput label="Actions Raised" value={f.actionsRaised} onChange={set("actionsRaised")} type="number" placeholder="0"/>
+          <FInput label="Actions Resolved" value={f.actionsResolved} onChange={set("actionsResolved")} type="number" placeholder="0"/>
+        </div>
+        <FTextarea label="Findings" value={f.findings} onChange={set("findings")} rows={2} placeholder="Key findings from the review…"/>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
+          <FInput label="Certified By" value={f.certifiedBy} onChange={set("certifiedBy")} placeholder="e.g. CFO"/>
+          <FInput label="Certification Date" value={f.certifiedDate} onChange={set("certifiedDate")} type="date"/>
+        </div>
+        <FTextarea label="Notes" value={f.notes} onChange={set("notes")} rows={2} placeholder="Additional notes…"/>
+        <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.5rem" }}>
+          <button onClick={()=>onSave(f)} disabled={saving}
+            style={{ padding:"0.65rem 1.75rem", background:C.green, color:C.bg, border:"none", borderRadius:8, fontWeight:700, cursor:"pointer", opacity:saving?0.6:1 }}>
+            {saving?"Saving…":initial.id?"Update":"Add Review"}
+          </button>
+          <button onClick={onCancel} style={{ padding:"0.65rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer" }}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
+
+  const FormComponent = view==="users" ? UserForm : view==="privileged" ? PAMForm : ReviewForm;
+  const addColor = view==="users" ? C.blue : view==="privileged" ? C.red : C.green;
+  const addLabel = view==="users" ? "Add User" : view==="privileged" ? "Add PAM Account" : "Add Review";
+
+  return (
+    <div>
+      {toast && <div style={{ position:"fixed", top:16, right:16, zIndex:1000, padding:"0.75rem 1.25rem", borderRadius:8, background:toast.type==="ok"?"rgba(63,185,80,0.15)":"rgba(248,81,73,0.15)", border:`1px solid ${toast.type==="ok"?C.green:C.red}`, color:toast.type==="ok"?C.green:C.red, fontWeight:600, fontSize:"0.88rem" }}>{toast.msg}</div>}
+      {confirmDel && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", zIndex:999, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div style={{ background:C.card, border:`1px solid ${C.red}`, borderRadius:12, padding:"2rem", maxWidth:400, width:"90%" }}>
+            <h3 style={{ color:C.red, margin:"0 0 0.75rem" }}>Delete Item</h3>
+            <p style={{ color:C.text, marginBottom:"1.5rem" }}>Delete <strong>{confirmDel}</strong>?</p>
+            <div style={{ display:"flex", gap:"0.75rem" }}>
+              <button onClick={()=>handleDelete(confirmDel)} disabled={saving} style={{ padding:"0.6rem 1.5rem", background:C.red, color:"#fff", border:"none", borderRadius:7, fontWeight:700, cursor:"pointer" }}>{saving?"Deleting…":"Yes, Delete"}</button>
+              <button onClick={()=>setConfirmDel(null)} style={{ padding:"0.6rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:7, cursor:"pointer" }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ display:"flex", borderBottom:`1px solid ${C.border}`, marginBottom:"1.25rem" }}>
+        {[["users","👤 Users"],["privileged","🔐 PAM"],["reviews","📋 Reviews"]].map(([k,l])=>(
+          <button key={k} onClick={()=>{ setView(k); setMode(null); }}
+            style={{ padding:"0.5rem 1.1rem", border:"none", background:"transparent", cursor:"pointer",
+              fontSize:"0.82rem", fontWeight:600, color:view===k?C.text:C.muted,
+              borderBottom:view===k?`2px solid ${C.blue}`:"2px solid transparent" }}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.25rem", flexWrap:"wrap", gap:"0.75rem" }}>
+        <div>
+          <h3 style={{ color:C.text, margin:"0 0 0.2rem", fontWeight:700 }}>
+            {view==="users"?"User Access Register":view==="privileged"?"Privileged Access (PAM)":"Access Reviews"} — Edit Mode
+          </h3>
+          <p style={{ color:C.muted, fontSize:"0.82rem", margin:0 }}>{items.length} items</p>
+        </div>
+        <div style={{ display:"flex", gap:"0.75rem" }}>
+          <button onClick={()=>setMode("add")} disabled={!!mode} style={{ padding:"0.6rem 1.25rem", background:addColor, color:addColor===C.red||addColor===C.blue?"#fff":C.bg, border:"none", borderRadius:8, fontWeight:700, fontSize:"0.88rem", cursor:"pointer", opacity:mode?0.5:1 }}>+ {addLabel}</button>
+          <button onClick={seedDemoData} disabled={saving||!!mode} style={{ padding:"0.6rem 1.1rem", background:"transparent", color:C.green, border:`1px solid ${C.green}`, borderRadius:8, fontWeight:700, fontSize:"0.88rem", cursor:"pointer", opacity:(saving||mode)?0.5:1 }}>🌱 Seed Demo Data</button>
+          <button onClick={load} style={{ padding:"0.6rem 0.9rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer", fontSize:"0.88rem" }}>↻ Refresh</button>
+        </div>
+      </div>
+
+      {mode==="add"         && <FormComponent onSave={handleSave} onCancel={()=>setMode(null)} saving={saving} />}
+      {mode && mode!=="add" && <FormComponent initial={mode} onSave={handleSave} onCancel={()=>setMode(null)} saving={saving} />}
+
+      {loading ? <div style={{ textAlign:"center", padding:"3rem", color:C.muted }}>Loading…</div> : (
+        <Card>
+          {view==="users" && (
+            <Table
+              headers={["ID","Name","Department","Access Level","MFA","Risk","Status","Actions"]}
+              rows={items.map(u=>[
+                <span style={{ color:C.blue, fontWeight:700, fontSize:"0.75rem" }}>{u.id}</span>,
+                <span style={{ fontWeight:600, fontSize:"0.82rem" }}>{u.name}</span>,
+                u.department,
+                <Badge label={u.accessLevel} color={u.accessLevel==="Admin"||u.accessLevel==="Service"?"red":u.accessLevel==="Elevated"?"amber":"green"}/>,
+                <span style={{ color:u.mfaEnabled?C.green:C.red, fontWeight:700 }}>{u.mfaEnabled?"✓":"✗"}</span>,
+                <Badge label={u.riskRating} color={u.riskRating==="Critical"||u.riskRating==="High"?"red":u.riskRating==="Medium"?"amber":"green"}/>,
+                <span style={{ fontWeight:700, fontSize:"0.8rem" }}>{u.status}</span>,
+                <div style={{ display:"flex", gap:"0.5rem" }}>
+                  <button onClick={()=>setMode({ ...u })} disabled={!!mode} style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.blue, border:`1px solid ${C.blue}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Edit</button>
+                  <button onClick={()=>setConfirmDel(u.id)} disabled={!!mode} style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.red, border:`1px solid ${C.red}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Delete</button>
+                </div>,
+              ])}
+            />
+          )}
+          {view==="privileged" && (
+            <Table
+              headers={["ID","Account","Type","System","Owner","Expiry","Recorded","Status","Actions"]}
+              rows={items.map(p=>[
+                <span style={{ color:C.red, fontWeight:700, fontSize:"0.75rem" }}>{p.id}</span>,
+                <span style={{ fontFamily:"monospace", fontSize:"0.78rem", color:C.amber }}>{p.account}</span>,
+                <Badge label={p.type} color="blue"/>,
+                p.system,
+                p.owner,
+                <span style={{ color:new Date(p.passwordExpiry)<new Date()?C.red:C.amber, fontWeight:700, fontSize:"0.75rem" }}>{p.passwordExpiry}</span>,
+                <span style={{ color:p.sessionRecorded?C.green:C.red, fontWeight:700 }}>{p.sessionRecorded?"✓":"✗"}</span>,
+                <span style={{ color:p.status==="Active"?C.green:C.red, fontWeight:700, fontSize:"0.8rem" }}>{p.status}</span>,
+                <div style={{ display:"flex", gap:"0.5rem" }}>
+                  <button onClick={()=>setMode({ ...p })} disabled={!!mode} style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.blue, border:`1px solid ${C.blue}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Edit</button>
+                  <button onClick={()=>setConfirmDel(p.id)} disabled={!!mode} style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.red, border:`1px solid ${C.red}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Delete</button>
+                </div>,
+              ])}
+            />
+          )}
+          {view==="reviews" && (
+            <Table
+              headers={["ID","System","Reviewer","Cycle","Due Date","Progress","Status","Certified","Actions"]}
+              rows={items.map(r=>{
+                const pct = Math.round((Number(r.usersReviewed)/Math.max(Number(r.usersTotal),1))*100);
+                return [
+                  <span style={{ color:C.blue, fontWeight:700, fontSize:"0.75rem" }}>{r.id}</span>,
+                  r.system,
+                  r.reviewer,
+                  r.reviewCycle,
+                  <span style={{ color:r.status==="Overdue"?C.red:C.muted, fontSize:"0.78rem" }}>{r.dueDate}</span>,
+                  <div style={{ minWidth:80 }}><ProgressBar value={pct} color={pct===100?C.green:pct>50?C.amber:C.red}/></div>,
+                  <span style={{ color:r.status==="Complete"?C.green:r.status==="Overdue"?C.red:C.amber, fontWeight:700, fontSize:"0.8rem" }}>{r.status}</span>,
+                  <span style={{ color:r.certifiedBy?C.green:C.muted, fontSize:"0.75rem" }}>{r.certifiedBy||"Pending"}</span>,
+                  <div style={{ display:"flex", gap:"0.5rem" }}>
+                    <button onClick={()=>setMode({ ...r })} disabled={!!mode} style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.blue, border:`1px solid ${C.blue}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Edit</button>
+                    <button onClick={()=>setConfirmDel(r.id)} disabled={!!mode} style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.red, border:`1px solid ${C.red}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Delete</button>
+                  </div>,
+                ];
+              })}
+            />
+          )}
+        </Card>
+      )}
+    </div>
+  );
+}
+
 // ─── SIDEBAR ──────────────────────────────────────────────────────────────────
 const NAV = [
   { id:"executive",     label:"Executive Overview",  icon:"🏛" },
@@ -4453,6 +4985,7 @@ const NAV = [
   { id:"app",           label:"APP Alignment",        icon:"📋" },
   { id:"predictive",    label:"Predictive Intel",     icon:"🔮" },
   { id:"compliance",    label:"Compliance",           icon:"⚖" },
+  { id:"iam",            label:"Identity & Access",     icon:"🔐" },
   { id:"declarations",   label:"Declarations",          icon:"📝" },
   { id:"projects",       label:"Projects & Contracts",  icon:"📁" },
   { id:"admin",         label:"Admin Panel",          icon:"⚙" },
@@ -4465,6 +4998,7 @@ const MODULES = {
   fraud:FraudEthics, departmental:DepartmentalRisks, uifw:UIFWExpenditure,
   thirdparty:ThirdPartyRisk, app:APPAlignment, predictive:PredictiveIntel,
   compliance:ComplianceModule,
+  iam:       IAMModule,
   declarations:DeclarationsModule,
   projects:  ProjectsModule,
   admin:AdminTab,

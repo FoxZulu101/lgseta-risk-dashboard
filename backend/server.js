@@ -898,6 +898,90 @@ function buildProjects(data) {
   ];
 }
 
+function buildIAM(data) {
+  const iam        = data.iam || {};
+  const users      = iam.users      || [];
+  const privileged = iam.privileged || [];
+  const reviews    = iam.reviews    || [];
+
+  const activeUsers   = users.filter(u=>u.status==="Active").length;
+  const noMFA         = users.filter(u=>!u.mfaEnabled&&u.status==="Active").length;
+  const highRiskUsers = users.filter(u=>u.riskRating==="Critical"||u.riskRating==="High").length;
+  const expiredPAM    = privileged.filter(p=>p.status==="Expired").length;
+  const overdueRev    = reviews.filter(r=>r.status==="Overdue").length;
+
+  const W1 = [800,2200,1200,1100,900,900,1926];
+  const W2 = [800,2000,1200,1100,1200,900,826];
+  const W3 = [800,2000,1200,1000,1400,1000,626];
+
+  return [
+    heading1("10. Identity & Access Management"),
+    kpiTable([
+      ["Active Users",    String(activeUsers),   "",                    NAVY  ],
+      ["No MFA (Active)", String(noMFA),          "Require enrolment",   noMFA>0?RED:GREEN ],
+      ["High Risk Users", String(highRiskUsers),  "",                    highRiskUsers>0?AMBER:GREEN ],
+      ["PAM Expired",     String(expiredPAM),     "Immediate action",    expiredPAM>0?RED:GREEN ],
+      ["Overdue Reviews", String(overdueRev),     "",                    overdueRev>0?RED:GREEN ],
+    ]),
+    new Paragraph({ spacing:{before:160,after:160}, children:[] }),
+
+    heading2("User Access — High Risk Accounts"),
+    users.filter(u=>u.riskRating==="Critical"||u.riskRating==="High").length>0 ? new Table({
+      width:{ size:9026, type:WidthType.DXA }, columnWidths:W1,
+      rows:[
+        headerRow(["ID","Name","Department","Access Level","MFA","Risk","Status"], W1),
+        ...users.filter(u=>u.riskRating==="Critical"||u.riskRating==="High").map(u => new TableRow({ children:[
+          cell(u.id,           { width:W1[0], size:16, color:BLUE, bold:true }),
+          cell(u.name,          { width:W1[1], size:16 }),
+          cell(u.department||"—",{ width:W1[2], size:16 }),
+          cell(u.accessLevel||"—",{ width:W1[3], size:16 }),
+          cell(u.mfaEnabled?"Yes":"No", { width:W1[4], size:16, bold:true, color:u.mfaEnabled?GREEN:RED }),
+          cell(u.riskRating||"—",{ width:W1[5], size:16, bold:true, color:u.riskRating==="Critical"||u.riskRating==="High"?RED:AMBER }),
+          cell(u.status||"—",  { width:W1[6], size:16, bold:true, color:u.status==="Active"?GREEN:RED }),
+        ]})),
+      ],
+    }) : para("No high risk users recorded.", { color:GREY }),
+
+    new Paragraph({ spacing:{before:200,after:0}, children:[] }),
+    heading2("Privileged Access Accounts (PAM)"),
+    privileged.length>0 ? new Table({
+      width:{ size:9026, type:WidthType.DXA }, columnWidths:W2,
+      rows:[
+        headerRow(["ID","Account","Type","System","Owner","Expiry","Status"], W2),
+        ...privileged.map(p => new TableRow({ children:[
+          cell(p.id,           { width:W2[0], size:16, color:RED, bold:true }),
+          cell(p.account,       { width:W2[1], size:16 }),
+          cell(p.type||"—",    { width:W2[2], size:16 }),
+          cell(p.system||"—",  { width:W2[3], size:16 }),
+          cell(p.owner||"—",   { width:W2[4], size:16 }),
+          cell(p.passwordExpiry||"—", { width:W2[5], size:16, bold:true, color:new Date(p.passwordExpiry)<new Date()?RED:AMBER }),
+          cell(p.status||"—",  { width:W2[6], size:16, bold:true, color:p.status==="Active"?GREEN:RED }),
+        ]})),
+      ],
+    }) : para("No PAM accounts recorded.", { color:GREY }),
+
+    new Paragraph({ spacing:{before:200,after:0}, children:[] }),
+    heading2("Access Reviews"),
+    reviews.length>0 ? new Table({
+      width:{ size:9026, type:WidthType.DXA }, columnWidths:W3,
+      rows:[
+        headerRow(["ID","System","Reviewer","Cycle","Due Date","Status","Certified"], W3),
+        ...reviews.map(r => new TableRow({ children:[
+          cell(r.id,           { width:W3[0], size:16, color:BLUE, bold:true }),
+          cell(r.system||"—",  { width:W3[1], size:16 }),
+          cell(r.reviewer||"—",{ width:W3[2], size:16 }),
+          cell(r.reviewCycle||"—",{ width:W3[3], size:16 }),
+          cell(r.dueDate||"—", { width:W3[4], size:16, color:r.status==="Overdue"?RED:"1F2937" }),
+          cell(r.status||"—",  { width:W3[5], size:16, bold:true, color:statusColor(r.status) }),
+          cell(r.certifiedBy||"Pending", { width:W3[6], size:16, color:r.certifiedBy?GREEN:GREY }),
+        ]})),
+      ],
+    }) : para("No access reviews recorded.", { color:GREY }),
+    new Paragraph({ spacing:{before:160,after:0}, children:[] }),
+    divider(),
+  ];
+}
+
 // ── Report configs ────────────────────────────────────────────────────────────
 const REPORT_CONFIGS = {
   excom: {
@@ -910,13 +994,13 @@ const REPORT_CONFIGS = {
     title:    "ARC Risk Report",
     subtitle: "Audit & Risk Committee — Quarterly GRC Report",
     audience: "Audit & Risk Committee",
-    sections: ["summary","toprisks","treatments","uifw","fraud","bcm","compliance","projects"],
+    sections: ["summary","toprisks","treatments","uifw","fraud","bcm","compliance","projects","iam"],
   },
   board: {
     title:    "Board GRC Report",
     subtitle: "Board of Directors — Quarterly GRC Overview",
     audience: "Board of Directors",
-    sections: ["summary","toprisks","treatments","uifw","fraud","bcm","app","compliance","projects"],
+    sections: ["summary","toprisks","treatments","uifw","fraud","bcm","app","compliance","projects","iam"],
   },
 };
 
@@ -935,6 +1019,7 @@ async function generateReport(type, data) {
     app:        buildAPP,
     compliance: buildCompliance,
     projects:   buildProjects,
+    iam:        buildIAM,
   };
 
   const children = [
