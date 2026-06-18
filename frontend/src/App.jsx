@@ -6011,6 +6011,8 @@ const MODULES = {
 // ─── ROOT ─────────────────────────────────────────────────────────────────────
 export default function App() {
   const [active, setActive] = useState("executive");
+  const [period, setPeriod]   = useState("Q2-2627");
+  const [darkMode, setDarkMode] = useState(true);
   const Module = MODULES[active] || ExecutiveOverview;
 
   return (
