@@ -3134,10 +3134,12 @@ function ComplianceModule() {
   const [sub, setSub]       = useState("universe");
   const [search, setSearch] = useState("");
   const [data, setData]     = useState(STATIC_COMPLIANCE);
+  const [policyData, setPolicyData] = useState(STATIC_POLICY.policies);
 
   useEffect(()=>{
     fetch(`${API}/api/dashboard`).then(r=>r.json()).then(d=>{
       if (d.compliance) setData({ ...STATIC_COMPLIANCE, ...d.compliance });
+      if (d.policyManual?.policies) setPolicyData(d.policyManual.policies);
     }).catch(()=>{});
   },[]);
 
@@ -3193,7 +3195,7 @@ function ComplianceModule() {
       {sub==="universe" && (
         <Card>
           <Table
-            headers={["ID","Legislation","Category","Owner","Risk","Status","Findings","Next Review"]}
+            headers={["ID","Legislation","Category","Owner","Risk","Status","Findings","Next Review","Linked Policies"]}
             rows={filtered(univ).map(u=>[
               <span style={{ color:C.blue, fontWeight:700, fontSize:"0.75rem" }}>{u.id}</span>,
               <div><div style={{ color:C.text, fontWeight:600, fontSize:"0.82rem" }}>{u.legislation}</div>
@@ -4972,14 +4974,14 @@ function IAMAdmin() {
 // ─── POLICY & PROCESS DATA ────────────────────────────────────────────────────
 const STATIC_POLICY = {
   policies: [
-    { id:"POL-001", title:"Risk Management Policy", category:"Governance", owner:"CRO", version:"v3.2", status:"Published", lifecycle:"Published", createdDate:"2024-03-01", reviewDate:"2026-03-01", nextReview:"2027-03-01", approvedBy:"Board", approvalDate:"2024-03-15", description:"Establishes LGSETA's enterprise risk management framework, appetite and tolerance levels.", linkedLegislation:"PFMA / King IV", tags:["Risk","ERM","Governance"], notes:"Next review aligned to Board cycle" },
-    { id:"POL-002", title:"Fraud Prevention Policy", category:"Ethics & Integrity", owner:"Legal", version:"v2.1", status:"Published", lifecycle:"Published", createdDate:"2023-06-01", reviewDate:"2025-06-01", nextReview:"2026-06-01", approvedBy:"Audit & Risk Committee", approvalDate:"2023-06-20", description:"Defines LGSETA's zero-tolerance approach to fraud, corruption and unethical conduct.", linkedLegislation:"PRECCA / PFMA", tags:["Fraud","Ethics","PRECCA"], notes:"Overdue for review — update required" },
-    { id:"POL-003", title:"Information Security Policy", category:"ICT & Security", owner:"CIO", version:"v1.5", status:"Under Review", lifecycle:"Review", createdDate:"2022-01-15", reviewDate:"2025-01-15", nextReview:"2026-01-15", approvedBy:"", approvalDate:"", description:"Governs the protection of LGSETA information assets, cybersecurity controls and data classification.", linkedLegislation:"POPIA / King IV", tags:["ICT","Security","POPIA"], notes:"Being updated to align with POPIA compliance audit findings" },
-    { id:"POL-004", title:"Supply Chain Management Policy", category:"Financial Management", owner:"CFO", version:"v4.0", status:"Published", lifecycle:"Published", createdDate:"2023-09-01", reviewDate:"2025-09-01", nextReview:"2026-09-01", approvedBy:"Accounting Authority", approvalDate:"2023-09-15", description:"Governs procurement, tender processes and SCM compliance with PFMA prescripts.", linkedLegislation:"PFMA / PPPFA / Treasury Regulations", tags:["SCM","Procurement","PFMA"], notes:"" },
-    { id:"POL-005", title:"Human Resources Policy", category:"Human Resources", owner:"HR Executive", version:"v2.3", status:"Published", lifecycle:"Published", createdDate:"2023-01-10", reviewDate:"2025-01-10", nextReview:"2026-01-10", approvedBy:"CEO", approvalDate:"2023-01-25", description:"Covers recruitment, performance management, leave, discipline and grievance procedures.", linkedLegislation:"LRA / BCEA / Employment Equity Act", tags:["HR","Employees","LRA"], notes:"" },
-    { id:"POL-006", title:"POPIA Compliance Policy", category:"Data Protection", owner:"CIO", version:"v1.0", status:"Draft", lifecycle:"Draft", createdDate:"2026-05-01", reviewDate:"", nextReview:"2026-09-30", approvedBy:"", approvalDate:"", description:"Defines LGSETA's obligations and controls under the Protection of Personal Information Act.", linkedLegislation:"POPIA Act 4 of 2013", tags:["POPIA","Data","Privacy"], notes:"First draft — awaiting CIO review" },
-    { id:"POL-007", title:"Business Continuity Management Policy", category:"BCM", owner:"COO", version:"v2.1", status:"Published", lifecycle:"Published", createdDate:"2024-03-15", reviewDate:"2026-03-15", nextReview:"2027-03-15", approvedBy:"Business Continuity Committee", approvalDate:"2024-03-20", description:"Establishes LGSETA's BCM framework, governance and minimum business continuity requirements.", linkedLegislation:"PFMA / DPSA BCM Framework / ISO 22301", tags:["BCM","Continuity","Resilience"], notes:"" },
-    { id:"POL-008", title:"Declaration of Interest Policy", category:"Ethics & Integrity", owner:"Legal", version:"v1.2", status:"Published", lifecycle:"Published", createdDate:"2023-11-01", reviewDate:"2025-11-01", nextReview:"2026-11-01", approvedBy:"CEO", approvalDate:"2023-11-15", description:"Requires all officials to disclose conflicts of interest, gifts, outside positions and related party relationships.", linkedLegislation:"PRECCA / PFMA / King IV", tags:["Ethics","Declaration","COI"], notes:"" },
+    { id:"POL-001", title:"Risk Management Policy", complianceRef:["CU-001","CU-005"], category:"Governance", owner:"CRO", version:"v3.2", status:"Published", lifecycle:"Published", createdDate:"2024-03-01", reviewDate:"2026-03-01", nextReview:"2027-03-01", approvedBy:"Board", approvalDate:"2024-03-15", description:"Establishes LGSETA's enterprise risk management framework, appetite and tolerance levels.", linkedLegislation:"PFMA / King IV", tags:["Risk","ERM","Governance"], notes:"Next review aligned to Board cycle" },
+    { id:"POL-002", title:"Fraud Prevention Policy", complianceRef:["CU-010","CU-011"], category:"Ethics & Integrity", owner:"Legal", version:"v2.1", status:"Published", lifecycle:"Published", createdDate:"2023-06-01", reviewDate:"2025-06-01", nextReview:"2026-06-01", approvedBy:"Audit & Risk Committee", approvalDate:"2023-06-20", description:"Defines LGSETA's zero-tolerance approach to fraud, corruption and unethical conduct.", linkedLegislation:"PRECCA / PFMA", tags:["Fraud","Ethics","PRECCA"], notes:"Overdue for review — update required" },
+    { id:"POL-003", title:"Information Security Policy", complianceRef:["CU-004","CU-011"], category:"ICT & Security", owner:"CIO", version:"v1.5", status:"Under Review", lifecycle:"Review", createdDate:"2022-01-15", reviewDate:"2025-01-15", nextReview:"2026-01-15", approvedBy:"", approvalDate:"", description:"Governs the protection of LGSETA information assets, cybersecurity controls and data classification.", linkedLegislation:"POPIA / King IV", tags:["ICT","Security","POPIA"], notes:"Being updated to align with POPIA compliance audit findings" },
+    { id:"POL-004", title:"Supply Chain Management Policy", complianceRef:["CU-001","CU-006"], category:"Financial Management", owner:"CFO", version:"v4.0", status:"Published", lifecycle:"Published", createdDate:"2023-09-01", reviewDate:"2025-09-01", nextReview:"2026-09-01", approvedBy:"Accounting Authority", approvalDate:"2023-09-15", description:"Governs procurement, tender processes and SCM compliance with PFMA prescripts.", linkedLegislation:"PFMA / PPPFA / Treasury Regulations", tags:["SCM","Procurement","PFMA"], notes:"" },
+    { id:"POL-005", title:"Human Resources Policy", complianceRef:["CU-007","CU-008"], category:"Human Resources", owner:"HR Executive", version:"v2.3", status:"Published", lifecycle:"Published", createdDate:"2023-01-10", reviewDate:"2025-01-10", nextReview:"2026-01-10", approvedBy:"CEO", approvalDate:"2023-01-25", description:"Covers recruitment, performance management, leave, discipline and grievance procedures.", linkedLegislation:"LRA / BCEA / Employment Equity Act", tags:["HR","Employees","LRA"], notes:"" },
+    { id:"POL-006", title:"POPIA Compliance Policy", complianceRef:["CU-004","CU-011"], category:"Data Protection", owner:"CIO", version:"v1.0", status:"Draft", lifecycle:"Draft", createdDate:"2026-05-01", reviewDate:"", nextReview:"2026-09-30", approvedBy:"", approvalDate:"", description:"Defines LGSETA's obligations and controls under the Protection of Personal Information Act.", linkedLegislation:"POPIA Act 4 of 2013", tags:["POPIA","Data","Privacy"], notes:"First draft — awaiting CIO review" },
+    { id:"POL-007", title:"Business Continuity Management Policy", complianceRef:["CU-001","CU-006"], category:"BCM", owner:"COO", version:"v2.1", status:"Published", lifecycle:"Published", createdDate:"2024-03-15", reviewDate:"2026-03-15", nextReview:"2027-03-15", approvedBy:"Business Continuity Committee", approvalDate:"2024-03-20", description:"Establishes LGSETA's BCM framework, governance and minimum business continuity requirements.", linkedLegislation:"PFMA / DPSA BCM Framework / ISO 22301", tags:["BCM","Continuity","Resilience"], notes:"" },
+    { id:"POL-008", title:"Declaration of Interest Policy", complianceRef:["CU-010","CU-005"], category:"Ethics & Integrity", owner:"Legal", version:"v1.2", status:"Published", lifecycle:"Published", createdDate:"2023-11-01", reviewDate:"2025-11-01", nextReview:"2026-11-01", approvedBy:"CEO", approvalDate:"2023-11-15", description:"Requires all officials to disclose conflicts of interest, gifts, outside positions and related party relationships.", linkedLegislation:"PRECCA / PFMA / King IV", tags:["Ethics","Declaration","COI"], notes:"" },
   ],
   processes: [
     { id:"PRC-001", title:"Grant Disbursement Process", category:"Grants Management", owner:"COO", version:"v3.0", status:"Published", lifecycle:"Published", processType:"Core Business", createdDate:"2023-04-01", reviewDate:"2025-04-01", nextReview:"2026-04-01", approvedBy:"COO", approvalDate:"2023-04-10", steps:8, hasFlowchart:true, hasSchema:true, relatedForms:["Grant Application Form","Provider Agreement","Disbursement Approval"], linkedPolicy:"POL-004", description:"End-to-end process for evaluating, approving and disbursing discretionary grants to training providers.", notes:"" },
@@ -5010,11 +5012,31 @@ function PolicyModule() {
   const [selected, setSelected] = useState(null);
   const [data, setData]     = useState(STATIC_POLICY);
 
+  const [complianceData, setComplianceData] = useState([]);
+
   useEffect(()=>{
     fetch(`${API}/api/dashboard`).then(r=>r.json()).then(d=>{
       if (d.policyManual) setData({ ...STATIC_POLICY, ...d.policyManual });
+      if (d.compliance?.universe) setComplianceData(d.compliance.universe);
+      else setComplianceData(STATIC_COMPLIANCE.universe);
     }).catch(()=>{});
   },[]);
+
+  // Helper: get compliance status for a policy's linked legislation
+  function getComplianceStatus(complianceRefs) {
+    if (!complianceRefs?.length) return null;
+    const linked = complianceData.filter(c => complianceRefs.includes(c.id));
+    if (linked.some(c=>c.complianceStatus==="Non-Compliant")) return { status:"Non-Compliant", color:C.red };
+    if (linked.some(c=>c.complianceStatus==="Partial")) return { status:"Partial", color:C.amber };
+    if (linked.every(c=>c.complianceStatus==="Compliant")) return { status:"Compliant", color:C.green };
+    return null;
+  }
+
+  // Auto-flagged policies: linked legislation is Non-Compliant or Partial
+  const flaggedPolicies = policies.filter(p => {
+    const cs = getComplianceStatus(p.complianceRef);
+    return cs && (cs.status==="Non-Compliant" || cs.status==="Partial");
+  });
 
   const policies  = data.policies  || [];
   const processes = data.processes || [];
@@ -5104,6 +5126,28 @@ function PolicyModule() {
         ))}
       </div>
 
+      {/* Compliance linkage alerts */}
+      {flaggedPolicies.length > 0 && (
+        <div style={{ background:"rgba(248,81,73,0.08)", border:`1px solid ${C.red}`, borderRadius:10, padding:"1rem 1.25rem" }}>
+          <div style={{ color:C.red, fontWeight:700, fontSize:"0.85rem", marginBottom:"0.5rem" }}>
+            ⚠ {flaggedPolicies.length} {flaggedPolicies.length===1?"policy requires":"policies require"} review due to compliance status changes
+          </div>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:"0.5rem" }}>
+            {flaggedPolicies.map(p => {
+              const cs = getComplianceStatus(p.complianceRef);
+              return (
+                <div key={p.id} onClick={()=>{ setSub("policies"); setSelected(p); }}
+                  style={{ background:C.card, border:`1px solid ${cs.color}`, borderRadius:8, padding:"0.5rem 0.85rem", cursor:"pointer" }}>
+                  <div style={{ color:cs.color, fontWeight:700, fontSize:"0.75rem" }}>{p.id}</div>
+                  <div style={{ color:C.text, fontSize:"0.8rem", fontWeight:600 }}>{p.title}</div>
+                  <div style={{ color:cs.color, fontSize:"0.7rem" }}>Linked legislation: {cs.status}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Sub tabs */}
       <div style={{ display:"flex", borderBottom:`1px solid ${C.border}` }}>
         {[["policies","📜 Policy Register"],["processes","⚙ Process Manual"],["documents","📁 Document Library"]].map(([id,label])=>(
@@ -5167,6 +5211,22 @@ function PolicyModule() {
             </div>
           )}
           {selected.notes && <div style={{ marginTop:"0.75rem", color:C.muted, fontSize:"0.82rem", padding:"0.5rem 0.75rem", background:C.surface, borderRadius:6, borderLeft:`3px solid ${C.amber}` }}>{selected.notes}</div>}
+
+          {/* Live compliance status for linked legislation */}
+          {selected.complianceRef?.length > 0 && (
+            <div style={{ marginTop:"0.75rem" }}>
+              <div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700, marginBottom:"0.4rem" }}>Live Compliance Status (Linked Legislation)</div>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:"0.5rem" }}>
+                {complianceData.filter(c=>selected.complianceRef?.includes(c.id)).map(c=>(
+                  <div key={c.id} style={{ background:C.surface, border:`1px solid ${c.complianceStatus==="Compliant"?C.green:c.complianceStatus==="Non-Compliant"?C.red:C.amber}`, borderRadius:6, padding:"0.4rem 0.75rem" }}>
+                    <div style={{ color:C.blue, fontWeight:700, fontSize:"0.7rem" }}>{c.id}</div>
+                    <div style={{ color:C.text, fontSize:"0.78rem", fontWeight:600 }}>{c.legislation}</div>
+                    <div style={{ color:c.complianceStatus==="Compliant"?C.green:c.complianceStatus==="Non-Compliant"?C.red:C.amber, fontSize:"0.72rem", fontWeight:700 }}>{c.complianceStatus}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -5174,20 +5234,27 @@ function PolicyModule() {
       {sub==="policies" && (
         <Card>
           <Table
-            headers={["ID","Title","Category","Owner","Version","Lifecycle","Linked Law","Next Review"]}
-            rows={filterFn(policies).map(p=>[
-              <span style={{ color:C.blue, fontWeight:700, fontSize:"0.75rem", cursor:"pointer" }} onClick={()=>setSelected(p)}>{p.id}</span>,
-              <div style={{ cursor:"pointer" }} onClick={()=>setSelected(p)}>
-                <div style={{ fontWeight:600, fontSize:"0.82rem", color:C.text }}>{p.title}</div>
-                <div style={{ color:C.muted, fontSize:"0.7rem" }}>{p.description?.slice(0,60)}…</div>
-              </div>,
-              <Badge label={p.category} color="blue"/>,
-              p.owner,
-              <span style={{ color:C.muted, fontSize:"0.75rem", fontFamily:"monospace" }}>{p.version}</span>,
-              <span style={{ color:sc(p.lifecycle), fontWeight:700, fontSize:"0.78rem" }}>{p.lifecycle}</span>,
-              <span style={{ color:C.muted, fontSize:"0.72rem" }}>{p.linkedLegislation||"—"}</span>,
-              <span style={{ color:p.nextReview&&new Date(p.nextReview)<new Date()?C.red:C.muted, fontWeight:p.nextReview&&new Date(p.nextReview)<new Date()?700:400, fontSize:"0.75rem" }}>{p.nextReview||"—"}</span>,
-            ])}
+            headers={["ID","Title","Category","Owner","Version","Lifecycle","Legislation Status","Next Review"]}
+            rows={filterFn(policies).map(p=>{
+              const cs = getComplianceStatus(p.complianceRef);
+              return [
+                <span style={{ color:C.blue, fontWeight:700, fontSize:"0.75rem", cursor:"pointer" }} onClick={()=>setSelected(p)}>{p.id}</span>,
+                <div style={{ cursor:"pointer" }} onClick={()=>setSelected(p)}>
+                  <div style={{ fontWeight:600, fontSize:"0.82rem", color:C.text }}>{p.title}</div>
+                  <div style={{ color:C.muted, fontSize:"0.7rem" }}>{p.description?.slice(0,60)}…</div>
+                </div>,
+                <Badge label={p.category} color="blue"/>,
+                p.owner,
+                <span style={{ color:C.muted, fontSize:"0.75rem", fontFamily:"monospace" }}>{p.version}</span>,
+                <span style={{ color:sc(p.lifecycle), fontWeight:700, fontSize:"0.78rem" }}>{p.lifecycle}</span>,
+                cs ? (
+                  <span style={{ color:cs.color, fontWeight:700, fontSize:"0.75rem", display:"flex", alignItems:"center", gap:3 }}>
+                    {cs.status==="Non-Compliant"?"🔴":cs.status==="Partial"?"🟡":"🟢"} {cs.status}
+                  </span>
+                ) : <span style={{ color:C.muted, fontSize:"0.75rem" }}>—</span>,
+                <span style={{ color:p.nextReview&&new Date(p.nextReview)<new Date()?C.red:C.muted, fontWeight:p.nextReview&&new Date(p.nextReview)<new Date()?700:400, fontSize:"0.75rem" }}>{p.nextReview||"—"}</span>,
+              ];
+            })}
           />
         </Card>
       )}
