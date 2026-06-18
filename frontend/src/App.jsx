@@ -5032,15 +5032,15 @@ function PolicyModule() {
     return null;
   }
 
+  const policies  = data.policies  || [];
+  const processes = data.processes || [];
+  const documents = data.documents || [];
+
   // Auto-flagged policies: linked legislation is Non-Compliant or Partial
   const flaggedPolicies = policies.filter(p => {
     const cs = getComplianceStatus(p.complianceRef);
     return cs && (cs.status==="Non-Compliant" || cs.status==="Partial");
   });
-
-  const policies  = data.policies  || [];
-  const processes = data.processes || [];
-  const documents = data.documents || [];
 
   const published = policies.filter(p=>p.lifecycle==="Published").length;
   const draft     = policies.filter(p=>p.lifecycle==="Draft").length;
