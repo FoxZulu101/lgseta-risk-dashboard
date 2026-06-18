@@ -4163,7 +4163,7 @@ function DeclarationsModule() {
                 <div><div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700 }}>Financial Value</div><div style={{ color:C.text, fontSize:"0.85rem" }}>{selected.financialValue?`R${Number(selected.financialValue).toLocaleString()}`:"—"}</div></div>
                 <div><div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700 }}>Date Submitted</div><div style={{ color:C.text, fontSize:"0.85rem" }}>{selected.dateSubmitted||"—"}</div></div>
                 <div><div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700 }}>Manager Review</div><div style={{ color:selected.managerReview==="Approved"?C.green:selected.managerReview==="Rejected"?C.red:C.amber, fontWeight:700, fontSize:"0.85rem" }}>{selected.managerReview||"—"}</div></div>
-                <div><div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700 }}>Compliance Review</div><div style={{ color:selected.complianceReview==="Approved"?C.green:selected.complianceReview==="Rejected"?C.red:C.amber, fontWeight:700, fontSize:"0.85rem" }}>{selected.complianceReview||"—"}</div></div>
+                <div><div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700 }}>Compliance/Legal Review</div><div style={{ color:selected.complianceReview==="Approved"?C.green:selected.complianceReview==="Rejected"?C.red:C.amber, fontWeight:700, fontSize:"0.85rem" }}>{selected.complianceReview||"—"}</div></div>
                 <div><div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700 }}>Due Date</div><div style={{ color:selected.dueDate&&new Date(selected.dueDate)<new Date()?C.red:C.text, fontSize:"0.85rem" }}>{selected.dueDate||"—"}</div></div>
               </div>
               <div style={{ marginTop:"0.75rem" }}>
@@ -4353,7 +4353,7 @@ function DeclarationsAdmin() {
         </div>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
           <FSelect label="Manager Review" value={f.managerReview} onChange={set("managerReview")} options={["Pending","Approved","Rejected"]}/>
-          <FSelect label="Compliance Review" value={f.complianceReview} onChange={set("complianceReview")} options={["Pending","Approved","Rejected"]}/>
+          <FSelect label="Compliance/Legal Review" value={f.complianceReview} onChange={set("complianceReview")} options={["Pending","Approved","Rejected"]}/>
           <FSelect label="Approval Status" value={f.approvalStatus} onChange={set("approvalStatus")} options={["Pending","Approved","Rejected"]}/>
         </div>
         <FTextarea label="Mitigation Action" value={f.mitigationAction} onChange={set("mitigationAction")} rows={2} placeholder="Describe the mitigation or recusal action taken…"/>
@@ -4404,7 +4404,7 @@ function DeclarationsAdmin() {
       {loading ? <div style={{ textAlign:"center", padding:"3rem", color:C.muted }}>Loading…</div> : (
         <Card>
           <Table
-            headers={["ID","Type","Employee","Dept","Risk","Status","Manager","Compliance","Actions"]}
+            headers={["ID","Type","Employee","Dept","Risk","Status","Manager","Compliance/Legal","Actions"]}
             rows={filtered.map(d=>[
               <span style={{ color:C.purple, fontWeight:700, fontSize:"0.75rem" }}>{d.id}</span>,
               <span style={{ fontSize:"0.75rem", color:C.muted, maxWidth:120, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={d.type}>{d.type}</span>,
