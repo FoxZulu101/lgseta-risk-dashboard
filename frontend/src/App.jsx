@@ -2809,6 +2809,7 @@ const MODULE_OPTIONS = [
   { value:"bcm",          label:"BCM Resilience",     component: BCMResilienceAdmin },
   { value:"compliance",   label:"Compliance",         component: ComplianceAdmin },
   { value:"iam",          label:"Identity & Access",    component: IAMAdmin },
+  { value:"policy",       label:"Policy & Process",     component: PolicyAdmin },
   { value:"projects",     label:"Projects & Contracts",component: ProjectsAdmin },
   { value:"declarations", label:"Declarations",         component: DeclarationsAdmin },
 ];
@@ -2932,7 +2933,7 @@ function ReportsTab() {
       audience: "Audit & Risk Committee",
       color:    C.amber,
       icon:     "⚖",
-      sections: ["Executive Summary & KPIs","Top 10 Strategic Risks","Treatment Action Status","UIFW Exposure","Fraud & Ethics Register","BCM Status","Compliance","Project & Contract Risk","Identity & Access Management"],
+      sections: ["Executive Summary & KPIs","Top 10 Strategic Risks","Treatment Action Status","UIFW Exposure","Fraud & Ethics Register","BCM Status","Compliance","Project & Contract Risk","Identity & Access Management","Policy & Process Manual"],
       desc:     "Detailed GRC report for the Audit & Risk Committee. Includes fraud, BCM and full UIFW analysis.",
     },
     {
@@ -2941,7 +2942,7 @@ function ReportsTab() {
       audience: "Board of Directors",
       color:    C.purple,
       icon:     "🎯",
-      sections: ["Executive Summary & KPIs","Top 10 Strategic Risks","Treatment Action Status","UIFW Exposure","Fraud & Ethics Register","BCM Status","APP Alignment","Compliance","Project & Contract Risk","Identity & Access Management"],
+      sections: ["Executive Summary & KPIs","Top 10 Strategic Risks","Treatment Action Status","UIFW Exposure","Fraud & Ethics Register","BCM Status","APP Alignment","Compliance","Project & Contract Risk","Identity & Access Management","Policy & Process Manual"],
       desc:     "Full GRC overview for the Board. All sections included with APP performance alignment.",
     },
   ];
@@ -4967,6 +4968,628 @@ function IAMAdmin() {
   );
 }
 
+
+// ─── POLICY & PROCESS DATA ────────────────────────────────────────────────────
+const STATIC_POLICY = {
+  policies: [
+    { id:"POL-001", title:"Risk Management Policy", category:"Governance", owner:"CRO", version:"v3.2", status:"Published", lifecycle:"Published", createdDate:"2024-03-01", reviewDate:"2026-03-01", nextReview:"2027-03-01", approvedBy:"Board", approvalDate:"2024-03-15", description:"Establishes LGSETA's enterprise risk management framework, appetite and tolerance levels.", linkedLegislation:"PFMA / King IV", tags:["Risk","ERM","Governance"], notes:"Next review aligned to Board cycle" },
+    { id:"POL-002", title:"Fraud Prevention Policy", category:"Ethics & Integrity", owner:"Legal", version:"v2.1", status:"Published", lifecycle:"Published", createdDate:"2023-06-01", reviewDate:"2025-06-01", nextReview:"2026-06-01", approvedBy:"Audit & Risk Committee", approvalDate:"2023-06-20", description:"Defines LGSETA's zero-tolerance approach to fraud, corruption and unethical conduct.", linkedLegislation:"PRECCA / PFMA", tags:["Fraud","Ethics","PRECCA"], notes:"Overdue for review — update required" },
+    { id:"POL-003", title:"Information Security Policy", category:"ICT & Security", owner:"CIO", version:"v1.5", status:"Under Review", lifecycle:"Review", createdDate:"2022-01-15", reviewDate:"2025-01-15", nextReview:"2026-01-15", approvedBy:"", approvalDate:"", description:"Governs the protection of LGSETA information assets, cybersecurity controls and data classification.", linkedLegislation:"POPIA / King IV", tags:["ICT","Security","POPIA"], notes:"Being updated to align with POPIA compliance audit findings" },
+    { id:"POL-004", title:"Supply Chain Management Policy", category:"Financial Management", owner:"CFO", version:"v4.0", status:"Published", lifecycle:"Published", createdDate:"2023-09-01", reviewDate:"2025-09-01", nextReview:"2026-09-01", approvedBy:"Accounting Authority", approvalDate:"2023-09-15", description:"Governs procurement, tender processes and SCM compliance with PFMA prescripts.", linkedLegislation:"PFMA / PPPFA / Treasury Regulations", tags:["SCM","Procurement","PFMA"], notes:"" },
+    { id:"POL-005", title:"Human Resources Policy", category:"Human Resources", owner:"HR Executive", version:"v2.3", status:"Published", lifecycle:"Published", createdDate:"2023-01-10", reviewDate:"2025-01-10", nextReview:"2026-01-10", approvedBy:"CEO", approvalDate:"2023-01-25", description:"Covers recruitment, performance management, leave, discipline and grievance procedures.", linkedLegislation:"LRA / BCEA / Employment Equity Act", tags:["HR","Employees","LRA"], notes:"" },
+    { id:"POL-006", title:"POPIA Compliance Policy", category:"Data Protection", owner:"CIO", version:"v1.0", status:"Draft", lifecycle:"Draft", createdDate:"2026-05-01", reviewDate:"", nextReview:"2026-09-30", approvedBy:"", approvalDate:"", description:"Defines LGSETA's obligations and controls under the Protection of Personal Information Act.", linkedLegislation:"POPIA Act 4 of 2013", tags:["POPIA","Data","Privacy"], notes:"First draft — awaiting CIO review" },
+    { id:"POL-007", title:"Business Continuity Management Policy", category:"BCM", owner:"COO", version:"v2.1", status:"Published", lifecycle:"Published", createdDate:"2024-03-15", reviewDate:"2026-03-15", nextReview:"2027-03-15", approvedBy:"Business Continuity Committee", approvalDate:"2024-03-20", description:"Establishes LGSETA's BCM framework, governance and minimum business continuity requirements.", linkedLegislation:"PFMA / DPSA BCM Framework / ISO 22301", tags:["BCM","Continuity","Resilience"], notes:"" },
+    { id:"POL-008", title:"Declaration of Interest Policy", category:"Ethics & Integrity", owner:"Legal", version:"v1.2", status:"Published", lifecycle:"Published", createdDate:"2023-11-01", reviewDate:"2025-11-01", nextReview:"2026-11-01", approvedBy:"CEO", approvalDate:"2023-11-15", description:"Requires all officials to disclose conflicts of interest, gifts, outside positions and related party relationships.", linkedLegislation:"PRECCA / PFMA / King IV", tags:["Ethics","Declaration","COI"], notes:"" },
+  ],
+  processes: [
+    { id:"PRC-001", title:"Grant Disbursement Process", category:"Grants Management", owner:"COO", version:"v3.0", status:"Published", lifecycle:"Published", processType:"Core Business", createdDate:"2023-04-01", reviewDate:"2025-04-01", nextReview:"2026-04-01", approvedBy:"COO", approvalDate:"2023-04-10", steps:8, hasFlowchart:true, hasSchema:true, relatedForms:["Grant Application Form","Provider Agreement","Disbursement Approval"], linkedPolicy:"POL-004", description:"End-to-end process for evaluating, approving and disbursing discretionary grants to training providers.", notes:"" },
+    { id:"PRC-002", title:"Procurement & Tender Process", category:"Supply Chain", owner:"CFO", version:"v4.1", status:"Published", lifecycle:"Published", processType:"Compliance", createdDate:"2023-09-01", reviewDate:"2025-09-01", nextReview:"2026-09-01", approvedBy:"CFO", approvalDate:"2023-09-15", steps:12, hasFlowchart:true, hasSchema:true, relatedForms:["RFQ Form","Bid Evaluation Form","Award Recommendation"], linkedPolicy:"POL-004", description:"Full procurement lifecycle from needs identification through to contract award and management.", notes:"" },
+    { id:"PRC-003", title:"Learner Registration & Certification", category:"ETQA", owner:"ETQA Manager", version:"v2.2", status:"Published", lifecycle:"Published", processType:"Core Business", createdDate:"2022-06-15", reviewDate:"2024-06-15", nextReview:"2026-06-15", approvedBy:"COO", approvalDate:"2022-06-20", steps:6, hasFlowchart:true, hasSchema:false, relatedForms:["Learner Registration Form","Assessment Record","Certificate Request"], linkedPolicy:"", description:"Process for registering learners, conducting assessments and issuing certificates via SAQA.", notes:"Overdue for review" },
+    { id:"PRC-004", title:"Incident & Fraud Reporting Process", category:"Risk & Compliance", owner:"CRO", version:"v1.3", status:"Published", lifecycle:"Published", processType:"Compliance", createdDate:"2024-01-10", reviewDate:"2026-01-10", nextReview:"2027-01-10", approvedBy:"CEO", approvalDate:"2024-01-20", steps:7, hasFlowchart:true, hasSchema:false, relatedForms:["Incident Report Form","Fraud Hotline Form","Investigation Log"], linkedPolicy:"POL-002", description:"Process for reporting, investigating and resolving fraud, ethics violations and operational incidents.", notes:"" },
+    { id:"PRC-005", title:"Annual Performance Plan (APP) Monitoring", category:"Strategy & Performance", owner:"CEO", version:"v2.0", status:"Published", lifecycle:"Published", processType:"Governance", createdDate:"2023-04-01", reviewDate:"2025-04-01", nextReview:"2026-04-01", approvedBy:"Board", approvalDate:"2023-04-15", steps:5, hasFlowchart:false, hasSchema:true, relatedForms:["Quarterly Report Template","Evidence Register","Deviation Report"], linkedPolicy:"", description:"Process for monitoring, reporting and escalating APP target performance on a quarterly basis.", notes:"" },
+    { id:"PRC-006", title:"User Access Provisioning & Deprovisioning", category:"ICT & Security", owner:"CIO", version:"v1.1", status:"Under Review", lifecycle:"Review", processType:"Compliance", createdDate:"2023-08-01", reviewDate:"2025-08-01", nextReview:"2026-08-01", approvedBy:"", approvalDate:"", steps:8, hasFlowchart:true, hasSchema:true, relatedForms:["Access Request Form","Access Termination Form","PAM Checklist"], linkedPolicy:"POL-003", description:"Process for provisioning, modifying and revoking user access across all LGSETA systems.", notes:"Being updated following IAM review findings" },
+  ],
+  documents: [
+    { id:"DOC-001", title:"Grant Application Form", category:"Forms", docType:"Form", owner:"COO", version:"v2.1", status:"Published", lifecycle:"Published", createdDate:"2023-04-01", reviewDate:"2025-04-01", nextReview:"2026-04-01", format:"PDF / Word", linkedProcess:"PRC-001", description:"Standard application form for training providers applying for discretionary grants.", notes:"" },
+    { id:"DOC-002", title:"Risk Register Schema", category:"Templates", docType:"Schema", owner:"CRO", version:"v3.0", status:"Published", lifecycle:"Published", createdDate:"2024-01-15", reviewDate:"2026-01-15", nextReview:"2027-01-15", format:"Excel", linkedProcess:"", description:"Standardised data schema for capturing and classifying risks across all LGSETA departments.", notes:"Aligned to ERM framework v3.2" },
+    { id:"DOC-003", title:"Bid Evaluation Committee Template", category:"Templates", docType:"Template", owner:"CFO", version:"v1.5", status:"Published", lifecycle:"Published", createdDate:"2023-09-01", reviewDate:"2025-09-01", nextReview:"2026-09-01", format:"Word", linkedProcess:"PRC-002", description:"Standardised BEC scoring template ensuring consistency in tender evaluation.", notes:"" },
+    { id:"DOC-004", title:"POPIA Privacy Notice Template", category:"Templates", docType:"Template", owner:"CIO", version:"v1.0", status:"Draft", lifecycle:"Draft", createdDate:"2026-05-15", reviewDate:"", nextReview:"2026-09-30", format:"Word", linkedProcess:"", description:"Template for staff and external stakeholder privacy notices in compliance with POPIA.", notes:"Awaiting POPIA policy approval before finalising" },
+    { id:"DOC-005", title:"Board Resolution Template", category:"Governance", docType:"Template", owner:"CEO", version:"v2.0", status:"Published", lifecycle:"Published", createdDate:"2022-01-01", reviewDate:"2025-01-01", nextReview:"2026-01-01", format:"Word", linkedProcess:"", description:"Standard template for recording and circulating Board resolutions.", notes:"" },
+    { id:"DOC-006", title:"Declaration of Interest Form", category:"Forms", docType:"Form", owner:"Legal", version:"v1.2", status:"Published", lifecycle:"Published", createdDate:"2023-11-01", reviewDate:"2025-11-01", nextReview:"2026-11-01", format:"PDF / Online", linkedProcess:"PRC-004", description:"Mandatory annual declaration form for all LGSETA officials.", notes:"Available via GRC portal" },
+    { id:"DOC-007", title:"Business Impact Analysis Template", category:"Templates", docType:"Template", owner:"COO", version:"v2.1", status:"Published", lifecycle:"Published", createdDate:"2024-03-15", reviewDate:"2026-03-15", nextReview:"2027-03-15", format:"Excel", linkedProcess:"", description:"BIA template aligned to ISO 22301 for capturing critical process dependencies and recovery objectives.", notes:"" },
+    { id:"DOC-008", title:"Incident Report Form", category:"Forms", docType:"Form", owner:"CRO", version:"v1.3", status:"Published", lifecycle:"Published", createdDate:"2024-01-10", reviewDate:"2026-01-10", nextReview:"2027-01-10", format:"PDF / Online", linkedProcess:"PRC-004", description:"Standardised form for reporting operational incidents, fraud and ethics violations.", notes:"" },
+    { id:"DOC-009", title:"Data Flow Diagram — Learner Records", category:"Schemas", docType:"Schema", owner:"CIO", version:"v1.0", status:"Under Review", lifecycle:"Review", createdDate:"2026-04-01", reviewDate:"", nextReview:"2026-09-30", format:"Visio / PDF", linkedProcess:"PRC-003", description:"End-to-end data flow diagram showing how learner personal information is collected, stored and shared.", notes:"POPIA compliance review in progress" },
+  ],
+};
+
+// ─── POLICY & PROCESS MODULE VIEW ────────────────────────────────────────────
+function PolicyModule() {
+  const [sub, setSub]       = useState("policies");
+  const [search, setSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState("All");
+  const [selected, setSelected] = useState(null);
+  const [data, setData]     = useState(STATIC_POLICY);
+
+  useEffect(()=>{
+    fetch(`${API}/api/dashboard`).then(r=>r.json()).then(d=>{
+      if (d.policyManual) setData({ ...STATIC_POLICY, ...d.policyManual });
+    }).catch(()=>{});
+  },[]);
+
+  const policies  = data.policies  || [];
+  const processes = data.processes || [];
+  const documents = data.documents || [];
+
+  const published = policies.filter(p=>p.lifecycle==="Published").length;
+  const draft     = policies.filter(p=>p.lifecycle==="Draft").length;
+  const review    = policies.filter(p=>p.lifecycle==="Review").length;
+  const overdue   = [...policies,...processes,...documents].filter(d=>d.nextReview && new Date(d.nextReview)<new Date() && d.lifecycle==="Published").length;
+
+  const LIFECYCLE_COLORS = {
+    "Draft":    C.muted,
+    "Review":   C.amber,
+    "Approved": C.blue,
+    "Published":C.green,
+    "Archived": C.muted,
+  };
+
+  function LifecyclePill({ status }) {
+    const c = LIFECYCLE_COLORS[status] || C.muted;
+    return <span style={{ background:`${c}22`, color:c, border:`1px solid ${c}`, borderRadius:4, padding:"2px 8px", fontSize:"0.72rem", fontWeight:700 }}>{status}</span>;
+  }
+
+  function LifecycleBar({ status }) {
+    const steps = ["Draft","Review","Approved","Published"];
+    const idx   = steps.indexOf(status);
+    return (
+      <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+        {steps.map((s,i)=>{
+          const done    = i < idx;
+          const current = i === idx;
+          const c = done?C.green:current?C.blue:C.border;
+          return (
+            <div key={s} style={{ display:"flex", alignItems:"center", gap:4 }}>
+              <div style={{ fontSize:"0.6rem", fontWeight:700, color:done?C.green:current?C.blue:C.muted,
+                borderBottom:`2px solid ${c}`, paddingBottom:1, whiteSpace:"nowrap" }}>{s}</div>
+              {i<steps.length-1&&<div style={{ color:C.border, fontSize:"0.65rem" }}>→</div>}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  const sc = s => {
+    if (s==="Published") return C.green;
+    if (s==="Draft") return C.muted;
+    if (s==="Review"||s==="Under Review") return C.amber;
+    if (s==="Archived") return C.red;
+    return C.muted;
+  };
+
+  const filterFn = arr => arr.filter(d=>
+    (filterStatus==="All" || d.lifecycle===filterStatus) &&
+    JSON.stringify(d).toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:"0.5rem" }}>
+        <div>
+          <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Policy & Process Manual</h1>
+          <p style={{ color:C.muted, fontSize:"0.82rem", margin:"2px 0 0" }}>Policy Register · Process Manual · Document Library — Q2 2026/27</p>
+        </div>
+        <div style={{ display:"flex", gap:"0.75rem" }}>
+          <input placeholder="Search…" value={search} onChange={e=>setSearch(e.target.value)} style={{ ...inputSt, width:200 }}/>
+          <select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)} style={inputSt}>
+            {["All","Draft","Review","Approved","Published","Archived"].map(s=><option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {/* KPI strip */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:"0.75rem" }}>
+        {[
+          ["Policies",    policies.length,  C.blue  ],
+          ["Processes",   processes.length, C.purple ],
+          ["Documents",   documents.length, C.cyan  ],
+          ["Published",   published,        C.green ],
+          ["Under Review",review,           C.amber ],
+          ["Overdue Review",overdue,        overdue>0?C.red:C.green ],
+        ].map(([l,v,c])=>(
+          <div key={l} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8, padding:"0.75rem 1rem", borderTop:`3px solid ${c}` }}>
+            <div style={{ color:C.muted, fontSize:"0.65rem", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.06em" }}>{l}</div>
+            <div style={{ color:c, fontSize:"1.5rem", fontWeight:800 }}>{v}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Sub tabs */}
+      <div style={{ display:"flex", borderBottom:`1px solid ${C.border}` }}>
+        {[["policies","📜 Policy Register"],["processes","⚙ Process Manual"],["documents","📁 Document Library"]].map(([id,label])=>(
+          <button key={id} onClick={()=>{ setSub(id); setSelected(null); }}
+            style={{ padding:"0.5rem 1.1rem", border:"none", background:"transparent", cursor:"pointer",
+              fontSize:"0.82rem", fontWeight:600, color:sub===id?C.text:C.muted,
+              borderBottom:sub===id?`2px solid ${C.blue}`:"2px solid transparent", whiteSpace:"nowrap" }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Detail panel */}
+      {selected && (
+        <div style={{ background:C.card, border:`1px solid ${C.blue}`, borderRadius:12, padding:"1.5rem" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"1rem" }}>
+            <div>
+              <div style={{ display:"flex", gap:"0.75rem", alignItems:"center", marginBottom:"0.3rem" }}>
+                <span style={{ color:C.blue, fontWeight:800 }}>{selected.id}</span>
+                <LifecyclePill status={selected.lifecycle}/>
+                <span style={{ color:C.muted, fontSize:"0.78rem" }}>{selected.version}</span>
+              </div>
+              <h3 style={{ color:C.text, margin:"0 0 0.25rem", fontWeight:700 }}>{selected.title}</h3>
+              <p style={{ color:C.muted, margin:0, fontSize:"0.82rem" }}>{selected.category} · Owner: {selected.owner}</p>
+            </div>
+            <button onClick={()=>setSelected(null)} style={{ background:"transparent", border:"none", color:C.muted, cursor:"pointer", fontSize:"1.2rem" }}>✕</button>
+          </div>
+          <LifecycleBar status={selected.lifecycle}/>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem", marginTop:"1rem" }}>
+            <div><div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700 }}>Approved By</div><div style={{ color:C.text, fontSize:"0.85rem" }}>{selected.approvedBy||"Pending"}</div></div>
+            <div><div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700 }}>Approval Date</div><div style={{ color:C.text, fontSize:"0.85rem" }}>{selected.approvalDate||"—"}</div></div>
+            <div><div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700 }}>Next Review</div><div style={{ color:selected.nextReview&&new Date(selected.nextReview)<new Date()?C.red:C.text, fontSize:"0.85rem", fontWeight:selected.nextReview&&new Date(selected.nextReview)<new Date()?700:400 }}>{selected.nextReview||"—"}</div></div>
+            {selected.linkedLegislation && <div><div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700 }}>Linked Legislation</div><div style={{ color:C.blue, fontSize:"0.85rem" }}>{selected.linkedLegislation}</div></div>}
+            {selected.linkedProcess && <div><div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700 }}>Linked Process</div><div style={{ color:C.blue, fontSize:"0.85rem" }}>{selected.linkedProcess}</div></div>}
+            {selected.linkedPolicy && <div><div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700 }}>Linked Policy</div><div style={{ color:C.blue, fontSize:"0.85rem" }}>{selected.linkedPolicy}</div></div>}
+            {selected.steps && <div><div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700 }}>Process Steps</div><div style={{ color:C.text, fontSize:"0.85rem" }}>{selected.steps}</div></div>}
+            {selected.format && <div><div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700 }}>Format</div><div style={{ color:C.text, fontSize:"0.85rem" }}>{selected.format}</div></div>}
+          </div>
+          <div style={{ marginTop:"0.75rem" }}>
+            <div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700, marginBottom:"0.25rem" }}>Description</div>
+            <div style={{ color:C.text, fontSize:"0.85rem", lineHeight:1.65 }}>{selected.description}</div>
+          </div>
+          {selected.relatedForms?.length>0 && (
+            <div style={{ marginTop:"0.75rem" }}>
+              <div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700, marginBottom:"0.4rem" }}>Related Forms / Templates</div>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:"0.4rem" }}>
+                {selected.relatedForms.map(f=>(
+                  <span key={f} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:4, padding:"2px 8px", fontSize:"0.75rem", color:C.muted }}>{f}</span>
+                ))}
+              </div>
+            </div>
+          )}
+          {selected.tags?.length>0 && (
+            <div style={{ marginTop:"0.75rem" }}>
+              <div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700, marginBottom:"0.4rem" }}>Tags</div>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:"0.4rem" }}>
+                {selected.tags.map(t=>(
+                  <span key={t} style={{ background:"rgba(88,166,255,0.1)", border:`1px solid ${C.blue}`, borderRadius:4, padding:"2px 8px", fontSize:"0.75rem", color:C.blue }}>{t}</span>
+                ))}
+              </div>
+            </div>
+          )}
+          {selected.notes && <div style={{ marginTop:"0.75rem", color:C.muted, fontSize:"0.82rem", padding:"0.5rem 0.75rem", background:C.surface, borderRadius:6, borderLeft:`3px solid ${C.amber}` }}>{selected.notes}</div>}
+        </div>
+      )}
+
+      {/* POLICIES */}
+      {sub==="policies" && (
+        <Card>
+          <Table
+            headers={["ID","Title","Category","Owner","Version","Lifecycle","Linked Law","Next Review"]}
+            rows={filterFn(policies).map(p=>[
+              <span style={{ color:C.blue, fontWeight:700, fontSize:"0.75rem", cursor:"pointer" }} onClick={()=>setSelected(p)}>{p.id}</span>,
+              <div style={{ cursor:"pointer" }} onClick={()=>setSelected(p)}>
+                <div style={{ fontWeight:600, fontSize:"0.82rem", color:C.text }}>{p.title}</div>
+                <div style={{ color:C.muted, fontSize:"0.7rem" }}>{p.description?.slice(0,60)}…</div>
+              </div>,
+              <Badge label={p.category} color="blue"/>,
+              p.owner,
+              <span style={{ color:C.muted, fontSize:"0.75rem", fontFamily:"monospace" }}>{p.version}</span>,
+              <span style={{ color:sc(p.lifecycle), fontWeight:700, fontSize:"0.78rem" }}>{p.lifecycle}</span>,
+              <span style={{ color:C.muted, fontSize:"0.72rem" }}>{p.linkedLegislation||"—"}</span>,
+              <span style={{ color:p.nextReview&&new Date(p.nextReview)<new Date()?C.red:C.muted, fontWeight:p.nextReview&&new Date(p.nextReview)<new Date()?700:400, fontSize:"0.75rem" }}>{p.nextReview||"—"}</span>,
+            ])}
+          />
+        </Card>
+      )}
+
+      {/* PROCESSES */}
+      {sub==="processes" && (
+        <Card>
+          <Table
+            headers={["ID","Title","Category","Owner","Type","Steps","Schema","Lifecycle","Next Review"]}
+            rows={filterFn(processes).map(p=>[
+              <span style={{ color:C.purple, fontWeight:700, fontSize:"0.75rem", cursor:"pointer" }} onClick={()=>setSelected(p)}>{p.id}</span>,
+              <div style={{ cursor:"pointer" }} onClick={()=>setSelected(p)}>
+                <div style={{ fontWeight:600, fontSize:"0.82rem" }}>{p.title}</div>
+              </div>,
+              <Badge label={p.category} color="blue"/>,
+              p.owner,
+              <Badge label={p.processType} color={p.processType==="Compliance"?"amber":p.processType==="Governance"?"blue":"green"}/>,
+              <span style={{ color:C.blue, fontWeight:700 }}>{p.steps}</span>,
+              <span style={{ color:p.hasSchema?C.green:C.muted, fontWeight:700 }}>{p.hasSchema?"✓ Yes":"—"}</span>,
+              <span style={{ color:sc(p.lifecycle), fontWeight:700, fontSize:"0.78rem" }}>{p.lifecycle}</span>,
+              <span style={{ color:p.nextReview&&new Date(p.nextReview)<new Date()?C.red:C.muted, fontSize:"0.75rem" }}>{p.nextReview||"—"}</span>,
+            ])}
+          />
+        </Card>
+      )}
+
+      {/* DOCUMENTS */}
+      {sub==="documents" && (
+        <Card>
+          <Table
+            headers={["ID","Title","Category","Type","Owner","Format","Version","Lifecycle"]}
+            rows={filterFn(documents).map(d=>[
+              <span style={{ color:C.cyan, fontWeight:700, fontSize:"0.75rem", cursor:"pointer" }} onClick={()=>setSelected(d)}>{d.id}</span>,
+              <div style={{ cursor:"pointer" }} onClick={()=>setSelected(d)}>
+                <div style={{ fontWeight:600, fontSize:"0.82rem" }}>{d.title}</div>
+              </div>,
+              <Badge label={d.category} color="blue"/>,
+              <Badge label={d.docType} color={d.docType==="Schema"?"purple":d.docType==="Template"?"amber":"green"}/>,
+              d.owner,
+              <span style={{ color:C.muted, fontSize:"0.75rem" }}>{d.format}</span>,
+              <span style={{ fontFamily:"monospace", fontSize:"0.75rem", color:C.muted }}>{d.version}</span>,
+              <span style={{ color:sc(d.lifecycle), fontWeight:700, fontSize:"0.78rem" }}>{d.lifecycle}</span>,
+            ])}
+          />
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ─── POLICY & PROCESS ADMIN ───────────────────────────────────────────────────
+function PolicyAdmin() {
+  const [view, setView]       = useState("policies");
+  const [items, setItems]     = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving]   = useState(false);
+  const [toast, setToast]     = useState(null);
+  const [mode, setMode]       = useState(null);
+  const [confirmDel, setConfirmDel] = useState(null);
+
+  function showToast(msg, type="ok") { setToast({ msg, type }); setTimeout(()=>setToast(null), 3500); }
+
+  const DEFAULTS = { policies:STATIC_POLICY.policies, processes:STATIC_POLICY.processes, documents:STATIC_POLICY.documents };
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res  = await fetch(`${API}/api/dashboard`);
+      const data = await res.json();
+      setItems((data.policyManual?.[view]) || DEFAULTS[view]);
+    } catch { setItems(DEFAULTS[view]); }
+    finally { setLoading(false); }
+  }, [view]);
+
+  useEffect(()=>{ load(); }, [load]);
+
+  async function saveToServer(updatedItems) {
+    const res  = await fetch(`${API}/api/dashboard`);
+    const data = await res.json();
+    if (!data.policyManual) data.policyManual = {};
+    data.policyManual[view] = updatedItems;
+    const saveRes = await fetch(`${API}/api/dashboard`, { method:"PUT", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(data) });
+    if (!saveRes.ok) throw new Error("Failed to save");
+  }
+
+  async function seedDemoData() {
+    setSaving(true);
+    try {
+      const res  = await fetch(`${API}/api/dashboard`);
+      const data = await res.json();
+      data.policyManual = { policies:STATIC_POLICY.policies, processes:STATIC_POLICY.processes, documents:STATIC_POLICY.documents };
+      const saveRes = await fetch(`${API}/api/dashboard`, { method:"PUT", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(data) });
+      if (!saveRes.ok) throw new Error("Failed to seed");
+      showToast(`✅ Seeded ${STATIC_POLICY.policies.length} policies, ${STATIC_POLICY.processes.length} processes, ${STATIC_POLICY.documents.length} documents.`);
+      load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  async function handleSave(f) {
+    setSaving(true);
+    try {
+      const isEdit = mode?.id;
+      const updated = isEdit
+        ? items.map(i => i.id===f.id ? { ...i, ...f, updatedAt:new Date().toISOString() } : i)
+        : [...items, { ...f, createdAt:new Date().toISOString() }];
+      await saveToServer(updated);
+      showToast(isEdit ? `✅ ${f.id} updated.` : `✅ ${f.id} added.`);
+      setMode(null); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  async function handleDelete(id) {
+    setSaving(true);
+    try {
+      await saveToServer(items.filter(i=>i.id!==id));
+      showToast(`🗑 ${id} deleted.`); setConfirmDel(null); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  async function updateLifecycle(id, newLifecycle) {
+    setSaving(true);
+    try {
+      const updated = items.map(i => i.id===id ? { ...i, lifecycle:newLifecycle, status:newLifecycle, updatedAt:new Date().toISOString(),
+        ...(newLifecycle==="Published"?{ approvalDate:new Date().toISOString().split("T")[0] }:{}) } : i);
+      await saveToServer(updated);
+      showToast(`✅ ${id} moved to ${newLifecycle}.`); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  function PolicyForm({ initial={}, onSave, onCancel, saving }) {
+    const EMPTY = { id:"", title:"", category:"Governance", owner:"", version:"v1.0", lifecycle:"Draft", status:"Draft", description:"", linkedLegislation:"", tags:"", createdDate:"", reviewDate:"", nextReview:"", approvedBy:"", approvalDate:"", notes:"" };
+    const [f, setF] = useState({ ...EMPTY, ...initial, tags:Array.isArray(initial.tags)?initial.tags.join(", "):initial.tags||"" });
+    const set = k => v => setF(p=>({ ...p, [k]:v }));
+    return (
+      <div style={{ background:C.surface, border:`1px solid ${C.blue}`, borderRadius:10, padding:"1.5rem", marginBottom:"1.5rem" }}>
+        <h3 style={{ color:C.blue, fontWeight:700, margin:"0 0 1.25rem" }}>{initial.id?"Edit Policy":"Add Policy"}</h3>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 3fr", gap:"1rem" }}>
+          <FInput label="Policy ID" value={f.id} onChange={set("id")} required placeholder="POL-009"/>
+          <FInput label="Policy Title" value={f.title} onChange={set("title")} required placeholder="e.g. Leave Management Policy"/>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:"1rem" }}>
+          <FSelect label="Category" value={f.category} onChange={set("category")} options={["Governance","Ethics & Integrity","Financial Management","ICT & Security","Human Resources","Data Protection","BCM","Risk Management","Compliance","Operations"]}/>
+          <FInput label="Owner" value={f.owner} onChange={set("owner")} placeholder="e.g. HR Executive"/>
+          <FInput label="Version" value={f.version} onChange={set("version")} placeholder="v1.0"/>
+          <FSelect label="Lifecycle Stage" value={f.lifecycle} onChange={set("lifecycle")} options={["Draft","Review","Approved","Published","Archived"]}/>
+        </div>
+        <FTextarea label="Description" value={f.description} onChange={set("description")} rows={2} placeholder="Brief description of the policy purpose and scope…"/>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
+          <FInput label="Linked Legislation" value={f.linkedLegislation} onChange={set("linkedLegislation")} placeholder="e.g. PFMA / King IV"/>
+          <FInput label="Tags (comma-separated)" value={f.tags} onChange={set("tags")} placeholder="e.g. Risk, Governance, PFMA"/>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
+          <FInput label="Next Review Date" value={f.nextReview} onChange={set("nextReview")} type="date"/>
+          <FInput label="Approved By" value={f.approvedBy} onChange={set("approvedBy")} placeholder="e.g. Board"/>
+          <FInput label="Approval Date" value={f.approvalDate} onChange={set("approvalDate")} type="date"/>
+        </div>
+        <FTextarea label="Notes" value={f.notes} onChange={set("notes")} rows={1} placeholder="Additional notes…"/>
+        <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.5rem" }}>
+          <button onClick={()=>onSave({ ...f, tags:f.tags.split(",").map(t=>t.trim()).filter(Boolean) })} disabled={saving}
+            style={{ padding:"0.65rem 1.75rem", background:C.blue, color:"#fff", border:"none", borderRadius:8, fontWeight:700, cursor:"pointer", opacity:saving?0.6:1 }}>
+            {saving?"Saving…":initial.id?"Update":"Add Policy"}
+          </button>
+          <button onClick={onCancel} style={{ padding:"0.65rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer" }}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
+
+  function ProcessForm({ initial={}, onSave, onCancel, saving }) {
+    const EMPTY = { id:"", title:"", category:"Operations", owner:"", version:"v1.0", lifecycle:"Draft", processType:"Core Business", description:"", steps:"5", hasFlowchart:false, hasSchema:false, relatedForms:"", linkedPolicy:"", nextReview:"", approvedBy:"", approvalDate:"", notes:"" };
+    const [f, setF] = useState({ ...EMPTY, ...initial, relatedForms:Array.isArray(initial.relatedForms)?initial.relatedForms.join(", "):initial.relatedForms||"" });
+    const set = k => v => setF(p=>({ ...p, [k]:v }));
+    return (
+      <div style={{ background:C.surface, border:`1px solid ${C.purple}`, borderRadius:10, padding:"1.5rem", marginBottom:"1.5rem" }}>
+        <h3 style={{ color:C.purple, fontWeight:700, margin:"0 0 1.25rem" }}>{initial.id?"Edit Process":"Add Process"}</h3>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 3fr", gap:"1rem" }}>
+          <FInput label="Process ID" value={f.id} onChange={set("id")} required placeholder="PRC-007"/>
+          <FInput label="Process Title" value={f.title} onChange={set("title")} required placeholder="e.g. Leave Application Process"/>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:"1rem" }}>
+          <FSelect label="Category" value={f.category} onChange={set("category")} options={["Grants Management","Supply Chain","ETQA","Risk & Compliance","Strategy & Performance","ICT & Security","Human Resources","Finance","Operations","Governance"]}/>
+          <FInput label="Owner" value={f.owner} onChange={set("owner")} placeholder="e.g. HR Executive"/>
+          <FSelect label="Process Type" value={f.processType} onChange={set("processType")} options={["Core Business","Compliance","Governance","Support"]}/>
+          <FSelect label="Lifecycle Stage" value={f.lifecycle} onChange={set("lifecycle")} options={["Draft","Review","Approved","Published","Archived"]}/>
+        </div>
+        <FTextarea label="Description" value={f.description} onChange={set("description")} rows={2} placeholder="Describe the process purpose and scope…"/>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:"1rem" }}>
+          <FInput label="Number of Steps" value={f.steps} onChange={set("steps")} type="number" placeholder="5"/>
+          <FInput label="Linked Policy ID" value={f.linkedPolicy} onChange={set("linkedPolicy")} placeholder="e.g. POL-005"/>
+          <div style={{ marginBottom:"0.85rem" }}>
+            <label style={labelSt}>Has Flowchart</label>
+            <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.4rem" }}>
+              {["Yes","No"].map(opt=>(
+                <label key={opt} style={{ display:"flex", alignItems:"center", gap:"0.4rem", cursor:"pointer", color:C.muted, fontSize:"0.85rem" }}>
+                  <input type="radio" name="fc" value={opt} checked={(f.hasFlowchart?"Yes":"No")===opt} onChange={()=>setF(p=>({ ...p, hasFlowchart:opt==="Yes" }))}/>
+                  {opt}
+                </label>
+              ))}
+            </div>
+          </div>
+          <div style={{ marginBottom:"0.85rem" }}>
+            <label style={labelSt}>Has Schema/Diagram</label>
+            <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.4rem" }}>
+              {["Yes","No"].map(opt=>(
+                <label key={opt} style={{ display:"flex", alignItems:"center", gap:"0.4rem", cursor:"pointer", color:C.muted, fontSize:"0.85rem" }}>
+                  <input type="radio" name="sc2" value={opt} checked={(f.hasSchema?"Yes":"No")===opt} onChange={()=>setF(p=>({ ...p, hasSchema:opt==="Yes" }))}/>
+                  {opt}
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+        <FInput label="Related Forms (comma-separated)" value={f.relatedForms} onChange={set("relatedForms")} placeholder="e.g. Leave Form, Approval Form"/>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
+          <FInput label="Next Review Date" value={f.nextReview} onChange={set("nextReview")} type="date"/>
+          <FInput label="Approved By" value={f.approvedBy} onChange={set("approvedBy")} placeholder="e.g. CEO"/>
+        </div>
+        <FTextarea label="Notes" value={f.notes} onChange={set("notes")} rows={1} placeholder="Additional notes…"/>
+        <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.5rem" }}>
+          <button onClick={()=>onSave({ ...f, relatedForms:f.relatedForms.split(",").map(t=>t.trim()).filter(Boolean) })} disabled={saving}
+            style={{ padding:"0.65rem 1.75rem", background:C.purple, color:"#fff", border:"none", borderRadius:8, fontWeight:700, cursor:"pointer", opacity:saving?0.6:1 }}>
+            {saving?"Saving…":initial.id?"Update":"Add Process"}
+          </button>
+          <button onClick={onCancel} style={{ padding:"0.65rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer" }}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
+
+  function DocumentForm({ initial={}, onSave, onCancel, saving }) {
+    const EMPTY = { id:"", title:"", category:"Templates", docType:"Template", owner:"", version:"v1.0", lifecycle:"Draft", format:"Word", description:"", linkedProcess:"", nextReview:"", notes:"" };
+    const [f, setF] = useState({ ...EMPTY, ...initial });
+    const set = k => v => setF(p=>({ ...p, [k]:v }));
+    return (
+      <div style={{ background:C.surface, border:`1px solid ${C.cyan}`, borderRadius:10, padding:"1.5rem", marginBottom:"1.5rem" }}>
+        <h3 style={{ color:C.cyan, fontWeight:700, margin:"0 0 1.25rem" }}>{initial.id?"Edit Document":"Add Document"}</h3>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 3fr", gap:"1rem" }}>
+          <FInput label="Document ID" value={f.id} onChange={set("id")} required placeholder="DOC-010"/>
+          <FInput label="Document Title" value={f.title} onChange={set("title")} required placeholder="e.g. Leave Application Form"/>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr", gap:"1rem" }}>
+          <FSelect label="Category" value={f.category} onChange={set("category")} options={["Forms","Templates","Schemas","Governance","Procedures","Checklists","Other"]}/>
+          <FSelect label="Document Type" value={f.docType} onChange={set("docType")} options={["Form","Template","Schema","Checklist","Procedure","Guide","Report"]}/>
+          <FInput label="Owner" value={f.owner} onChange={set("owner")} placeholder="e.g. HR"/>
+          <FInput label="Version" value={f.version} onChange={set("version")} placeholder="v1.0"/>
+          <FSelect label="Format" value={f.format} onChange={set("format")} options={["Word","Excel","PDF","PDF / Word","PDF / Online","Visio / PDF","PowerPoint","Other"]}/>
+        </div>
+        <FSelect label="Lifecycle Stage" value={f.lifecycle} onChange={set("lifecycle")} options={["Draft","Review","Approved","Published","Archived"]}/>
+        <FTextarea label="Description" value={f.description} onChange={set("description")} rows={2} placeholder="Brief description…"/>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
+          <FInput label="Linked Process ID" value={f.linkedProcess} onChange={set("linkedProcess")} placeholder="e.g. PRC-001"/>
+          <FInput label="Next Review Date" value={f.nextReview} onChange={set("nextReview")} type="date"/>
+        </div>
+        <FTextarea label="Notes" value={f.notes} onChange={set("notes")} rows={1} placeholder="Additional notes…"/>
+        <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.5rem" }}>
+          <button onClick={()=>onSave(f)} disabled={saving}
+            style={{ padding:"0.65rem 1.75rem", background:C.cyan, color:C.bg, border:"none", borderRadius:8, fontWeight:700, cursor:"pointer", opacity:saving?0.6:1 }}>
+            {saving?"Saving…":initial.id?"Update":"Add Document"}
+          </button>
+          <button onClick={onCancel} style={{ padding:"0.65rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer" }}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
+
+  const FormComponent = view==="policies" ? PolicyForm : view==="processes" ? ProcessForm : DocumentForm;
+  const addColor = view==="policies" ? C.blue : view==="processes" ? C.purple : C.cyan;
+  const addLabel = view==="policies" ? "Add Policy" : view==="processes" ? "Add Process" : "Add Document";
+
+  const LIFECYCLE_NEXT = { "Draft":"Review", "Review":"Approved", "Approved":"Published", "Published":"Archived" };
+
+  return (
+    <div>
+      {toast && <div style={{ position:"fixed", top:16, right:16, zIndex:1000, padding:"0.75rem 1.25rem", borderRadius:8, background:toast.type==="ok"?"rgba(63,185,80,0.15)":"rgba(248,81,73,0.15)", border:`1px solid ${toast.type==="ok"?C.green:C.red}`, color:toast.type==="ok"?C.green:C.red, fontWeight:600, fontSize:"0.88rem" }}>{toast.msg}</div>}
+      {confirmDel && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", zIndex:999, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div style={{ background:C.card, border:`1px solid ${C.red}`, borderRadius:12, padding:"2rem", maxWidth:400, width:"90%" }}>
+            <h3 style={{ color:C.red, margin:"0 0 0.75rem" }}>Delete Item</h3>
+            <p style={{ color:C.text, marginBottom:"1.5rem" }}>Delete <strong>{confirmDel}</strong>?</p>
+            <div style={{ display:"flex", gap:"0.75rem" }}>
+              <button onClick={()=>handleDelete(confirmDel)} disabled={saving} style={{ padding:"0.6rem 1.5rem", background:C.red, color:"#fff", border:"none", borderRadius:7, fontWeight:700, cursor:"pointer" }}>{saving?"Deleting…":"Yes, Delete"}</button>
+              <button onClick={()=>setConfirmDel(null)} style={{ padding:"0.6rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:7, cursor:"pointer" }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ display:"flex", borderBottom:`1px solid ${C.border}`, marginBottom:"1.25rem" }}>
+        {[["policies","📜 Policies"],["processes","⚙ Processes"],["documents","📁 Documents"]].map(([k,l])=>(
+          <button key={k} onClick={()=>{ setView(k); setMode(null); }}
+            style={{ padding:"0.5rem 1.1rem", border:"none", background:"transparent", cursor:"pointer",
+              fontSize:"0.82rem", fontWeight:600, color:view===k?C.text:C.muted,
+              borderBottom:view===k?`2px solid ${C.blue}`:"2px solid transparent" }}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.25rem", flexWrap:"wrap", gap:"0.75rem" }}>
+        <div>
+          <h3 style={{ color:C.text, margin:"0 0 0.2rem", fontWeight:700 }}>
+            {view==="policies"?"Policy Register":view==="processes"?"Process Manual":"Document Library"} — Edit Mode
+          </h3>
+          <p style={{ color:C.muted, fontSize:"0.82rem", margin:0 }}>{items.length} items</p>
+        </div>
+        <div style={{ display:"flex", gap:"0.75rem" }}>
+          <button onClick={()=>setMode("add")} disabled={!!mode} style={{ padding:"0.6rem 1.25rem", background:addColor, color:addColor===C.cyan?C.bg:"#fff", border:"none", borderRadius:8, fontWeight:700, fontSize:"0.88rem", cursor:"pointer", opacity:mode?0.5:1 }}>+ {addLabel}</button>
+          <button onClick={seedDemoData} disabled={saving||!!mode} style={{ padding:"0.6rem 1.1rem", background:"transparent", color:C.green, border:`1px solid ${C.green}`, borderRadius:8, fontWeight:700, fontSize:"0.88rem", cursor:"pointer", opacity:(saving||mode)?0.5:1 }}>🌱 Seed Demo Data</button>
+          <button onClick={load} style={{ padding:"0.6rem 0.9rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer", fontSize:"0.88rem" }}>↻ Refresh</button>
+        </div>
+      </div>
+
+      {mode==="add"         && <FormComponent onSave={handleSave} onCancel={()=>setMode(null)} saving={saving} />}
+      {mode && mode!=="add" && <FormComponent initial={mode} onSave={handleSave} onCancel={()=>setMode(null)} saving={saving} />}
+
+      {loading ? <div style={{ textAlign:"center", padding:"3rem", color:C.muted }}>Loading…</div> : (
+        <Card>
+          {view==="policies" && (
+            <Table
+              headers={["ID","Title","Category","Owner","Version","Lifecycle","Next Review","Actions"]}
+              rows={items.map(p=>[
+                <span style={{ color:C.blue, fontWeight:700, fontSize:"0.75rem" }}>{p.id}</span>,
+                <span style={{ fontWeight:600, fontSize:"0.82rem", maxWidth:200, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={p.title}>{p.title}</span>,
+                <Badge label={p.category} color="blue"/>,
+                p.owner,
+                <span style={{ fontFamily:"monospace", fontSize:"0.75rem", color:C.muted }}>{p.version}</span>,
+                <div style={{ display:"flex", gap:"0.4rem", alignItems:"center" }}>
+                  <span style={{ color:p.lifecycle==="Published"?C.green:p.lifecycle==="Draft"?C.muted:C.amber, fontWeight:700, fontSize:"0.75rem" }}>{p.lifecycle}</span>
+                  {LIFECYCLE_NEXT[p.lifecycle] && (
+                    <button onClick={()=>updateLifecycle(p.id,LIFECYCLE_NEXT[p.lifecycle])} disabled={saving}
+                      style={{ padding:"1px 6px", background:"transparent", color:C.blue, border:`1px solid ${C.blue}`, borderRadius:4, fontSize:"0.65rem", cursor:"pointer" }}>
+                      → {LIFECYCLE_NEXT[p.lifecycle]}
+                    </button>
+                  )}
+                </div>,
+                <span style={{ color:p.nextReview&&new Date(p.nextReview)<new Date()?C.red:C.muted, fontSize:"0.75rem", fontWeight:p.nextReview&&new Date(p.nextReview)<new Date()?700:400 }}>{p.nextReview||"—"}</span>,
+                <div style={{ display:"flex", gap:"0.4rem" }}>
+                  <button onClick={()=>setMode({ ...p })} disabled={!!mode} style={{ padding:"0.3rem 0.6rem", background:"transparent", color:C.blue, border:`1px solid ${C.blue}`, borderRadius:5, fontSize:"0.72rem", cursor:"pointer", opacity:mode?0.4:1 }}>Edit</button>
+                  <button onClick={()=>setConfirmDel(p.id)} disabled={!!mode} style={{ padding:"0.3rem 0.6rem", background:"transparent", color:C.red, border:`1px solid ${C.red}`, borderRadius:5, fontSize:"0.72rem", cursor:"pointer", opacity:mode?0.4:1 }}>Del</button>
+                </div>,
+              ])}
+            />
+          )}
+          {view==="processes" && (
+            <Table
+              headers={["ID","Title","Type","Steps","Lifecycle","Actions"]}
+              rows={items.map(p=>[
+                <span style={{ color:C.purple, fontWeight:700, fontSize:"0.75rem" }}>{p.id}</span>,
+                <span style={{ fontWeight:600, fontSize:"0.82rem" }}>{p.title}</span>,
+                <Badge label={p.processType} color={p.processType==="Compliance"?"amber":p.processType==="Governance"?"blue":"green"}/>,
+                <span style={{ color:C.blue, fontWeight:700 }}>{p.steps}</span>,
+                <div style={{ display:"flex", gap:"0.4rem", alignItems:"center" }}>
+                  <span style={{ color:p.lifecycle==="Published"?C.green:p.lifecycle==="Draft"?C.muted:C.amber, fontWeight:700, fontSize:"0.75rem" }}>{p.lifecycle}</span>
+                  {LIFECYCLE_NEXT[p.lifecycle] && (
+                    <button onClick={()=>updateLifecycle(p.id,LIFECYCLE_NEXT[p.lifecycle])} disabled={saving}
+                      style={{ padding:"1px 6px", background:"transparent", color:C.blue, border:`1px solid ${C.blue}`, borderRadius:4, fontSize:"0.65rem", cursor:"pointer" }}>
+                      → {LIFECYCLE_NEXT[p.lifecycle]}
+                    </button>
+                  )}
+                </div>,
+                <div style={{ display:"flex", gap:"0.4rem" }}>
+                  <button onClick={()=>setMode({ ...p })} disabled={!!mode} style={{ padding:"0.3rem 0.6rem", background:"transparent", color:C.blue, border:`1px solid ${C.blue}`, borderRadius:5, fontSize:"0.72rem", cursor:"pointer", opacity:mode?0.4:1 }}>Edit</button>
+                  <button onClick={()=>setConfirmDel(p.id)} disabled={!!mode} style={{ padding:"0.3rem 0.6rem", background:"transparent", color:C.red, border:`1px solid ${C.red}`, borderRadius:5, fontSize:"0.72rem", cursor:"pointer", opacity:mode?0.4:1 }}>Del</button>
+                </div>,
+              ])}
+            />
+          )}
+          {view==="documents" && (
+            <Table
+              headers={["ID","Title","Type","Format","Owner","Lifecycle","Actions"]}
+              rows={items.map(d=>[
+                <span style={{ color:C.cyan, fontWeight:700, fontSize:"0.75rem" }}>{d.id}</span>,
+                <span style={{ fontWeight:600, fontSize:"0.82rem", maxWidth:180, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={d.title}>{d.title}</span>,
+                <Badge label={d.docType} color={d.docType==="Schema"?"purple":d.docType==="Template"?"amber":"green"}/>,
+                <span style={{ color:C.muted, fontSize:"0.75rem" }}>{d.format}</span>,
+                d.owner,
+                <div style={{ display:"flex", gap:"0.4rem", alignItems:"center" }}>
+                  <span style={{ color:d.lifecycle==="Published"?C.green:d.lifecycle==="Draft"?C.muted:C.amber, fontWeight:700, fontSize:"0.75rem" }}>{d.lifecycle}</span>
+                  {LIFECYCLE_NEXT[d.lifecycle] && (
+                    <button onClick={()=>updateLifecycle(d.id,LIFECYCLE_NEXT[d.lifecycle])} disabled={saving}
+                      style={{ padding:"1px 6px", background:"transparent", color:C.blue, border:`1px solid ${C.blue}`, borderRadius:4, fontSize:"0.65rem", cursor:"pointer" }}>
+                      → {LIFECYCLE_NEXT[d.lifecycle]}
+                    </button>
+                  )}
+                </div>,
+                <div style={{ display:"flex", gap:"0.4rem" }}>
+                  <button onClick={()=>setMode({ ...d })} disabled={!!mode} style={{ padding:"0.3rem 0.6rem", background:"transparent", color:C.blue, border:`1px solid ${C.blue}`, borderRadius:5, fontSize:"0.72rem", cursor:"pointer", opacity:mode?0.4:1 }}>Edit</button>
+                  <button onClick={()=>setConfirmDel(d.id)} disabled={!!mode} style={{ padding:"0.3rem 0.6rem", background:"transparent", color:C.red, border:`1px solid ${C.red}`, borderRadius:5, fontSize:"0.72rem", cursor:"pointer", opacity:mode?0.4:1 }}>Del</button>
+                </div>,
+              ])}
+            />
+          )}
+        </Card>
+      )}
+    </div>
+  );
+}
+
 // ─── SIDEBAR ──────────────────────────────────────────────────────────────────
 const NAV = [
   { id:"executive",     label:"Executive Overview",  icon:"🏛" },
@@ -4986,6 +5609,7 @@ const NAV = [
   { id:"predictive",    label:"Predictive Intel",     icon:"🔮" },
   { id:"compliance",    label:"Compliance",           icon:"⚖" },
   { id:"iam",            label:"Identity & Access",     icon:"🔐" },
+  { id:"policy",         label:"Policy & Process",      icon:"📜" },
   { id:"declarations",   label:"Declarations",          icon:"📝" },
   { id:"projects",       label:"Projects & Contracts",  icon:"📁" },
   { id:"admin",         label:"Admin Panel",          icon:"⚙" },
@@ -4999,6 +5623,7 @@ const MODULES = {
   thirdparty:ThirdPartyRisk, app:APPAlignment, predictive:PredictiveIntel,
   compliance:ComplianceModule,
   iam:       IAMModule,
+  policy:    PolicyModule,
   declarations:DeclarationsModule,
   projects:  ProjectsModule,
   admin:AdminTab,

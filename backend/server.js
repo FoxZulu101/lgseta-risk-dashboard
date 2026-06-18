@@ -982,6 +982,68 @@ function buildIAM(data) {
   ];
 }
 
+function buildPolicy(data) {
+  const pm        = data.policyManual || {};
+  const policies  = pm.policies  || [];
+  const processes = pm.processes || [];
+  const documents = pm.documents || [];
+
+  const published  = policies.filter(p=>p.lifecycle==="Published").length;
+  const draft      = policies.filter(p=>p.lifecycle==="Draft").length;
+  const underRev   = policies.filter(p=>p.lifecycle==="Review").length;
+  const overdueRev = [...policies,...processes].filter(d=>d.nextReview&&new Date(d.nextReview)<new Date()&&d.lifecycle==="Published").length;
+
+  const W1 = [800,2600,1400,900,800,1526];
+  const W2 = [800,2600,1200,1000,900,1526];
+
+  return [
+    heading1("11. Policy & Process Manual"),
+    kpiTable([
+      ["Policies",       String(policies.length),   "",                NAVY  ],
+      ["Published",      String(published),          "",                GREEN ],
+      ["Under Review",   String(underRev),           "",                AMBER ],
+      ["Draft",          String(draft),              "",                GREY  ],
+      ["Overdue Review", String(overdueRev),         "Require attention", overdueRev>0?RED:GREEN ],
+    ]),
+    new Paragraph({ spacing:{before:160,after:160}, children:[] }),
+
+    heading2("Policy Register"),
+    policies.length>0 ? new Table({
+      width:{ size:9026, type:WidthType.DXA }, columnWidths:W1,
+      rows:[
+        headerRow(["ID","Policy Title","Category","Owner","Version","Status"], W1),
+        ...policies.map(p => new TableRow({ children:[
+          cell(p.id,           { width:W1[0], size:16, color:BLUE, bold:true }),
+          cell(p.title,         { width:W1[1], size:16 }),
+          cell(p.category||"—",{ width:W1[2], size:16 }),
+          cell(p.owner||"—",   { width:W1[3], size:16 }),
+          cell(p.version||"—", { width:W1[4], size:16 }),
+          cell(p.lifecycle||"—",{ width:W1[5], size:16, bold:true, color:p.lifecycle==="Published"?GREEN:p.lifecycle==="Draft"?GREY:AMBER }),
+        ]})),
+      ],
+    }) : para("No policies recorded.", { color:GREY }),
+
+    new Paragraph({ spacing:{before:200,after:0}, children:[] }),
+    heading2("Key Processes"),
+    processes.length>0 ? new Table({
+      width:{ size:9026, type:WidthType.DXA }, columnWidths:W2,
+      rows:[
+        headerRow(["ID","Process Title","Category","Type","Steps","Status"], W2),
+        ...processes.map(p => new TableRow({ children:[
+          cell(p.id,              { width:W2[0], size:16, color:BLUE, bold:true }),
+          cell(p.title,            { width:W2[1], size:16 }),
+          cell(p.category||"—",   { width:W2[2], size:16 }),
+          cell(p.processType||"—",{ width:W2[3], size:16 }),
+          cell(String(p.steps||0),{ width:W2[4], size:16, align:AlignmentType.CENTER }),
+          cell(p.lifecycle||"—",  { width:W2[5], size:16, bold:true, color:p.lifecycle==="Published"?GREEN:p.lifecycle==="Draft"?GREY:AMBER }),
+        ]})),
+      ],
+    }) : para("No processes recorded.", { color:GREY }),
+    new Paragraph({ spacing:{before:160,after:0}, children:[] }),
+    divider(),
+  ];
+}
+
 // ── Report configs ────────────────────────────────────────────────────────────
 const REPORT_CONFIGS = {
   excom: {
@@ -994,13 +1056,13 @@ const REPORT_CONFIGS = {
     title:    "ARC Risk Report",
     subtitle: "Audit & Risk Committee — Quarterly GRC Report",
     audience: "Audit & Risk Committee",
-    sections: ["summary","toprisks","treatments","uifw","fraud","bcm","compliance","projects","iam"],
+    sections: ["summary","toprisks","treatments","uifw","fraud","bcm","compliance","projects","iam","policy"],
   },
   board: {
     title:    "Board GRC Report",
     subtitle: "Board of Directors — Quarterly GRC Overview",
     audience: "Board of Directors",
-    sections: ["summary","toprisks","treatments","uifw","fraud","bcm","app","compliance","projects","iam"],
+    sections: ["summary","toprisks","treatments","uifw","fraud","bcm","app","compliance","projects","iam","policy"],
   },
 };
 
@@ -1020,6 +1082,7 @@ async function generateReport(type, data) {
     compliance: buildCompliance,
     projects:   buildProjects,
     iam:        buildIAM,
+    policy:     buildPolicy,
   };
 
   const children = [
