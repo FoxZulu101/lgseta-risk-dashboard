@@ -3981,13 +3981,13 @@ function WorkflowPipeline({ status }) {
         const current = rejected ? (s==="Under Review") : i===idx;
         const color   = rejected && s==="Approved" ? C.red : done ? C.green : current ? C.blue : C.border;
         return (
-          <React.Fragment key={s}>
+          <div key={s} style={{ display:"flex", alignItems:"center", gap:4 }}>
             <div style={{ fontSize:"0.65rem", fontWeight:700, color:done?C.green:current?C.blue:C.muted,
               whiteSpace:"nowrap", borderBottom:`2px solid ${color}`, paddingBottom:1 }}>
               {rejected && i===2 ? "Rejected" : s}
             </div>
             {i<steps.length-1 && <div style={{ color:C.border, fontSize:"0.7rem" }}>→</div>}
-          </React.Fragment>
+          </div>
         );
       })}
     </div>
