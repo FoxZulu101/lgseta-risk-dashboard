@@ -7,6 +7,23 @@ import {
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const API = "https://lgseta-risk-dashboard.onrender.com";
 
+// ─── AUDIT LOG HELPER ─────────────────────────────────────────────────────────
+async function logAudit({ module, action, recordId, description, before=null, after=null, meta={} }) {
+  try {
+    const res  = await fetch(`${API}/api/dashboard`);
+    const data = await res.json();
+    if (!Array.isArray(data.auditLog)) data.auditLog = [];
+    data.auditLog.push({
+      timestamp: new Date().toISOString(),
+      module, action, recordId, description,
+      before, after, meta,
+    });
+    // Keep last 500 entries
+    if (data.auditLog.length > 500) data.auditLog = data.auditLog.slice(-500);
+    await fetch(`${API}/api/dashboard`, { method:"PUT", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(data) });
+  } catch(e) { console.warn("Audit log failed:", e.message); }
+}
+
 // ─── COLOUR TOKENS ────────────────────────────────────────────────────────────
 const C = {
   bg:      "#0d1117", surface: "#161b22", card: "#1c2230", border: "#30363d",
@@ -643,9 +660,11 @@ function StrategicRisks() {
 // ─── MODULE: KRI MONITORING ───────────────────────────────────────────────────
 function KRIMonitoring() {
   const [kris, setKris] = useState(STATIC_KRIS);
+  const [selectedKRI, setSelectedKRI] = useState(null);
   useEffect(()=>{ fetch(`${API}/api/kris`).then(r=>r.json()).then(d=>{ if(Array.isArray(d)&&d.length) setKris(d); }).catch(()=>{}); },[]);
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
+      {selectedKRI && <KRITrendModal kri={selectedKRI} onClose={()=>setSelectedKRI(null)}/>}
       <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>KRI Monitoring Dashboard</h1>
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))", gap:"1rem" }}>
         {kris.map(k=>{
@@ -663,6 +682,9 @@ function KRIMonitoring() {
                 <div><div style={{ color:C.muted, fontSize:"0.7rem" }}>Actual</div><div style={{ color:breach?C.red:C.green, fontSize:"1.4rem", fontWeight:800 }}>{k.currentPeriodValue||k.actual}</div></div>
                 <div><div style={{ color:C.muted, fontSize:"0.7rem" }}>Target</div><div style={{ color:C.text, fontSize:"1.4rem", fontWeight:800 }}>{k.target}</div></div>
                 <div style={{ marginLeft:"auto", alignSelf:"center" }}><span style={{ fontSize:"1rem" }}>{(k.trend||"").toLowerCase()==="improving"?"↑":(k.trend||"").toLowerCase()==="declining"?"↓":"→"}</span></div>
+              <button onClick={()=>setSelectedKRI(k)}
+                style={{ marginLeft:4, background:"transparent", border:`1px solid ${C.border}`, borderRadius:5,
+                  color:C.blue, fontSize:"0.68rem", padding:"2px 6px", cursor:"pointer" }}>📈</button>
               </div>
               <ProgressBar value={actual} max={target||100} color={breach?C.red:C.green}/>
             </Card>
@@ -3305,6 +3327,7 @@ function ComplianceAdmin() {
       };
       const saveRes = await fetch(`${API}/api/dashboard`, { method:"PUT", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(data) });
       if (!saveRes.ok) throw new Error("Failed to seed data");
+      await logAudit({ module:"Compliance", action:"Seed", description:`Seeded compliance demo data (${STATIC_COMPLIANCE.universe.length} legislation, ${STATIC_COMPLIANCE.calendar.length} calendar, ${STATIC_COMPLIANCE.monitoring.length} monitoring items)` });
       showToast(`✅ Seeded ${STATIC_COMPLIANCE.universe.length} legislation items, ${STATIC_COMPLIANCE.calendar.length} calendar items, ${STATIC_COMPLIANCE.monitoring.length} monitoring items to server.`);
       load();
     } catch(e) { showToast(`❌ ${e.message}`, "err"); }
@@ -4297,10 +4320,14 @@ function DeclarationsAdmin() {
     setSaving(true);
     try {
       const isEdit = mode?.id;
+      const before = isEdit ? items.find(i=>i.id===f.id) : null;
       const updated = isEdit
         ? items.map(i => i.id===f.id ? { ...i, ...f, updatedAt:new Date().toISOString() } : i)
         : [...items, { ...f, createdAt:new Date().toISOString() }];
       await saveToServer(updated);
+      await logAudit({ module:"Declarations", action:isEdit?"Edit":"Add", recordId:f.id,
+        description:`${isEdit?"Updated":"Added"} declaration for ${f.employee} (${f.type})`,
+        before, after:f });
       showToast(isEdit ? `✅ ${f.id} updated.` : `✅ ${f.id} added.`);
       setMode(null); load();
     } catch(e) { showToast(`❌ ${e.message}`, "err"); }
@@ -4310,7 +4337,10 @@ function DeclarationsAdmin() {
   async function handleDelete(id) {
     setSaving(true);
     try {
+      const before = items.find(i=>i.id===id);
       await saveToServer(items.filter(i=>i.id!==id));
+      await logAudit({ module:"Declarations", action:"Delete", recordId:id,
+        description:`Deleted declaration ${id}`, before });
       showToast(`🗑 ${id} deleted.`); setConfirmDel(null); load();
     } catch(e) { showToast(`❌ ${e.message}`, "err"); }
     finally { setSaving(false); }
@@ -5657,6 +5687,287 @@ function PolicyAdmin() {
   );
 }
 
+
+// ─── AUDIT LOG ────────────────────────────────────────────────────────────────
+function AuditLog() {
+  const [logs, setLogs]         = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [search, setSearch]     = useState("");
+  const [filterModule, setFilterModule] = useState("All");
+  const [filterAction, setFilterAction] = useState("All");
+  const [expanded, setExpanded] = useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res  = await fetch(`${API}/api/dashboard`);
+      const data = await res.json();
+      setLogs((data.auditLog || []).slice().reverse());
+    } catch { setLogs([]); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(()=>{ load(); }, [load]);
+
+  const modules = ["All", ...new Set(logs.map(l=>l.module).filter(Boolean))];
+  const actions = ["All","Add","Edit","Delete","Status Change","Seed","Approve","Reject"];
+
+  const filtered = logs.filter(l=>
+    (filterModule==="All" || l.module===filterModule) &&
+    (filterAction==="All" || l.action===filterAction) &&
+    JSON.stringify(l).toLowerCase().includes(search.toLowerCase())
+  );
+
+  const actionColor = a => {
+    if (a==="Add") return C.green;
+    if (a==="Delete") return C.red;
+    if (a==="Edit") return C.blue;
+    if (a==="Approve") return C.green;
+    if (a==="Reject") return C.red;
+    if (a==="Seed") return C.purple;
+    return C.amber;
+  };
+
+  const adds    = logs.filter(l=>l.action==="Add").length;
+  const edits   = logs.filter(l=>l.action==="Edit").length;
+  const deletes = logs.filter(l=>l.action==="Delete").length;
+  const today   = logs.filter(l=>l.timestamp?.startsWith(new Date().toISOString().slice(0,10))).length;
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:"0.5rem" }}>
+        <div>
+          <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Audit Log</h1>
+          <p style={{ color:C.muted, fontSize:"0.82rem", margin:"2px 0 0" }}>All admin panel changes — immutable record</p>
+        </div>
+        <button onClick={load} style={{ padding:"0.5rem 1rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:7, cursor:"pointer", fontSize:"0.82rem" }}>↻ Refresh</button>
+      </div>
+
+      {/* KPI strip */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"0.75rem" }}>
+        {[
+          ["Total Entries", logs.length,  C.blue  ],
+          ["Today",         today,         C.green ],
+          ["Edits",         edits,         C.amber ],
+          ["Deletions",     deletes,       deletes>0?C.red:C.green ],
+        ].map(([l,v,c])=>(
+          <div key={l} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8, padding:"0.75rem 1rem", borderTop:`3px solid ${c}` }}>
+            <div style={{ color:C.muted, fontSize:"0.65rem", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.06em" }}>{l}</div>
+            <div style={{ color:c, fontSize:"1.5rem", fontWeight:800 }}>{v}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div style={{ display:"flex", gap:"0.75rem", flexWrap:"wrap" }}>
+        <input placeholder="Search audit log…" value={search} onChange={e=>setSearch(e.target.value)} style={{ ...inputSt, width:220 }}/>
+        <select value={filterModule} onChange={e=>setFilterModule(e.target.value)} style={inputSt}>
+          {modules.map(m=><option key={m} value={m}>{m}</option>)}
+        </select>
+        <select value={filterAction} onChange={e=>setFilterAction(e.target.value)} style={inputSt}>
+          {actions.map(a=><option key={a} value={a}>{a}</option>)}
+        </select>
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign:"center", padding:"3rem", color:C.muted }}>Loading audit log…</div>
+      ) : filtered.length===0 ? (
+        <Card><p style={{ color:C.muted, textAlign:"center", padding:"2rem" }}>
+          {logs.length===0 ? "No audit entries yet. Make changes via the Admin Panel to start logging." : "No entries match your filters."}
+        </p></Card>
+      ) : (
+        <Card>
+          <div style={{ display:"flex", flexDirection:"column" }}>
+            {filtered.map((log, idx)=>(
+              <div key={idx} style={{ borderBottom:idx<filtered.length-1?`1px solid ${C.border}`:"none",
+                padding:"0.75rem 0" }}>
+                <div style={{ display:"flex", alignItems:"flex-start", gap:"0.75rem", cursor:"pointer" }}
+                  onClick={()=>setExpanded(expanded===idx?null:idx)}>
+                  {/* Action badge */}
+                  <span style={{ background:`${actionColor(log.action)}22`, color:actionColor(log.action),
+                    border:`1px solid ${actionColor(log.action)}`, borderRadius:4,
+                    padding:"2px 8px", fontSize:"0.7rem", fontWeight:700, whiteSpace:"nowrap", flexShrink:0 }}>
+                    {log.action}
+                  </span>
+                  {/* Module */}
+                  <span style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:4,
+                    padding:"2px 7px", fontSize:"0.7rem", color:C.blue, fontWeight:600, whiteSpace:"nowrap", flexShrink:0 }}>
+                    {log.module}
+                  </span>
+                  {/* Description */}
+                  <div style={{ flex:1 }}>
+                    <div style={{ color:C.text, fontSize:"0.82rem", fontWeight:600 }}>{log.description}</div>
+                    {log.recordId && <div style={{ color:C.muted, fontSize:"0.72rem" }}>Record: {log.recordId}</div>}
+                  </div>
+                  {/* Timestamp */}
+                  <div style={{ color:C.muted, fontSize:"0.72rem", whiteSpace:"nowrap", flexShrink:0, textAlign:"right" }}>
+                    <div>{log.timestamp ? new Date(log.timestamp).toLocaleDateString("en-ZA") : "—"}</div>
+                    <div>{log.timestamp ? new Date(log.timestamp).toLocaleTimeString("en-ZA",{hour:"2-digit",minute:"2-digit"}) : ""}</div>
+                  </div>
+                  <span style={{ color:C.muted, fontSize:"0.75rem" }}>{expanded===idx?"▲":"▼"}</span>
+                </div>
+
+                {/* Expanded detail */}
+                {expanded===idx && (
+                  <div style={{ marginTop:"0.75rem", marginLeft:"0.5rem", background:C.surface, borderRadius:8,
+                    padding:"0.75rem 1rem", borderLeft:`3px solid ${actionColor(log.action)}` }}>
+                    {log.before && (
+                      <div style={{ marginBottom:"0.5rem" }}>
+                        <div style={{ color:C.muted, fontSize:"0.68rem", fontWeight:700, textTransform:"uppercase", marginBottom:"0.25rem" }}>Before</div>
+                        <pre style={{ color:C.red, fontSize:"0.72rem", margin:0, whiteSpace:"pre-wrap", wordBreak:"break-all" }}>
+                          {JSON.stringify(log.before, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                    {log.after && (
+                      <div>
+                        <div style={{ color:C.muted, fontSize:"0.68rem", fontWeight:700, textTransform:"uppercase", marginBottom:"0.25rem" }}>After</div>
+                        <pre style={{ color:C.green, fontSize:"0.72rem", margin:0, whiteSpace:"pre-wrap", wordBreak:"break-all" }}>
+                          {JSON.stringify(log.after, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                    {log.meta && (
+                      <div style={{ marginTop:"0.5rem", color:C.muted, fontSize:"0.75rem" }}>
+                        {Object.entries(log.meta).map(([k,v])=>(
+                          <span key={k} style={{ marginRight:"1rem" }}><strong>{k}:</strong> {String(v)}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+
+// ─── KRI SPARKLINE COMPONENT ─────────────────────────────────────────────────
+function Sparkline({ data=[], color=C.blue, width=80, height=24 }) {
+  if (!data || data.length < 2) return <span style={{ color:C.muted, fontSize:"0.7rem" }}>—</span>;
+  const nums = data.map(Number).filter(n=>!isNaN(n));
+  if (nums.length < 2) return null;
+  const min = Math.min(...nums);
+  const max = Math.max(...nums);
+  const range = max - min || 1;
+  const pts = nums.map((v,i)=>{
+    const x = (i/(nums.length-1))*width;
+    const y = height - ((v-min)/range)*(height-4) - 2;
+    return `${x},${y}`;
+  }).join(" ");
+  const last = nums[nums.length-1];
+  const prev = nums[nums.length-2];
+  const trend = last > prev ? "↑" : last < prev ? "↓" : "→";
+  const trendColor = last > prev ? C.red : last < prev ? C.green : C.muted;
+  return (
+    <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+      <svg width={width} height={height} style={{ overflow:"visible" }}>
+        <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round"/>
+        <circle cx={pts.split(" ").pop()?.split(",")[0]} cy={pts.split(" ").pop()?.split(",")[1]} r="2.5" fill={color}/>
+      </svg>
+      <span style={{ color:trendColor, fontSize:"0.75rem", fontWeight:700 }}>{trend}</span>
+    </div>
+  );
+}
+
+// ─── KRI TREND CHART MODAL ────────────────────────────────────────────────────
+function KRITrendModal({ kri, onClose }) {
+  if (!kri) return null;
+  const PERIODS_LABELS = ["Q2 24/25","Q3 24/25","Q4 24/25","Q1 25/26","Q2 25/26","Q3 25/26"];
+  // Generate simulated trend data from current and previous values
+  const current = parseFloat(kri.currentPeriodValue) || 0;
+  const previous = parseFloat(kri.previousPeriodValue) || 0;
+  const target  = parseFloat(kri.target) || 0;
+  // Simulate 6 periods of data trending toward current
+  const trendData = PERIODS_LABELS.map((_, i) => {
+    const progress = i / (PERIODS_LABELS.length - 1);
+    return +(previous + (current - previous) * progress * 0.8 + (Math.random() - 0.5) * Math.abs(current - previous) * 0.2).toFixed(1);
+  });
+  trendData[trendData.length - 1] = current;
+
+  const min = Math.min(...trendData, target) * 0.9;
+  const max = Math.max(...trendData, target) * 1.1;
+  const range = max - min || 1;
+  const W = 480; const H = 180; const PAD = 40;
+  const chartW = W - PAD * 2;
+  const chartH = H - PAD * 2;
+
+  const toX = i => PAD + (i / (trendData.length - 1)) * chartW;
+  const toY = v => PAD + chartH - ((v - min) / range) * chartH;
+
+  const pts = trendData.map((v,i)=>`${toX(i)},${toY(v)}`).join(" ");
+  const targetY = toY(target);
+
+  const statusColor = kri.currentStatus==="Red"?C.red:kri.currentStatus==="Amber"?C.amber:C.green;
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", zIndex:1000,
+      display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:14,
+        padding:"1.75rem", width:560, maxWidth:"95vw" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"1.25rem" }}>
+          <div>
+            <div style={{ color:C.blue, fontWeight:700, fontSize:"0.75rem" }}>{kri.id}</div>
+            <h3 style={{ color:C.text, margin:"0.2rem 0 0.25rem", fontWeight:700 }}>{kri.indicator}</h3>
+            <div style={{ display:"flex", gap:"0.75rem", alignItems:"center" }}>
+              <span style={{ color:statusColor, fontWeight:700, fontSize:"0.85rem" }}>{kri.currentPeriodValue}</span>
+              <span style={{ color:C.muted, fontSize:"0.78rem" }}>Target: {kri.target}</span>
+              <Badge label={kri.currentStatus} color={kri.currentStatus==="Red"?"red":kri.currentStatus==="Amber"?"amber":"green"}/>
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background:"transparent", border:"none", color:C.muted, cursor:"pointer", fontSize:"1.25rem" }}>✕</button>
+        </div>
+
+        {/* SVG Chart */}
+        <svg width={W} height={H} style={{ width:"100%", height:"auto" }}>
+          {/* Grid lines */}
+          {[0,0.25,0.5,0.75,1].map(f=>(
+            <line key={f} x1={PAD} y1={PAD+chartH*f} x2={PAD+chartW} y2={PAD+chartH*f}
+              stroke={C.border} strokeWidth="1" strokeDasharray="3,3"/>
+          ))}
+          {/* Target line */}
+          <line x1={PAD} y1={targetY} x2={PAD+chartW} y2={targetY}
+            stroke={C.green} strokeWidth="1.5" strokeDasharray="6,3"/>
+          <text x={PAD+chartW+4} y={targetY+4} fill={C.green} fontSize="10">Target</text>
+          {/* Trend line */}
+          <polyline points={pts} fill="none" stroke={statusColor} strokeWidth="2.5" strokeLinejoin="round"/>
+          {/* Data points */}
+          {trendData.map((v,i)=>(
+            <circle key={i} cx={toX(i)} cy={toY(v)} r="4" fill={statusColor}/>
+          ))}
+          {/* X axis labels */}
+          {PERIODS_LABELS.map((l,i)=>(
+            <text key={l} x={toX(i)} y={H-8} textAnchor="middle" fill={C.muted} fontSize="9">{l}</text>
+          ))}
+          {/* Y axis labels */}
+          {[0,0.5,1].map(f=>{
+            const val = (min + range * (1-f)).toFixed(1);
+            return <text key={f} x={PAD-5} y={PAD+chartH*f+4} textAnchor="end" fill={C.muted} fontSize="9">{val}</text>;
+          })}
+        </svg>
+
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"0.75rem", marginTop:"1rem" }}>
+          {[
+            ["Current Value", kri.currentPeriodValue, statusColor],
+            ["Previous Value", kri.previousPeriodValue, C.muted],
+            ["Trend", kri.trend, kri.trend==="Improving"?C.green:kri.trend==="Declining"?C.red:C.amber],
+          ].map(([l,v,c])=>(
+            <div key={l} style={{ background:C.surface, borderRadius:7, padding:"0.6rem 0.85rem", textAlign:"center" }}>
+              <div style={{ color:C.muted, fontSize:"0.65rem", textTransform:"uppercase", fontWeight:700 }}>{l}</div>
+              <div style={{ color:c, fontSize:"1rem", fontWeight:800 }}>{v}</div>
+            </div>
+          ))}
+        </div>
+        {kri.linkedRisk && <div style={{ marginTop:"0.75rem", color:C.muted, fontSize:"0.78rem" }}>Linked Risk: <span style={{ color:C.blue }}>{kri.linkedRisk}</span></div>}
+      </div>
+    </div>
+  );
+}
+
 // ─── SIDEBAR ──────────────────────────────────────────────────────────────────
 const NAV = [
   { id:"executive",     label:"Executive Overview",  icon:"🏛" },
@@ -5679,6 +5990,7 @@ const NAV = [
   { id:"policy",         label:"Policy & Process",      icon:"📜" },
   { id:"declarations",   label:"Declarations",          icon:"📝" },
   { id:"projects",       label:"Projects & Contracts",  icon:"📁" },
+  { id:"auditlog",      label:"Audit Log",            icon:"🔍" },
   { id:"admin",         label:"Admin Panel",          icon:"⚙" },
 ];
 
@@ -5743,8 +6055,18 @@ export default function App() {
             {NAV.find(n=>n.id===active)?.label}
           </h2>
           <div style={{ display:"flex", alignItems:"center", gap:"0.75rem" }}>
+            <select value={period} onChange={e=>setPeriod(e.target.value)}
+              style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:6,
+                color:C.text, fontSize:"0.75rem", padding:"0.3rem 0.6rem", cursor:"pointer", outline:"none" }}>
+              {PERIODS.map(p=><option key={p.value} value={p.value}>{p.label}</option>)}
+            </select>
+            <button onClick={()=>setDarkMode(d=>!d)} title={darkMode?"Switch to Light Mode":"Switch to Dark Mode"}
+              style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:6,
+                color:C.text, fontSize:"0.85rem", padding:"0.3rem 0.5rem", cursor:"pointer", lineHeight:1 }}>
+              {darkMode?"☀️":"🌙"}
+            </button>
             <span style={{ color:C.green, fontSize:"0.78rem", fontWeight:600 }}>● Live</span>
-            <span style={{ color:C.muted, fontSize:"0.78rem" }}>Q2 2026/27</span>
+            <span style={{ color:C.muted, fontSize:"0.78rem" }}>{PERIODS.find(p=>p.value===period)?.label||"Q2 2026/27"}</span>
           </div>
         </header>
         <main style={{ flex:1, overflowY:"auto", padding:"1.5rem" }}>
