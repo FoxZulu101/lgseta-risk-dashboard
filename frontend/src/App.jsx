@@ -569,6 +569,80 @@ function StackedBar({ segments=[], max, height=14 }) {
   );
 }
 
+// Radar / spider chart (PESTLE etc). axes=[{label,value,max}], optional second series.
+function RadarChart({ axes=[], series2=null, size=320, color=C.purple, color2=C.cyan }) {
+  const cx=size/2, cy=size/2, r=size/2-46;
+  const n=axes.length || 1;
+  const angle = i => (Math.PI*2*i/n) - Math.PI/2;
+  const maxVal = Math.max(1, ...axes.map(a=>a.max||100));
+  const pt = (i,val) => {
+    const rad = (Math.max(0,Math.min(val,maxVal))/maxVal)*r;
+    return [cx + rad*Math.cos(angle(i)), cy + rad*Math.sin(angle(i))];
+  };
+  const poly = vals => vals.map((v,i)=>pt(i,v).join(",")).join(" ");
+  const rings = [0.25,0.5,0.75,1];
+  return (
+    <svg width={size} height={size} style={{ maxWidth:"100%" }}>
+      {rings.map((f,ri)=>(
+        <polygon key={ri} points={axes.map((_,i)=>{
+          const x=cx+r*f*Math.cos(angle(i)), y=cy+r*f*Math.sin(angle(i)); return `${x},${y}`;
+        }).join(" ")} fill="none" stroke={C.border} strokeWidth="1"/>
+      ))}
+      {axes.map((a,i)=>{
+        const [ex,ey]=[cx+r*Math.cos(angle(i)), cy+r*Math.sin(angle(i))];
+        const [lx,ly]=[cx+(r+22)*Math.cos(angle(i)), cy+(r+22)*Math.sin(angle(i))];
+        return (
+          <g key={i}>
+            <line x1={cx} y1={cy} x2={ex} y2={ey} stroke={C.border} strokeWidth="1"/>
+            <text x={lx} y={ly} textAnchor="middle" dominantBaseline="middle" fill={C.muted} fontSize="11">{a.label}</text>
+          </g>
+        );
+      })}
+      {series2 && (
+        <polygon points={poly(series2)} fill="none" stroke={color2} strokeWidth="1.5" strokeDasharray="5,3" opacity="0.9"/>
+      )}
+      <polygon points={poly(axes.map(a=>a.value))} fill={color} fillOpacity="0.22" stroke={color} strokeWidth="2"/>
+      {axes.map((a,i)=>{ const [x,y]=pt(i,a.value); return <circle key={i} cx={x} cy={y} r="3.5" fill={color}/>; })}
+    </svg>
+  );
+}
+
+// Heat grid — a labelled matrix of cells. rows/cols are arrays of labels;
+// cell(r,c) returns {value,color,label?}. Used for opportunity & assurance heatmaps.
+function HeatGrid({ rows=[], cols=[], cell, cellW=120, cellH=58, rowLabelW=90, colLabel }) {
+  return (
+    <div style={{ overflowX:"auto" }}>
+      <table style={{ borderCollapse:"separate", borderSpacing:6 }}>
+        <thead>
+          <tr>
+            <th style={{ width:rowLabelW }}></th>
+            {cols.map((c,ci)=>(
+              <th key={ci} style={{ color:C.muted, fontSize:"0.72rem", fontWeight:600, textAlign:"center", paddingBottom:4, minWidth:cellW }}>{colLabel?colLabel(c):c}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((rw,ri)=>(
+            <tr key={ri}>
+              <td style={{ color:C.muted, fontSize:"0.72rem", fontWeight:600, textAlign:"right", paddingRight:8, whiteSpace:"nowrap" }}>{rw}</td>
+              {cols.map((cl,ci)=>{
+                const d = cell(rw,cl,ri,ci) || {};
+                return (
+                  <td key={ci} style={{ width:cellW, height:cellH, background:d.color||C.surface, borderRadius:6,
+                    textAlign:"center", verticalAlign:"middle", border:`1px solid ${C.border}` }}>
+                    <div style={{ color:"#fff", fontWeight:800, fontSize:"0.95rem" }}>{d.value}</div>
+                    {d.label && <div style={{ color:"rgba(255,255,255,0.85)", fontSize:"0.62rem", lineHeight:1.15, padding:"0 4px" }}>{d.label}</div>}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 // ─── MODULE: EXECUTIVE OVERVIEW ───────────────────────────────────────────────
 function ExecutiveOverview() {
   const [risks, setRisks] = useState(STATIC_RISKS);
@@ -896,50 +970,242 @@ function KRIMonitoring() {
 
 // ─── MODULE: OPPORTUNITIES ────────────────────────────────────────────────────
 function Opportunities() {
+  const [opps, setOpps] = useState(STATIC_OPP);
+  useEffect(()=>{
+    fetch(`${API}/api/opportunities`).then(r=>r.json()).then(d=>{ if(Array.isArray(d)&&d.length) setOpps(d); }).catch(()=>{});
+  },[]);
+
+  // Parse R-values out of benefit strings for pipeline value (fallback to score*1M)
+  const parseValue = o => {
+    const m = (o.benefit||"").match(/R\s?([\d.]+)\s?M/i);
+    return m ? parseFloat(m[1])*1e6 : (Number(o.score)||0)*1e6;
+  };
+  const totalValue = opps.reduce((s,o)=>s+parseValue(o),0);
+  const realisedValue = opps.filter(o=>o.status==="Active").reduce((s,o)=>s+parseValue(o)*0.25,0);
+  const avgScore = opps.length ? (opps.reduce((s,o)=>s+(Number(o.score)||0),0)/opps.length).toFixed(1) : 0;
+  const categories = new Set(opps.map(o=>o.category||"Strategic")).size;
+
+  // Heatmap colour by score bucket
+  const heatColor = s => s>=21?"#1a7d3f":s>=16?C.green:s>=11?C.amber:s>=6?"#e36209":C.red;
+  // Place each opportunity in an impact(row) × probability(col) cell using score → derived axes
+  const impacts = ["Very High","High","Medium","Low"];
+  const probs   = ["Critical","Major","Moderate","Minor"];
+  // Derive a representative score for each cell (demo matrix mirroring the reference)
+  const cellScore = { "Very High":{Critical:16,Major:12,Moderate:8,Minor:4},
+                      "High":{Critical:12,Major:9,Moderate:6,Minor:3},
+                      "Medium":{Critical:8,Major:6,Moderate:4,Minor:2},
+                      "Low":{Critical:4,Major:3,Moderate:2,Minor:1} };
+  // Map opportunities into top cells by score (highest scoring ones surface labels)
+  const sorted = [...opps].sort((a,b)=>(b.score||0)-(a.score||0));
+  const cellLabel = (imp,prob) => {
+    if (imp==="Very High" && prob==="Critical") return sorted[0]?.name?.slice(0,22);
+    if (imp==="High" && prob==="Critical") return sorted[1]?.name?.slice(0,22);
+    if (imp==="High" && prob==="Major") return sorted[2]?.name?.slice(0,22);
+    return null;
+  };
+
+  // Pipeline funnel — staged counts
+  const n = opps.length;
+  const pipeline = [
+    { stage:"Identification", count:n,                    color:C.muted },
+    { stage:"Assessment",     count:Math.round(n*0.83),    color:C.blue  },
+    { stage:"Approval",       count:Math.round(n*0.67),    color:C.purple },
+    { stage:"Implementation", count:Math.round(n*0.5),     color:C.amber },
+    { stage:"Realisation",    count:opps.filter(o=>o.status==="Active").length, color:C.green },
+  ];
+
+  const benefitTrend = [
+    { m:"Jul", v:5 },{ m:"Aug", v:5 },{ m:"Sep", v:6 },
+    { m:"Oct", v:6 },{ m:"Nov", v:7 },{ m:"Dec", v:opps.filter(o=>o.status==="Active").length },
+  ];
+
+  const appetiteColor = a => a==="Pursue"?"green":a==="Enhance"?"amber":a==="Exploit"?"blue":"green";
+
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
       <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Strategic Opportunities Register</h1>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))", gap:"1rem" }}>
-        {STATIC_OPP.map(o=>(
-          <Card key={o.id} style={{ borderLeft:`3px solid ${C.cyan}` }}>
-            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:"0.4rem" }}>
-              <span style={{ color:C.muted, fontSize:"0.72rem" }}>{o.id}</span>
-              <StatusBadge status={o.status}/>
-            </div>
-            <div style={{ color:C.text, fontWeight:700, marginBottom:"0.35rem" }}>{o.name}</div>
-            <div style={{ color:C.cyan, fontSize:"0.82rem", marginBottom:"0.4rem" }}>💡 {o.benefit}</div>
-            <div style={{ display:"flex", justifyContent:"space-between" }}>
-              <span style={{ color:C.muted, fontSize:"0.78rem" }}>Owner: {o.owner}</span>
-              <span style={{ color:C.amber, fontWeight:700 }}>Score: {o.score}</span>
-            </div>
-          </Card>
-        ))}
+
+      {/* KPI strip */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"0.85rem" }}>
+        <KPICardPro label="Total Opportunities"     value={opps.length}                  sub={`across ${categories} categories`} color={C.blue}   delta={2} deltaGood={true}/>
+        <KPICardPro label="Pipeline Value"          value={`R${(totalValue/1e6).toFixed(1)}M`} sub="estimated gross value"        color={C.purple}/>
+        <KPICardPro label="Realised Benefits"       value={`R${(realisedValue/1e6).toFixed(1)}M`} sub={`${Math.round((realisedValue/(totalValue||1))*100)}% of pipeline`} color={C.green} delta={0.8} deltaGood={true}/>
+        <KPICardPro label="Avg Opportunity Score"   value={avgScore}                      sub="out of 25 maximum"           color={C.amber} spark={[13,14,15,15,16,Number(avgScore)]}/>
       </div>
+
+      {/* Heatmap + pipeline */}
+      <div style={{ display:"grid", gridTemplateColumns:"1.4fr 1fr", gap:"1rem" }}>
+        <Card>
+          <SectionTitle>Opportunity Heatmap — Impact × Probability</SectionTitle>
+          <HeatGrid
+            rows={impacts} cols={probs}
+            cellW={108} cellH={62} rowLabelW={70}
+            cell={(imp,prob)=>{ const sc=cellScore[imp][prob]; return { value:sc, color:heatColor(sc), label:cellLabel(imp,prob) }; }}
+          />
+          <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.75rem", flexWrap:"wrap" }}>
+            {[["21-25","#1a7d3f"],["16-20",C.green],["11-15",C.amber],["6-10","#e36209"],["1-5",C.red]].map(([l,c])=>(
+              <span key={l} style={{ color:c, fontSize:"0.7rem" }}>● {l}</span>
+            ))}
+          </div>
+        </Card>
+
+        <Card>
+          <SectionTitle>Opportunity Pipeline</SectionTitle>
+          <div style={{ display:"flex", flexDirection:"column", gap:"0.9rem", marginTop:"0.25rem" }}>
+            {pipeline.map(p=>(
+              <div key={p.stage}>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
+                  <span style={{ color:C.text, fontSize:"0.82rem", fontWeight:600 }}>{p.stage}</span>
+                  <span style={{ color:C.muted, fontSize:"0.78rem" }}>{p.count}/{n}</span>
+                </div>
+                <div style={{ background:C.border, borderRadius:6, height:18, position:"relative", overflow:"hidden" }}>
+                  <div style={{ width:`${(p.count/Math.max(n,1))*100}%`, height:"100%", background:p.color, borderRadius:6,
+                    display:"flex", alignItems:"center", justifyContent:"flex-end", paddingRight:6, transition:"width 0.5s" }}>
+                    <span style={{ color:"#fff", fontSize:"0.68rem", fontWeight:700 }}>{p.count}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      {/* Benefit realisation trend */}
+      <Card>
+        <SectionTitle>Benefit Realisation Trend</SectionTitle>
+        <ResponsiveContainer width="100%" height={180}>
+          <BarChart data={benefitTrend}>
+            <CartesianGrid strokeDasharray="3 3" stroke={C.border}/>
+            <XAxis dataKey="m" stroke={C.muted} tick={{ fill:C.muted, fontSize:11 }}/>
+            <YAxis stroke={C.muted} tick={{ fill:C.muted, fontSize:11 }}/>
+            <Tooltip contentStyle={{ background:C.card, border:`1px solid ${C.border}`, color:C.text, fontSize:"0.78rem" }}/>
+            <Bar dataKey="v" fill={C.green} name="Active opportunities" radius={[4,4,0,0]}/>
+          </BarChart>
+        </ResponsiveContainer>
+      </Card>
+
+      {/* Register */}
+      <Card>
+        <SectionTitle>Opportunity Register</SectionTitle>
+        <Table
+          headers={["ID","Opportunity","Category","Score","Owner","Est. Value","Status"]}
+          rows={opps.map(o=>[
+            <span style={{ color:C.cyan, fontWeight:700 }}>{o.id}</span>,
+            <span style={{ fontWeight:600 }}>{o.name}</span>,
+            <span style={{ color:C.muted, fontSize:"0.78rem" }}>{o.category||"Strategic"}</span>,
+            <span style={{ color:(o.score>=16?C.green:o.score>=11?C.amber:C.red), fontWeight:800 }}>{o.score}</span>,
+            o.owner||"—",
+            <span style={{ color:C.green, fontWeight:700 }}>R{(parseValue(o)/1e6).toFixed(1)}M</span>,
+            <StatusBadge status={o.status}/>,
+          ])}
+        />
+      </Card>
     </div>
   );
 }
 
 // ─── MODULE: EMERGING RISKS ───────────────────────────────────────────────────
 function EmergingRisks() {
+  const [risks, setRisks] = useState(STATIC_EMERGING);
+  useEffect(()=>{
+    fetch(`${API}/api/dashboard`).then(r=>r.json()).then(d=>{ if(Array.isArray(d.emergingRisks)&&d.emergingRisks.length) setRisks(d.emergingRisks); }).catch(()=>{});
+  },[]);
+
+  const total = risks.length;
+  const highCrit = risks.filter(r=>(Number(r.likelihood)||0)*(Number(r.impact)||0)>=16).length;
+  const escalated = risks.filter(r=>r.action==="Escalate").length;
+  const newThisQ = Math.min(total, 4);
+
+  // PESTLE categories — map the module's categories onto a 7-axis PESTLE-style radar
+  const PESTLE = ["Political","Economic","Social","Technological","Legal","Environmental","Sectoral"];
+  const catMap = { Regulatory:"Legal", Technology:"Technological", Economic:"Economic", Environment:"Environmental", Political:"Political", Social:"Social" };
+  const axisScore = axis => {
+    const matching = risks.filter(r=>(catMap[r.category]||r.category)===axis);
+    if (!matching.length) return 20; // baseline
+    const avg = matching.reduce((s,r)=>s+(Number(r.likelihood)||0)*(Number(r.impact)||0),0)/matching.length;
+    return Math.min(100, (avg/25)*100);
+  };
+  const axes = PESTLE.map(a=>({ label:a, value:axisScore(a), max:100 }));
+  const prevSeries = axes.map(a=>Math.max(15, a.value*0.7)); // simulated previous period
+
+  // Category bar counts
+  const catCounts = PESTLE.map(a=>({
+    cat:a,
+    count:risks.filter(r=>(catMap[r.category]||r.category)===a).length,
+  }));
+  const catMax = Math.max(1, ...catCounts.map(c=>c.count));
+  const catColor = { Political:C.purple, Economic:C.amber, Social:C.blue, Technological:C.cyan, Legal:C.red, Environmental:C.green, Sectoral:"#d147a3" };
+
+  const actionColor = a => a==="Escalate"?"red":a==="Mitigate"?"amber":a==="Watch"?"amber":"blue";
+
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
       <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Emerging Risk Radar</h1>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))", gap:"1rem" }}>
-        {STATIC_EMERGING.map(r=>(
-          <Card key={r.id} style={{ borderLeft:`3px solid ${r.action==="Escalate"?C.red:r.action==="Mitigate"?C.amber:C.blue}` }}>
-            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:"0.4rem" }}>
-              <Badge label={r.category} color="blue"/>
-              <Badge label={r.action}   color={r.action==="Escalate"?"red":r.action==="Mitigate"?"amber":"blue"}/>
-            </div>
-            <div style={{ color:C.text, fontWeight:700, marginBottom:"0.5rem" }}>{r.name}</div>
-            <div style={{ display:"flex", gap:"1.5rem" }}>
-              <div><div style={{ color:C.muted, fontSize:"0.7rem" }}>Likelihood</div><div style={{ color:C.amber, fontWeight:800 }}>{r.likelihood}/5</div></div>
-              <div><div style={{ color:C.muted, fontSize:"0.7rem" }}>Impact</div><div style={{ color:C.red, fontWeight:800 }}>{r.impact}/5</div></div>
-              <div><div style={{ color:C.muted, fontSize:"0.7rem" }}>Horizon</div><div style={{ color:C.text, fontSize:"0.82rem" }}>{r.horizon}</div></div>
-            </div>
-          </Card>
-        ))}
+
+      {/* KPI strip */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"0.85rem" }}>
+        <KPICardPro label="Emerging Risks Identified" value={total}     sub="across PESTLE categories" color={C.blue}   delta={4} deltaGood={false}/>
+        <KPICardPro label="High Criticality"          value={highCrit}  sub="requires attention"       color={C.red}/>
+        <KPICardPro label="New This Quarter"          value={newThisQ}  sub="newly identified"         color={C.amber}  delta={2} deltaGood={false}/>
+        <KPICardPro label="Escalated to EXCO/ARC"     value={escalated} sub="under active escalation"  color={C.purple}/>
       </div>
+
+      {/* Radar + category bars */}
+      <div style={{ display:"grid", gridTemplateColumns:"1.2fr 1fr", gap:"1rem" }}>
+        <Card>
+          <SectionTitle>Emerging Risk Radar — PESTLE Analysis</SectionTitle>
+          <div style={{ display:"flex", justifyContent:"center", paddingTop:8 }}>
+            <RadarChart axes={axes} series2={prevSeries} size={340} color={C.purple} color2={C.cyan}/>
+          </div>
+          <div style={{ display:"flex", gap:"1.25rem", justifyContent:"center", marginTop:"0.5rem" }}>
+            <span style={{ color:C.purple, fontSize:"0.72rem" }}>━ Current Period</span>
+            <span style={{ color:C.cyan, fontSize:"0.72rem" }}>┄ Previous Period</span>
+          </div>
+        </Card>
+
+        <Card>
+          <SectionTitle>Risks by PESTLE Category</SectionTitle>
+          <div style={{ display:"flex", flexDirection:"column", gap:"0.7rem", marginTop:"0.5rem" }}>
+            {catCounts.map(c=>(
+              <div key={c.cat} style={{ display:"flex", alignItems:"center", gap:"0.6rem" }}>
+                <div style={{ width:96, color:C.muted, fontSize:"0.75rem", textAlign:"right" }}>{c.cat}</div>
+                <div style={{ flex:1, background:C.border, borderRadius:5, height:16, overflow:"hidden" }}>
+                  <div style={{ width:`${(c.count/catMax)*100}%`, height:"100%", background:catColor[c.cat]||C.blue, borderRadius:5, transition:"width 0.5s" }}/>
+                </div>
+                <div style={{ color:C.text, fontSize:"0.78rem", fontWeight:700, minWidth:18, textAlign:"right" }}>{c.count}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      {/* Horizon scanning */}
+      <Card>
+        <SectionTitle>Horizon Scanning — Latest Emerging Risks</SectionTitle>
+        <div style={{ display:"flex", flexDirection:"column", gap:"0.6rem" }}>
+          {risks.map(r=>{
+            const score=(Number(r.likelihood)||0)*(Number(r.impact)||0);
+            const crit = score>=16?"High":score>=9?"Medium":"Low";
+            return (
+              <div key={r.id} style={{ display:"flex", alignItems:"center", gap:"0.75rem", padding:"0.6rem 0.75rem",
+                background:C.surface, borderRadius:8, borderLeft:`3px solid ${catColor[catMap[r.category]||r.category]||C.blue}` }}>
+                <div style={{ width:8, height:8, borderRadius:"50%", background:catColor[catMap[r.category]||r.category]||C.blue, flexShrink:0 }}/>
+                <div style={{ flex:1 }}>
+                  <div style={{ color:C.text, fontWeight:600, fontSize:"0.85rem" }}>{r.name}</div>
+                  <div style={{ color:C.muted, fontSize:"0.72rem" }}>{r.category} · Horizon: {r.horizon}</div>
+                </div>
+                <Badge label={crit} color={crit==="High"?"red":crit==="Medium"?"amber":"green"}/>
+                <Badge label={r.action} color={actionColor(r.action)}/>
+                <div style={{ display:"flex", gap:"0.75rem", minWidth:120 }}>
+                  <div style={{ textAlign:"center" }}><div style={{ color:C.muted, fontSize:"0.62rem" }}>L</div><div style={{ color:C.amber, fontWeight:700, fontSize:"0.82rem" }}>{r.likelihood}</div></div>
+                  <div style={{ textAlign:"center" }}><div style={{ color:C.muted, fontSize:"0.62rem" }}>I</div><div style={{ color:C.red, fontWeight:700, fontSize:"0.82rem" }}>{r.impact}</div></div>
+                  <div style={{ textAlign:"center" }}><div style={{ color:C.muted, fontSize:"0.62rem" }}>Score</div><div style={{ color:score>=16?C.red:score>=9?C.amber:C.green, fontWeight:800, fontSize:"0.82rem" }}>{score}</div></div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
     </div>
   );
 }
@@ -1097,15 +1363,103 @@ function TreatmentActions() {
 
 // ─── MODULE: COMBINED ASSURANCE ───────────────────────────────────────────────
 function CombinedAssurance() {
+  const [data, setData] = useState(STATIC_ASSURANCE);
+  useEffect(()=>{
+    fetch(`${API}/api/dashboard`).then(r=>r.json()).then(d=>{ if(d.combinedAssurance?.map?.length) setData(d.combinedAssurance.map); }).catch(()=>{});
+  },[]);
+
+  // Provider effectiveness (demo, mirrors reference). coverage% + findings + effectiveness.
+  const providers = [
+    { name:"Business Management",          coverage:75, effectiveness:"Partial",   findings:12 },
+    { name:"Enterprise Risk Management",   coverage:85, effectiveness:"Effective",  findings:5  },
+    { name:"Compliance",                   coverage:90, effectiveness:"Effective",  findings:3  },
+    { name:"Internal Audit",               coverage:92, effectiveness:"Effective",  findings:4  },
+    { name:"Fraud Risk Management",        coverage:80, effectiveness:"Partial",    findings:6  },
+    { name:"Business Continuity Mgmt",     coverage:60, effectiveness:"Partial",    findings:8  },
+    { name:"ICT Security",                 coverage:70, effectiveness:"Partial",    findings:7  },
+    { name:"Facilities & Security",        coverage:85, effectiveness:"Effective",  findings:2  },
+    { name:"Legal Services",               coverage:95, effectiveness:"Effective",  findings:1  },
+    { name:"AGSA (External)",              coverage:100,effectiveness:"Effective",  findings:2  },
+    { name:"Audit & Risk Committee",       coverage:95, effectiveness:"Effective",  findings:1  },
+    { name:"Administrator / Board",        coverage:90, effectiveness:"Effective",  findings:0  },
+  ];
+  const avgCoverage = Math.round(providers.reduce((s,p)=>s+p.coverage,0)/providers.length);
+  const effectiveCount = providers.filter(p=>p.effectiveness==="Effective").length;
+  const totalFindings = providers.reduce((s,p)=>s+p.findings,0);
+
+  // Coverage heatmap: risks × assurance lines, percentage coverage
+  const riskRows = ["SR-001 Financial","SR-002 Continuity","SR-005 Cyber","SR-006 Compliance","SR-007 Fraud","OP-002 SCM"];
+  const lines = ["AGSA","1st Line","ERM","Compliance","Fraud","BCM","3rd Line"];
+  // demo coverage matrix
+  const cov = {
+    "SR-001 Financial":{AGSA:92,"1st Line":100,ERM:75,Compliance:90,Fraud:85,BCM:95,"3rd Line":60},
+    "SR-002 Continuity":{AGSA:85,"1st Line":88,ERM:100,Compliance:70,Fraud:80,BCM:70,"3rd Line":75},
+    "SR-005 Cyber":{AGSA:85,"1st Line":50,ERM:95,Compliance:100,Fraud:65,BCM:90,"3rd Line":80},
+    "SR-006 Compliance":{AGSA:95,"1st Line":90,ERM:70,Compliance:92,Fraud:100,BCM:80,"3rd Line":85},
+    "SR-007 Fraud":{AGSA:88,"1st Line":90,ERM:95,Compliance:65,Fraud:96,BCM:100,"3rd Line":75},
+    "OP-002 SCM":{AGSA:80,"1st Line":78,ERM:82,Compliance:88,Fraud:90,BCM:72,"3rd Line":70},
+  };
+  const covColor = v => v>=90?"#1a7d3f":v>=75?"#2d5a3d":v>=60?"#5a4a2d":"#5a2d2d";
+  const covText  = v => v>=90?C.green:v>=75?C.green:v>=60?C.amber:C.red;
+
+  const effBadge = e => e==="Effective"?"green":e==="Partial"?"amber":"red";
+
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
-      <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Combined Assurance Map</h1>
+      <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Combined Assurance</h1>
+
+      {/* KPI strip */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"0.85rem" }}>
+        <KPICardPro label="Assurance Providers" value={providers.length}      sub="across 3 lines of defence" color={C.blue}/>
+        <KPICardPro label="Avg Coverage"        value={`${avgCoverage}%`}      sub="weighted across providers" color={C.purple} spark={[78,80,82,83,84,avgCoverage]}/>
+        <KPICardPro label="Effective Providers" value={`${effectiveCount}/${providers.length}`} sub="rated effective"  color={C.green}/>
+        <KPICardPro label="Total Findings"      value={totalFindings}          sub="raised across providers"   color={C.amber}/>
+      </div>
+
+      {/* Provider effectiveness cards */}
       <Card>
+        <SectionTitle>Assurance Provider Effectiveness</SectionTitle>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(230px,1fr))", gap:"0.85rem" }}>
+          {providers.map(p=>(
+            <div key={p.name} style={{ background:C.surface, border:`1px solid ${p.effectiveness==="Effective"?C.green:C.amber}`, borderRadius:9, padding:"0.85rem 1rem" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"0.5rem", gap:6 }}>
+                <span style={{ color:C.text, fontWeight:700, fontSize:"0.82rem", lineHeight:1.2 }}>{p.name}</span>
+                <Badge label={p.effectiveness} color={effBadge(p.effectiveness)}/>
+              </div>
+              <ProgressBar value={p.coverage} color={p.effectiveness==="Effective"?C.green:C.amber}/>
+              <div style={{ display:"flex", justifyContent:"space-between", marginTop:"0.4rem" }}>
+                <span style={{ color:C.muted, fontSize:"0.75rem" }}>{p.coverage}% coverage</span>
+                <span style={{ color:p.findings>5?C.red:C.muted, fontSize:"0.75rem", fontWeight:p.findings>5?700:400 }}>{p.findings} findings</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Coverage heatmap matrix */}
+      <Card>
+        <SectionTitle>Assurance Coverage Heatmap — Risk Coverage by Provider</SectionTitle>
+        <HeatGrid
+          rows={riskRows} cols={lines}
+          cellW={92} cellH={48} rowLabelW={130}
+          cell={(rw,cl)=>{ const v=cov[rw]?.[cl] ?? 0; return { value:`${v}%`, color:covColor(v) }; }}
+        />
+        <div style={{ display:"flex", gap:"1rem", marginTop:"0.75rem", flexWrap:"wrap" }}>
+          {[["≥90% Full",C.green],["75-89% Strong","#2d5a3d"],["60-74% Partial",C.amber],["<60% Gap",C.red]].map(([l,c])=>(
+            <span key={l} style={{ color:c, fontSize:"0.7rem" }}>■ {l}</span>
+          ))}
+        </div>
+      </Card>
+
+      {/* Combined assurance map table */}
+      <Card>
+        <SectionTitle>Combined Assurance Map — by Risk</SectionTitle>
         <Table
-          headers={["Risk Ref","1st Line","2nd Line","3rd Line","Gap","Level"]}
-          rows={STATIC_ASSURANCE.map(r=>[
+          headers={["Risk Ref","1st Line","2nd Line","3rd Line","Gap","Assurance Level"]}
+          rows={data.map(r=>[
             <span style={{ color:C.blue, fontWeight:700 }}>{r.risk}</span>,
-            r.assurer1,r.assurer2,r.assurer3,r.gap,
+            r.assurer1,r.assurer2,r.assurer3,
+            <span style={{ color:r.gap==="None"?C.green:r.gap.includes("gap")?C.red:C.amber, fontSize:"0.8rem" }}>{r.gap}</span>,
             <StatusBadge status={r.level}/>,
           ])}
         />
