@@ -94,6 +94,40 @@ const STATIC_DEPTS = [
   { name:"ETQA",       risks:6,  critical:1, treatment:90, uifw:0        },
 ];
 
+// Organisational portfolio → unit hierarchy
+const STATIC_PORTFOLIOS = [
+  { name:"CFO Office",           units:["SCM","Finance & Reporting"] },
+  { name:"Corporate Services",   units:["ICT","Communications & Marketing","Human Resources","Facilities/Fleet/Security"] },
+  { name:"COO Office",           units:["Project Management","Provincial Offices","ETQA"] },
+  { name:"CEO Office",           units:["Governance","Stakeholders & Partnerships","Legal & Compliance"] },
+  { name:"Strategy & Planning",  units:["Research & Innovation","Monitoring & Evaluation","SSP"] },
+  { name:"Internal Audit",       units:["Internal Audit"] },
+];
+
+// Operational risk register — tagged by portfolio + unit, with full rating profile
+const STATIC_OPRISKS = [
+  { id:"OR-001", portfolio:"CFO Office", unit:"SCM", name:"Irregular procurement / non-compliant bids", inherent:20, residual:15, current:15, target:8,  appetite:"Low",    trend:"Improving", owner:"SCM Manager", description:"Procurement processes deviating from PFMA/Treasury regulations leading to irregular expenditure." },
+  { id:"OR-002", portfolio:"CFO Office", unit:"SCM", name:"Supplier concentration & dependency", inherent:16, residual:12, current:12, target:8,  appetite:"Medium", trend:"Stable",    owner:"SCM Manager", description:"Over-reliance on a small pool of suppliers creating delivery and pricing risk." },
+  { id:"OR-003", portfolio:"CFO Office", unit:"Finance & Reporting", name:"Material misstatement in AFS", inherent:18, residual:10, current:10, target:6,  appetite:"Zero",   trend:"Improving", owner:"CFO", description:"Errors or omissions in annual financial statements affecting audit outcome." },
+  { id:"OR-004", portfolio:"CFO Office", unit:"Finance & Reporting", name:"Cash flow & levy income volatility", inherent:15, residual:11, current:12, target:8,  appetite:"Medium", trend:"Declining", owner:"CFO", description:"Fluctuations in levy income undermining budget execution." },
+  { id:"OR-005", portfolio:"Corporate Services", unit:"ICT", name:"Cybersecurity breach / ransomware", inherent:25, residual:18, current:18, target:10, appetite:"Low",    trend:"Declining", owner:"CIO", description:"External attack compromising systems, data integrity and availability." },
+  { id:"OR-006", portfolio:"Corporate Services", unit:"ICT", name:"Legacy systems & technical debt", inherent:16, residual:13, current:13, target:8,  appetite:"Medium", trend:"Stable",    owner:"CIO", description:"Ageing infrastructure increasing downtime and maintenance cost." },
+  { id:"OR-007", portfolio:"Corporate Services", unit:"Communications & Marketing", name:"Reputational damage / negative media", inherent:14, residual:10, current:10, target:6,  appetite:"Low",    trend:"Stable",    owner:"Comms Manager", description:"Adverse publicity eroding stakeholder confidence." },
+  { id:"OR-008", portfolio:"Corporate Services", unit:"Human Resources", name:"Critical skills vacancy & turnover", inherent:16, residual:12, current:13, target:8,  appetite:"Medium", trend:"Declining", owner:"HR Manager", description:"Inability to attract/retain scarce skills affecting delivery." },
+  { id:"OR-009", portfolio:"Corporate Services", unit:"Facilities/Fleet/Security", name:"Physical security & asset loss", inherent:12, residual:9,  current:9,  target:5,  appetite:"Low",    trend:"Improving", owner:"Facilities Manager", description:"Theft, damage or unauthorised access to premises and assets." },
+  { id:"OR-010", portfolio:"COO Office", unit:"Project Management", name:"Project delivery delays & overruns", inherent:18, residual:14, current:14, target:8,  appetite:"Medium", trend:"Stable",    owner:"PMO Lead", description:"Discretionary grant projects missing milestones and budgets." },
+  { id:"OR-011", portfolio:"COO Office", unit:"Provincial Offices", name:"Inconsistent service delivery across provinces", inherent:15, residual:11, current:11, target:7,  appetite:"Medium", trend:"Improving", owner:"COO", description:"Variability in provincial office performance and compliance." },
+  { id:"OR-012", portfolio:"COO Office", unit:"ETQA", name:"Accreditation & quality assurance lapses", inherent:16, residual:10, current:10, target:6,  appetite:"Low",    trend:"Improving", owner:"ETQA Manager", description:"Provider accreditation or learner certification quality failures." },
+  { id:"OR-013", portfolio:"CEO Office", unit:"Governance", name:"Governance / board oversight gaps", inherent:14, residual:9,  current:9,  target:5,  appetite:"Zero",   trend:"Stable",    owner:"Company Secretary", description:"Weak committee functioning or oversight undermining accountability." },
+  { id:"OR-014", portfolio:"CEO Office", unit:"Stakeholders & Partnerships", name:"Partnership / MOU non-delivery", inherent:13, residual:10, current:10, target:6,  appetite:"Medium", trend:"Stable",    owner:"Partnerships Lead", description:"Key partners failing to meet commitments under agreements." },
+  { id:"OR-015", portfolio:"CEO Office", unit:"Legal & Compliance", name:"Regulatory non-compliance / litigation", inherent:18, residual:12, current:12, target:7,  appetite:"Zero",   trend:"Improving", owner:"Legal Manager", description:"Breaches of statutory obligations exposing the entity to penalties or litigation." },
+  { id:"OR-016", portfolio:"Strategy & Planning", unit:"Research & Innovation", name:"Research outputs not informing strategy", inherent:11, residual:8,  current:8,  target:5,  appetite:"Medium", trend:"Stable",    owner:"Research Lead", description:"Insufficient uptake of research into planning decisions." },
+  { id:"OR-017", portfolio:"Strategy & Planning", unit:"Monitoring & Evaluation", name:"Poor data quality in M&E reporting", inherent:15, residual:11, current:11, target:7,  appetite:"Low",    trend:"Improving", owner:"M&E Manager", description:"Unreliable performance data undermining decision-making and audit." },
+  { id:"OR-018", portfolio:"Strategy & Planning", unit:"SSP", name:"Sector Skills Plan misalignment", inherent:13, residual:10, current:10, target:6,  appetite:"Medium", trend:"Stable",    owner:"SSP Lead", description:"SSP not reflecting actual sector skills demand." },
+  { id:"OR-019", portfolio:"Internal Audit", unit:"Internal Audit", name:"Inadequate audit coverage of key risks", inherent:14, residual:9,  current:9,  target:5,  appetite:"Low",    trend:"Improving", owner:"CAE", description:"Audit plan not covering highest-priority risk areas." },
+  { id:"OR-020", portfolio:"Internal Audit", unit:"Internal Audit", name:"Slow management action on findings", inherent:13, residual:11, current:11, target:6,  appetite:"Low",    trend:"Declining", owner:"CAE", description:"Audit findings not remediated within agreed timeframes." },
+];
+
 const STATIC_THIRD = [
   { id:"TP-001", name:"Deloitte SA",       type:"Auditor",    risk:"Low",    contract:"2027-03-31", score:88, status:"Active" },
   { id:"TP-002", name:"Bytes Technology",  type:"ICT",        risk:"Medium", contract:"2026-09-30", score:72, status:"Active" },
@@ -713,17 +747,46 @@ function ExecutiveOverview() {
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
         <Card>
           <SectionTitle>Risk Heatmap — Inherent Risk Matrix</SectionTitle>
-          <div style={{ display:"flex", gap:4 }}>
-            {[1,2,3,4,5].map(l=>(
-              <div key={l} style={{ display:"flex", flexDirection:"column", gap:4 }}>
-                {[5,4,3,2,1].map(i=>{
-                  const score=i*l;
-                  return <div key={i} style={{ width:44, height:36, background:heatColor(score), borderRadius:4, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                    <span style={{ color:"#fff", fontSize:"0.8rem", fontWeight:700 }}>{score}</span>
-                  </div>;
-                })}
+          {(()=>{
+            // Decompose each risk's inherent rating into impact(row) × likelihood(col) on a 5×5 grid.
+            const factor = score => {
+              const s = Math.max(1, Math.min(25, Number(score)||1));
+              let best=[1,1], bestDiff=99;
+              for (let imp=1; imp<=5; imp++) for (let lik=1; lik<=5; lik++){
+                const diff=Math.abs(imp*lik - s);
+                if (diff<bestDiff || (diff===bestDiff && imp>=best[0])) { bestDiff=diff; best=[imp,lik]; }
+              }
+              return best; // [impact, likelihood]
+            };
+            const cellRisks = {};
+            risks.forEach(r=>{
+              const [imp,lik]=factor(r.inherentRating||r.inherent);
+              const key=`${imp}-${lik}`;
+              (cellRisks[key]=cellRisks[key]||[]).push(r.id);
+            });
+            return (
+              <div style={{ display:"flex", gap:4 }}>
+                {[1,2,3,4,5].map(lik=>(
+                  <div key={lik} style={{ display:"flex", flexDirection:"column", gap:4 }}>
+                    {[5,4,3,2,1].map(imp=>{
+                      const score=imp*lik;
+                      const ids=cellRisks[`${imp}-${lik}`]||[];
+                      return (
+                        <div key={imp} title={ids.length?`Risk ${score}: ${ids.join(", ")}`:`Risk score ${score}`}
+                          style={{ width:50, height:40, background:heatColor(score), borderRadius:4, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", position:"relative" }}>
+                          <span style={{ color:"#fff", fontSize:"0.72rem", fontWeight:700 }}>{score}</span>
+                          {ids.length>0 && <span style={{ color:"#fff", fontSize:"0.54rem", fontWeight:600, lineHeight:1, maxWidth:46, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ids.length===1?ids[0]:`${ids.length} risks`}</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
-            ))}
+            );
+          })()}
+          <div style={{ display:"flex", justifyContent:"space-between", marginTop:4 }}>
+            <span style={{ color:C.muted, fontSize:"0.6rem" }}>← Likelihood →</span>
+            <span style={{ color:C.muted, fontSize:"0.6rem" }}>Impact ↓</span>
           </div>
           <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.5rem", flexWrap:"wrap" }}>
             {[["≥15","Critical",C.red],[">9","High","#e36209"],[">5","Medium",C.amber],["≤5","Low",C.green]].map(([v,l,c])=>(
@@ -988,22 +1051,23 @@ function Opportunities() {
 
   // Heatmap colour by score bucket
   const heatColor = s => s>=21?"#1a7d3f":s>=16?C.green:s>=11?C.amber:s>=6?"#e36209":C.red;
-  // Place each opportunity in an impact(row) × probability(col) cell using score → derived axes
-  const impacts = ["Very High","High","Medium","Low"];
-  const probs   = ["Critical","Major","Moderate","Minor"];
-  // Derive a representative score for each cell (demo matrix mirroring the reference)
-  const cellScore = { "Very High":{Critical:16,Major:12,Moderate:8,Minor:4},
-                      "High":{Critical:12,Major:9,Moderate:6,Minor:3},
-                      "Medium":{Critical:8,Major:6,Moderate:4,Minor:2},
-                      "Low":{Critical:4,Major:3,Moderate:2,Minor:1} };
-  // Map opportunities into top cells by score (highest scoring ones surface labels)
-  const sorted = [...opps].sort((a,b)=>(b.score||0)-(a.score||0));
-  const cellLabel = (imp,prob) => {
-    if (imp==="Very High" && prob==="Critical") return sorted[0]?.name?.slice(0,22);
-    if (imp==="High" && prob==="Critical") return sorted[1]?.name?.slice(0,22);
-    if (imp==="High" && prob==="Major") return sorted[2]?.name?.slice(0,22);
-    return null;
-  };
+  // Impact(row) × probability(col) — place each opportunity into a real cell.
+  const impacts = ["Very High","High","Medium","Low"];   // impact 5,4,3,2..1
+  const probs   = ["Critical","Major","Moderate","Minor"]; // probability 5,4,3,2..1
+  const impactBand = imp => imp>=5?"Very High":imp>=4?"High":imp>=3?"Medium":"Low";
+  const probBand   = pr  => pr>=5?"Critical":pr>=4?"Major":pr>=3?"Moderate":"Minor";
+  // Derive impact/probability from each opp (matching the register logic)
+  const oppCell = {};
+  opps.forEach(o=>{
+    const impact = o.impact || Math.min(5, Math.max(1, Math.round((Number(o.score)||0)/5)));
+    const prob   = o.probability || Math.min(5, Math.max(1, Math.round((Number(o.score)||0)/impact)||3));
+    const key = `${impactBand(impact)}|${probBand(prob)}`;
+    (oppCell[key]=oppCell[key]||[]).push(o);
+  });
+  const repScore = { "Very High":{Critical:16,Major:12,Moderate:8,Minor:4},
+                     "High":{Critical:12,Major:9,Moderate:6,Minor:3},
+                     "Medium":{Critical:8,Major:6,Moderate:4,Minor:2},
+                     "Low":{Critical:4,Major:3,Moderate:2,Minor:1} };
 
   // Pipeline funnel — staged counts
   const n = opps.length;
@@ -1041,7 +1105,12 @@ function Opportunities() {
           <HeatGrid
             rows={impacts} cols={probs}
             cellW={108} cellH={62} rowLabelW={70}
-            cell={(imp,prob)=>{ const sc=cellScore[imp][prob]; return { value:sc, color:heatColor(sc), label:cellLabel(imp,prob) }; }}
+            cell={(imp,prob)=>{
+              const list = oppCell[`${imp}|${prob}`]||[];
+              const sc = repScore[imp][prob];
+              const label = list.length===0 ? null : (list.length===1 ? list[0].name.slice(0,24) : `${list.length} opportunities`);
+              return { value:list.length>0?list.length:sc, color:heatColor(sc), label };
+            }}
           />
           <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.75rem", flexWrap:"wrap" }}>
             {[["21-25","#1a7d3f"],["16-20",C.green],["11-15",C.amber],["6-10","#e36209"],["1-5",C.red]].map(([l,c])=>(
@@ -1427,8 +1496,10 @@ function TreatmentActions() {
 // ─── MODULE: COMBINED ASSURANCE ───────────────────────────────────────────────
 function CombinedAssurance() {
   const [data, setData] = useState(STATIC_ASSURANCE);
+  const [risks, setRisks] = useState(STATIC_RISKS);
   useEffect(()=>{
     fetch(`${API}/api/dashboard`).then(r=>r.json()).then(d=>{ if(d.combinedAssurance?.map?.length) setData(d.combinedAssurance.map); }).catch(()=>{});
+    fetch(`${API}/api/risks`).then(r=>r.json()).then(d=>{ if(Array.isArray(d)&&d.length) setRisks(d); }).catch(()=>{});
   },[]);
 
   // Providers grouped by line of defence (demo, mirrors reference).
@@ -1461,17 +1532,27 @@ function CombinedAssurance() {
   ];
   const effBadge = e => e==="Effective"?"green":e==="Partial"?"amber":"red";
 
-  // Coverage heatmap: risks × assurance lines, percentage coverage
-  const riskRows = ["SR-001 Financial","SR-002 Continuity","SR-005 Cyber","SR-006 Compliance","SR-007 Fraud","OP-002 SCM"];
+  // Coverage heatmap: REAL risks (rows) × assurance lines (cols), coverage % per cell.
+  // Rows reflect the live risk register and reposition/relabel as risks change.
   const lines = ["AGSA","1st Line","ERM","Compliance","Fraud","BCM","3rd Line"];
-  const cov = {
-    "SR-001 Financial":{AGSA:92,"1st Line":100,ERM:75,Compliance:90,Fraud:85,BCM:95,"3rd Line":60},
-    "SR-002 Continuity":{AGSA:85,"1st Line":88,ERM:100,Compliance:70,Fraud:80,BCM:70,"3rd Line":75},
-    "SR-005 Cyber":{AGSA:85,"1st Line":50,ERM:95,Compliance:100,Fraud:65,BCM:90,"3rd Line":80},
-    "SR-006 Compliance":{AGSA:95,"1st Line":90,ERM:70,Compliance:92,Fraud:100,BCM:80,"3rd Line":85},
-    "SR-007 Fraud":{AGSA:88,"1st Line":90,ERM:95,Compliance:65,Fraud:96,BCM:100,"3rd Line":75},
-    "OP-002 SCM":{AGSA:80,"1st Line":78,ERM:82,Compliance:88,Fraud:90,BCM:72,"3rd Line":70},
+  // Take the highest-rated risks so the most material ones surface in the matrix.
+  const topRisks = [...risks]
+    .sort((a,b)=>(Number(b.currentRating||b.residualRating||b.residual||b.inherentRating||0))-(Number(a.currentRating||a.residualRating||a.residual||a.inherentRating||0)))
+    .slice(0,6);
+  const riskRows = topRisks.map(r=>`${r.id} — ${(r.title||r.name||"").slice(0,16)}`);
+  // Deterministic coverage seeded by risk rating + line, so it's stable yet risk-reflective.
+  const seededCov = (rating, li) => {
+    const base = 100 - Math.min(45, (Number(rating)||10)*1.8);   // higher risk → lower baseline coverage
+    const wobble = ((li*37 + (Number(rating)||10)*13) % 30) - 12; // stable per (risk,line)
+    return Math.max(45, Math.min(100, Math.round(base + wobble)));
   };
+  const cov = {};
+  topRisks.forEach(r=>{
+    const rating = Number(r.currentRating||r.residualRating||r.residual||r.inherentRating||10);
+    const row = `${r.id} — ${(r.title||r.name||"").slice(0,16)}`;
+    cov[row] = {};
+    lines.forEach((ln,li)=>{ cov[row][ln] = seededCov(rating, li); });
+  });
   const covColor = v => v>=90?"#1a7d3f":v>=75?"#2d5a3d":v>=60?"#5a4a2d":"#5a2d2d";
 
   return (
@@ -1525,7 +1606,7 @@ function CombinedAssurance() {
         <SectionTitle>Assurance Coverage Heatmap — Risk Coverage by Provider</SectionTitle>
         <HeatGrid
           rows={riskRows} cols={lines}
-          cellW={92} cellH={48} rowLabelW={130}
+          cellW={92} cellH={48} rowLabelW={170}
           cell={(rw,cl)=>{ const v=cov[rw]?.[cl] ?? 0; return { value:`${v}%`, color:covColor(v) }; }}
         />
         <div style={{ display:"flex", gap:"1rem", marginTop:"0.75rem", flexWrap:"wrap" }}>
@@ -1834,97 +1915,135 @@ function FraudEthics() {
 
 // ─── MODULE: DEPARTMENTAL RISKS ───────────────────────────────────────────────
 function DepartmentalRisks() {
-  const [depts] = useState(STATIC_DEPTS);
+  const [oprisks] = useState(STATIC_OPRISKS);
+  const [portfolioFilter, setPortfolioFilter] = useState("All");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
-  const filtered = depts.filter(d=>d.name.toLowerCase().includes(search.toLowerCase()));
-  const sel = selected || filtered[0] || depts[0];
 
-  const totalRisks = depts.reduce((s,d)=>s+d.risks,0);
-  const totalCritical = depts.reduce((s,d)=>s+d.critical,0);
-  const totalUifw = depts.reduce((s,d)=>s+d.uifw,0);
-  const avgTreatment = Math.round(depts.reduce((s,d)=>s+d.treatment,0)/depts.length);
-  const tColor = v => v>=80?C.green:v>=60?C.amber:C.red;
+  const sc = v => Number(v)>=15?C.red:Number(v)>=10?"#e36209":Number(v)>=6?C.amber:C.green;
 
-  // Mini risk-composition trend for the selected dept (simulated treatment progress)
+  // Portfolio rollups
+  const portfolios = STATIC_PORTFOLIOS.map(p=>{
+    const risks = oprisks.filter(r=>r.portfolio===p.name);
+    const critical = risks.filter(r=>r.current>=15).length;
+    const avgResidual = risks.length ? (risks.reduce((s,r)=>s+r.residual,0)/risks.length) : 0;
+    return { ...p, count:risks.length, critical, avgResidual };
+  });
+
+  const filtered = oprisks.filter(r=>
+    (portfolioFilter==="All" || r.portfolio===portfolioFilter) &&
+    ((r.name||"").toLowerCase().includes(search.toLowerCase()) || (r.id||"").toLowerCase().includes(search.toLowerCase()) || (r.unit||"").toLowerCase().includes(search.toLowerCase()))
+  );
+  const sel = selected || filtered[0] || oprisks[0];
+
+  // Per-risk progress trend (inherent → current trajectory)
   const trendData = (()=>{
     if (!sel) return [];
-    const end = sel.treatment;
-    const start = Math.max(20, end-30);
+    const start = sel.inherent, end = sel.current;
     const months = ["Aug","Sep","Oct","Nov","Dec","Jan"];
-    return months.map((m,i)=>({ m, v:Math.round(start + (end-start)*(i/(months.length-1))) }));
+    return months.map((m,i)=>({ m, v:+(start + (end-start)*(i/(months.length-1))).toFixed(1) }));
   })();
+
+  const totalRisks = oprisks.length;
+  const totalCritical = oprisks.filter(r=>r.current>=15).length;
+  const avgResidual = (oprisks.reduce((s,r)=>s+r.residual,0)/oprisks.length).toFixed(1);
+  const trendIcon = t => t==="Improving"?"↗":t==="Declining"?"↘":"—";
+  const trendColor = t => t==="Improving"?C.green:t==="Declining"?C.red:C.muted;
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:"0.5rem" }}>
         <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Departmental Risk Summary</h1>
-        <input placeholder="Search departments…" value={search} onChange={e=>setSearch(e.target.value)} style={{ ...inputSt, width:220 }}/>
+        <input placeholder="Search operational risks…" value={search} onChange={e=>setSearch(e.target.value)} style={{ ...inputSt, width:240 }}/>
       </div>
 
       {/* KPI strip */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"0.85rem" }}>
-        <KPICardPro label="Total Risks"      value={totalRisks}    sub={`across ${depts.length} departments`} color={C.blue}/>
-        <KPICardPro label="Critical Risks"   value={totalCritical} sub="require attention"        color={C.red}/>
-        <KPICardPro label="Avg Treatment"    value={`${avgTreatment}%`} sub="completion rate"      color={tColor(avgTreatment)} spark={[55,60,64,68,70,avgTreatment]}/>
-        <KPICardPro label="UIFW Exposure"    value={`R${(totalUifw/1e6).toFixed(1)}M`} sub="across departments" color={C.amber}/>
+        <KPICardPro label="Operational Risks" value={totalRisks}    sub={`across ${STATIC_PORTFOLIOS.length} portfolios`} color={C.blue}/>
+        <KPICardPro label="Critical (≥15)"    value={totalCritical} sub="current rating"      color={C.red}/>
+        <KPICardPro label="Avg Residual"      value={avgResidual}   sub="across all risks"    color={C.amber} spark={[14,13,13,12,12,Number(avgResidual)]}/>
+        <KPICardPro label="Improving"         value={oprisks.filter(r=>r.trend==="Improving").length} sub="positive trend" color={C.green}/>
       </div>
 
-      {/* Master-detail split */}
+      {/* Portfolio filter cards */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))", gap:"0.85rem" }}>
+        <div onClick={()=>{ setPortfolioFilter("All"); setSelected(null); }}
+          style={{ cursor:"pointer", background:portfolioFilter==="All"?"rgba(88,166,255,0.12)":C.card, border:`1px solid ${portfolioFilter==="All"?C.blue:C.border}`, borderRadius:10, padding:"0.85rem 1rem" }}>
+          <div style={{ color:C.text, fontWeight:700, fontSize:"0.85rem" }}>All Portfolios</div>
+          <div style={{ color:C.blue, fontSize:"1.5rem", fontWeight:800 }}>{totalRisks}</div>
+          <div style={{ color:C.muted, fontSize:"0.7rem" }}>{totalCritical} critical</div>
+        </div>
+        {portfolios.map(p=>{
+          const active = portfolioFilter===p.name;
+          return (
+            <div key={p.name} onClick={()=>{ setPortfolioFilter(p.name); setSelected(null); }}
+              style={{ cursor:"pointer", background:active?"rgba(88,166,255,0.12)":C.card, border:`1px solid ${active?C.blue:C.border}`, borderRadius:10, padding:"0.85rem 1rem" }}>
+              <div style={{ color:C.text, fontWeight:700, fontSize:"0.85rem", lineHeight:1.2, marginBottom:4 }}>{p.name}</div>
+              <div style={{ display:"flex", alignItems:"baseline", gap:6 }}>
+                <span style={{ color:sc(p.avgResidual), fontSize:"1.5rem", fontWeight:800 }}>{p.count}</span>
+                <span style={{ color:C.muted, fontSize:"0.7rem" }}>risks</span>
+              </div>
+              <div style={{ display:"flex", justifyContent:"space-between", marginTop:2 }}>
+                <span style={{ color:C.muted, fontSize:"0.68rem" }}>{p.units.length} unit{p.units.length!==1?"s":""}</span>
+                {p.critical>0 && <span style={{ color:C.red, fontSize:"0.68rem", fontWeight:700 }}>{p.critical} critical</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Operational risk register + detail */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 380px", gap:"1.25rem", alignItems:"start" }}>
-        {/* Master table */}
         <Card style={{ padding:0, overflow:"hidden" }}>
+          <div style={{ padding:"0.85rem 1.1rem", borderBottom:`1px solid ${C.border}` }}>
+            <span style={{ color:C.text, fontWeight:700, fontSize:"0.95rem" }}>Operational Risk Register</span>
+            <span style={{ color:C.muted, fontSize:"0.78rem", marginLeft:8 }}>{portfolioFilter==="All"?"All portfolios":portfolioFilter} · {filtered.length} risks</span>
+          </div>
           <div style={{ overflowX:"auto" }}>
-            <table style={{ width:"100%", borderCollapse:"collapse", fontSize:"0.83rem" }}>
+            <table style={{ width:"100%", borderCollapse:"collapse", fontSize:"0.82rem" }}>
               <thead>
-                <tr>{["Department","Risks","Critical","Treatment","UIFW","Status"].map((h,i)=>
-                  <th key={i} style={{ color:C.muted, fontWeight:600, padding:"0.6rem 0.75rem", textAlign:"left", borderBottom:`1px solid ${C.border}`, whiteSpace:"nowrap" }}>{h}</th>)}</tr>
+                <tr>{["Risk ID","Risk Name","Inherent","Residual","Current","Target","Appetite","Trend"].map((h,i)=>
+                  <th key={i} style={{ color:C.muted, fontWeight:600, padding:"0.6rem 0.7rem", textAlign:"left", borderBottom:`1px solid ${C.border}`, whiteSpace:"nowrap" }}>{h}</th>)}</tr>
               </thead>
               <tbody>
-                {filtered.map(d=>{
-                  const isSel = sel && d.name===sel.name;
+                {filtered.map(r=>{
+                  const isSel = sel && r.id===sel.id;
                   return (
-                    <tr key={d.name} onClick={()=>setSelected(d)}
+                    <tr key={r.id} onClick={()=>setSelected(r)}
                       style={{ borderBottom:`1px solid ${C.border}`, cursor:"pointer",
                         background:isSel?"rgba(88,166,255,0.12)":"transparent",
                         borderLeft:`3px solid ${isSel?C.blue:"transparent"}` }}
                       onMouseEnter={e=>{ if(!isSel) e.currentTarget.style.background=C.surface; }}
                       onMouseLeave={e=>{ if(!isSel) e.currentTarget.style.background="transparent"; }}>
-                      <td style={{ padding:"0.6rem 0.75rem", color:C.text, fontWeight:600 }}>{d.name}</td>
-                      <td style={{ padding:"0.6rem 0.75rem", color:C.blue, fontWeight:700 }}>{d.risks}</td>
-                      <td style={{ padding:"0.6rem 0.75rem", color:C.red, fontWeight:700 }}>{d.critical}</td>
-                      <td style={{ padding:"0.6rem 0.75rem", minWidth:120 }}>
-                        <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                          <div style={{ flex:1 }}><ProgressBar value={d.treatment} color={tColor(d.treatment)}/></div>
-                          <span style={{ color:tColor(d.treatment), fontSize:"0.75rem", fontWeight:700 }}>{d.treatment}%</span>
-                        </div>
+                      <td style={{ padding:"0.55rem 0.7rem", color:C.blue, fontWeight:700, whiteSpace:"nowrap" }}>{r.id}</td>
+                      <td style={{ padding:"0.55rem 0.7rem", color:C.text, maxWidth:230 }}>
+                        <div style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={r.name}>{r.name}</div>
+                        <div style={{ color:C.muted, fontSize:"0.68rem" }}>{r.unit}</div>
                       </td>
-                      <td style={{ padding:"0.6rem 0.75rem", color:d.uifw>0?C.amber:C.muted, fontWeight:d.uifw>0?700:400 }}>{d.uifw>0?`R${(d.uifw/1e6).toFixed(1)}M`:"—"}</td>
-                      <td style={{ padding:"0.6rem 0.75rem" }}><Badge label={d.treatment>=80?"On Track":d.treatment>=60?"Monitor":"At Risk"} color={d.treatment>=80?"green":d.treatment>=60?"amber":"red"}/></td>
+                      <td style={{ padding:"0.55rem 0.7rem", color:sc(r.inherent), fontWeight:700 }}>{r.inherent}</td>
+                      <td style={{ padding:"0.55rem 0.7rem", color:sc(r.residual), fontWeight:700 }}>{r.residual}</td>
+                      <td style={{ padding:"0.55rem 0.7rem", color:sc(r.current), fontWeight:700 }}>{r.current}</td>
+                      <td style={{ padding:"0.55rem 0.7rem", color:C.green, fontWeight:700 }}>{r.target}</td>
+                      <td style={{ padding:"0.55rem 0.7rem", color:C.muted, fontSize:"0.78rem" }}>{r.appetite}</td>
+                      <td style={{ padding:"0.55rem 0.7rem", color:trendColor(r.trend), fontWeight:700 }}>{trendIcon(r.trend)}</td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
-          {filtered.length===0 && <p style={{ color:C.muted, textAlign:"center", padding:"2rem" }}>No departments match your search.</p>}
+          {filtered.length===0 && <p style={{ color:C.muted, textAlign:"center", padding:"2rem" }}>No operational risks match.</p>}
         </Card>
 
         {/* Detail panel */}
         {sel && (
           <Card style={{ position:"sticky", top:0 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:"0.6rem", marginBottom:"0.75rem" }}>
-              <div style={{ width:40, height:40, borderRadius:"50%", background:C.surface, display:"flex", alignItems:"center", justifyContent:"center", color:C.blue, fontWeight:700 }}>
-                {sel.name.slice(0,2).toUpperCase()}
-              </div>
-              <div>
-                <h3 style={{ color:C.text, fontSize:"1.05rem", fontWeight:700, margin:0 }}>{sel.name}</h3>
-                <Badge label={sel.treatment>=80?"On Track":sel.treatment>=60?"Monitor":"At Risk"} color={sel.treatment>=80?"green":sel.treatment>=60?"amber":"red"}/>
-              </div>
-            </div>
+            <div style={{ color:C.muted, fontSize:"0.72rem", fontWeight:700 }}>{sel.id} · {sel.portfolio} / {sel.unit}</div>
+            <h3 style={{ color:C.text, fontSize:"1.02rem", fontWeight:700, margin:"0.2rem 0 0.5rem" }}>{sel.name}</h3>
+            <p style={{ color:C.muted, fontSize:"0.8rem", lineHeight:1.6, margin:"0 0 1rem" }}>{sel.description}</p>
 
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"0.5rem", marginBottom:"1rem" }}>
-              {[["Total Risks",sel.risks,C.blue],["Critical",sel.critical,C.red],["Treatment",`${sel.treatment}%`,tColor(sel.treatment)]].map(([l,v,c])=>(
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"0.5rem", marginBottom:"1rem" }}>
+              {[["Inherent",sel.inherent,sc(sel.inherent)],["Residual",sel.residual,sc(sel.residual)],["Current",sel.current,sc(sel.current)],["Target",sel.target,C.green]].map(([l,v,c])=>(
                 <div key={l} style={{ background:C.surface, borderRadius:7, padding:"0.5rem", textAlign:"center" }}>
                   <div style={{ color:c, fontSize:"1.3rem", fontWeight:800 }}>{v}</div>
                   <div style={{ color:C.muted, fontSize:"0.62rem" }}>{l}</div>
@@ -1932,30 +2051,36 @@ function DepartmentalRisks() {
               ))}
             </div>
 
-            {sel.uifw>0 && (
-              <div style={{ background:"rgba(248,81,73,0.08)", border:`1px solid ${C.red}`, borderRadius:8, padding:"0.6rem 0.85rem", marginBottom:"1rem" }}>
-                <div style={{ color:C.muted, fontSize:"0.65rem", textTransform:"uppercase", fontWeight:700 }}>UIFW Exposure</div>
-                <div style={{ color:C.red, fontSize:"1.2rem", fontWeight:800 }}>R{(sel.uifw/1e6).toFixed(1)}M</div>
+            <div style={{ display:"flex", alignItems:"center", gap:"0.6rem", marginBottom:"1rem" }}>
+              <div style={{ width:36, height:36, borderRadius:"50%", background:C.surface, display:"flex", alignItems:"center", justifyContent:"center", color:C.blue, fontWeight:700, fontSize:"0.75rem" }}>
+                {(sel.owner||"NA").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()}
               </div>
-            )}
+              <div>
+                <div style={{ color:C.text, fontSize:"0.85rem", fontWeight:600 }}>{sel.owner}</div>
+                <div style={{ display:"flex", gap:6, marginTop:2 }}>
+                  <Badge label={sel.trend} color={sel.trend==="Improving"?"green":sel.trend==="Declining"?"red":"amber"}/>
+                  <Badge label={`Appetite: ${sel.appetite}`} color="blue"/>
+                </div>
+              </div>
+            </div>
 
-            <SectionTitle>Treatment Progress</SectionTitle>
-            <ResponsiveContainer width="100%" height={140}>
+            <SectionTitle>Progress Trend</SectionTitle>
+            <ResponsiveContainer width="100%" height={150}>
               <LineChart data={trendData}>
                 <CartesianGrid strokeDasharray="3 3" stroke={C.border}/>
                 <XAxis dataKey="m" stroke={C.muted} tick={{ fill:C.muted, fontSize:10 }}/>
-                <YAxis stroke={C.muted} tick={{ fill:C.muted, fontSize:10 }} width={26} domain={[0,100]}/>
+                <YAxis stroke={C.muted} tick={{ fill:C.muted, fontSize:10 }} width={24}/>
                 <Tooltip contentStyle={{ background:C.card, border:`1px solid ${C.border}`, color:C.text, fontSize:"0.78rem" }}/>
-                <Line type="monotone" dataKey="v" stroke={tColor(sel.treatment)} strokeWidth={2} dot={{ r:3 }} name="Treatment %"/>
+                <Line type="monotone" dataKey="v" stroke={sc(sel.current)} strokeWidth={2} dot={{ r:3 }} name="Risk rating"/>
               </LineChart>
             </ResponsiveContainer>
 
             <div style={{ marginTop:"0.75rem" }}>
               <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-                <span style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700 }}>Critical Risk Ratio</span>
-                <span style={{ color:C.text, fontSize:"0.78rem", fontWeight:700 }}>{Math.round((sel.critical/Math.max(sel.risks,1))*100)}%</span>
+                <span style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700 }}>Reduction to Target</span>
+                <span style={{ color:C.text, fontSize:"0.78rem", fontWeight:700 }}>{sel.current} → {sel.target}</span>
               </div>
-              <ProgressBar value={sel.critical} max={sel.risks} color={C.red}/>
+              <ProgressBar value={Math.max(0, sel.inherent-sel.current)} max={Math.max(1, sel.inherent-sel.target)} color={C.green}/>
             </div>
           </Card>
         )}
@@ -2114,27 +2239,125 @@ function ThirdPartyRisk() {
 
 // ─── MODULE: APP ALIGNMENT ────────────────────────────────────────────────────
 function APPAlignment() {
+  const [apps] = useState(STATIC_APP);
+
+  // Group APP items under strategic objectives (derived from ref prefix)
+  const objectives = [
+    { code:"SO 1", name:"Financial Sustainability & Skills Funding", color:C.blue },
+    { code:"SO 2", name:"Clean Governance & Compliance",            color:C.green },
+    { code:"SO 3", name:"Digital Transformation & Systems",         color:C.purple },
+    { code:"SO 4", name:"Human Capital & Capability",               color:C.amber },
+  ];
+  const objOf = ref => "SO " + (ref.match(/APP (\d)/)?.[1] || "1");
+
+  // Previous-period values (demo) keyed by ref
+  const prev = { "APP 1.1":10,"APP 1.2":72,"APP 2.1":98,"APP 2.2":5.1,"APP 3.1":45,"APP 3.2":63,"APP 4.1":72 };
+
+  const onTrack = apps.filter(a=>a.status==="On Track").length;
+  const behind  = apps.filter(a=>a.status==="Behind").length;
+  const inProg  = apps.filter(a=>a.status==="In Progress").length;
+  const avgAchievement = Math.round(apps.reduce((s,a)=>s+Math.min(100,(a.actual/Math.max(a.target,0.01))*100),0)/apps.length);
+
+  // KRI / KPI trend series — current vs previous reporting period (demo)
+  const kpiTrend = [
+    { period:"Q1 (Prev)", achievement:62, kriBreaches:7, compliance:74 },
+    { period:"Q2 (Prev)", achievement:66, kriBreaches:6, compliance:78 },
+    { period:"Q3 (Prev)", achievement:70, kriBreaches:6, compliance:80 },
+    { period:"Q4 (Prev)", achievement:73, kriBreaches:5, compliance:83 },
+    { period:"Q1 (Curr)", achievement:76, kriBreaches:4, compliance:86 },
+    { period:"Q2 (Curr)", achievement:avgAchievement, kriBreaches:3, compliance:88 },
+  ];
+
+  const variance = a => +(a.actual - a.target).toFixed(1);
+  const varColor = v => v>=0?C.green:v<=-10?C.red:C.amber;
+
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
       <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Annual Performance Plan Alignment</h1>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"0.85rem" }}>
-        <KPICard label="On Track"    value={STATIC_APP.filter(a=>a.status==="On Track").length}    color={C.green}/>
-        <KPICard label="Behind"      value={STATIC_APP.filter(a=>a.status==="Behind").length}      color={C.red}/>
-        <KPICard label="In Progress" value={STATIC_APP.filter(a=>a.status==="In Progress").length} color={C.amber}/>
+
+      {/* KPI strip */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"0.85rem" }}>
+        <KPICardPro label="Strategic Objectives" value={objectives.length} sub="aligned to APP"          color={C.blue}/>
+        <KPICardPro label="KPIs Tracked"          value={apps.length}        sub={`${onTrack} on track`} color={C.green}/>
+        <KPICardPro label="Avg Achievement"       value={`${avgAchievement}%`} sub="of target"           color={avgAchievement>=80?C.green:avgAchievement>=60?C.amber:C.red} spark={[62,66,70,73,76,avgAchievement]}/>
+        <KPICardPro label="Behind Target"         value={behind}             sub="require intervention"  color={C.red}/>
       </div>
+
+      {/* Strategic objectives breakdown */}
       <Card>
-        {STATIC_APP.map(a=>(
-          <div key={a.ref} style={{ padding:"0.75rem 0", borderBottom:`1px solid ${C.border}`, display:"flex", alignItems:"center", gap:"1rem" }}>
-            <span style={{ color:C.blue, fontWeight:700, minWidth:70, fontSize:"0.82rem" }}>{a.ref}</span>
-            <span style={{ color:C.text, flex:1, fontSize:"0.88rem" }}>{a.objective}</span>
-            <div style={{ minWidth:140, textAlign:"right" }}>
-              <div style={{ color:C.muted, fontSize:"0.7rem" }}>Target {a.target}% | Actual {a.actual}%</div>
-              <ProgressBar value={a.actual} max={a.target} color={a.actual>=a.target?C.green:C.red}/>
-            </div>
-            <StatusBadge status={a.status}/>
-          </div>
-        ))}
+        <SectionTitle>Strategic Objectives — APP Performance</SectionTitle>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))", gap:"0.85rem" }}>
+          {objectives.map(o=>{
+            const items = apps.filter(a=>objOf(a.ref)===o.code);
+            const objAch = items.length ? Math.round(items.reduce((s,a)=>s+Math.min(100,(a.actual/Math.max(a.target,0.01))*100),0)/items.length) : 0;
+            return (
+              <div key={o.code} style={{ background:C.surface, borderRadius:9, padding:"0.9rem 1rem", borderTop:`3px solid ${o.color}` }}>
+                <div style={{ color:C.muted, fontSize:"0.68rem", fontWeight:700 }}>{o.code}</div>
+                <div style={{ color:C.text, fontWeight:700, fontSize:"0.85rem", lineHeight:1.3, marginBottom:"0.5rem", minHeight:34 }}>{o.name}</div>
+                <div style={{ display:"flex", alignItems:"baseline", gap:6, marginBottom:6 }}>
+                  <span style={{ color:o.color, fontSize:"1.5rem", fontWeight:800 }}>{objAch}%</span>
+                  <span style={{ color:C.muted, fontSize:"0.7rem" }}>avg achievement</span>
+                </div>
+                <ProgressBar value={objAch} color={o.color}/>
+                <div style={{ color:C.muted, fontSize:"0.7rem", marginTop:6 }}>{items.length} KPI{items.length!==1?"s":""}</div>
+              </div>
+            );
+          })}
+        </div>
       </Card>
+
+      {/* Targeted vs achieved + variance table */}
+      <Card>
+        <SectionTitle>APP Targets — Targeted vs Achieved & Variance</SectionTitle>
+        <Table
+          headers={["Ref","Objective","Strategic Obj.","Target","Achieved","Variance","Prev. Period","Status"]}
+          rows={apps.map(a=>{
+            const v = variance(a);
+            const p = prev[a.ref];
+            const pDelta = p!=null ? +(a.actual - p).toFixed(1) : null;
+            return [
+              <span style={{ color:C.blue, fontWeight:700 }}>{a.ref}</span>,
+              <span style={{ maxWidth:260, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={a.objective}>{a.objective}</span>,
+              <span style={{ color:C.muted, fontSize:"0.78rem" }}>{objOf(a.ref)}</span>,
+              <span style={{ color:C.text, fontWeight:600 }}>{a.target}{a.target<=10?"":"%"}</span>,
+              <span style={{ color:C.text, fontWeight:700 }}>{a.actual}{a.target<=10?"":"%"}</span>,
+              <span style={{ color:varColor(v), fontWeight:700 }}>{v>=0?"+":""}{v}</span>,
+              <span style={{ color:pDelta>=0?C.green:C.red, fontSize:"0.8rem" }}>{p!=null?`${p} (${pDelta>=0?"+":""}${pDelta})`:"—"}</span>,
+              <StatusBadge status={a.status}/>,
+            ];
+          })}
+        />
+      </Card>
+
+      {/* KRI / KPI trends current vs previous period */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
+        <Card>
+          <SectionTitle>KPI Achievement Trend — Current vs Previous</SectionTitle>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={kpiTrend}>
+              <CartesianGrid strokeDasharray="3 3" stroke={C.border}/>
+              <XAxis dataKey="period" stroke={C.muted} tick={{ fill:C.muted, fontSize:9 }}/>
+              <YAxis stroke={C.muted} tick={{ fill:C.muted, fontSize:10 }} domain={[0,100]}/>
+              <Tooltip contentStyle={{ background:C.card, border:`1px solid ${C.border}`, color:C.text, fontSize:"0.78rem" }}/>
+              <Legend wrapperStyle={{ fontSize:"0.72rem", color:C.muted }}/>
+              <Line type="monotone" dataKey="achievement" stroke={C.green} strokeWidth={2} dot={{ r:3 }} name="KPI Achievement %"/>
+              <Line type="monotone" dataKey="compliance"  stroke={C.blue}  strokeWidth={2} dot={{ r:3 }} name="Compliance %"/>
+            </LineChart>
+          </ResponsiveContainer>
+        </Card>
+        <Card>
+          <SectionTitle>KRI Breach Trend — Current vs Previous</SectionTitle>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={kpiTrend}>
+              <CartesianGrid strokeDasharray="3 3" stroke={C.border}/>
+              <XAxis dataKey="period" stroke={C.muted} tick={{ fill:C.muted, fontSize:9 }}/>
+              <YAxis stroke={C.muted} tick={{ fill:C.muted, fontSize:10 }} allowDecimals={false}/>
+              <Tooltip contentStyle={{ background:C.card, border:`1px solid ${C.border}`, color:C.text, fontSize:"0.78rem" }}/>
+              <Bar dataKey="kriBreaches" fill={C.red} name="KRI Breaches" radius={[4,4,0,0]}/>
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+      </div>
     </div>
   );
 }
