@@ -2831,6 +2831,7 @@ const MODULE_OPTIONS = [
   { value:"bcm",          label:"BCM Resilience",     component: BCMResilienceAdmin },
   { value:"compliance",   label:"Compliance",         component: ComplianceAdmin },
   { value:"iam",          label:"Identity & Access",    component: IAMAdmin },
+  { value:"internalaudit", label:"Internal Audit",       component: InternalAuditAdmin },
   { value:"policy",       label:"Policy & Process",     component: PolicyAdmin },
   { value:"projects",     label:"Projects & Contracts",component: ProjectsAdmin },
   { value:"declarations", label:"Declarations",         component: DeclarationsAdmin },
@@ -2955,7 +2956,7 @@ function ReportsTab() {
       audience: "Audit & Risk Committee",
       color:    C.amber,
       icon:     "⚖",
-      sections: ["Executive Summary & KPIs","Top 10 Strategic Risks","Treatment Action Status","UIFW Exposure","Fraud & Ethics Register","BCM Status","Compliance","Project & Contract Risk","Identity & Access Management","Policy & Process Manual"],
+      sections: ["Executive Summary & KPIs","Top 10 Strategic Risks","Treatment Action Status","UIFW Exposure","Fraud & Ethics Register","BCM Status","Compliance","Project & Contract Risk","Identity & Access Management","Policy & Process Manual","Internal Audit"],
       desc:     "Detailed GRC report for the Audit & Risk Committee. Includes fraud, BCM and full UIFW analysis.",
     },
     {
@@ -2964,7 +2965,7 @@ function ReportsTab() {
       audience: "Board of Directors",
       color:    C.purple,
       icon:     "🎯",
-      sections: ["Executive Summary & KPIs","Top 10 Strategic Risks","Treatment Action Status","UIFW Exposure","Fraud & Ethics Register","BCM Status","APP Alignment","Compliance","Project & Contract Risk","Identity & Access Management","Policy & Process Manual"],
+      sections: ["Executive Summary & KPIs","Top 10 Strategic Risks","Treatment Action Status","UIFW Exposure","Fraud & Ethics Register","BCM Status","APP Alignment","Compliance","Project & Contract Risk","Identity & Access Management","Policy & Process Manual","Internal Audit"],
       desc:     "Full GRC overview for the Board. All sections included with APP performance alignment.",
     },
   ];
@@ -5968,6 +5969,857 @@ function KRITrendModal({ kri, onClose }) {
   );
 }
 
+
+// ─── INTERNAL AUDIT DATA ──────────────────────────────────────────────────────
+const STATIC_IA = {
+  plan: {
+    year: "2026/27",
+    status: "Approved",
+    approvedBy: "ARC",
+    approvalDate: "2026-04-15",
+    totalEngagements: 12,
+    totalBudgetDays: 240,
+    usedBudgetDays: 98,
+    chiefAuditExecutive: "T. Nkosi",
+    methodology: "Risk-Based Internal Auditing aligned to IIA Standards",
+    coverage: [
+      { area:"Financial Management & Reporting", riskRating:"High", plannedEngagements:3, status:"In Progress" },
+      { area:"Supply Chain Management", riskRating:"High", plannedEngagements:2, status:"In Progress" },
+      { area:"Grant Disbursement & Management", riskRating:"High", plannedEngagements:2, status:"Planned" },
+      { area:"Information Technology & Cybersecurity", riskRating:"High", plannedEngagements:2, status:"Planned" },
+      { area:"Human Resources & Payroll", riskRating:"Medium", plannedEngagements:1, status:"Complete" },
+      { area:"Performance Management (APP)", riskRating:"Medium", plannedEngagements:1, status:"Planned" },
+      { area:"Governance & Ethics", riskRating:"Medium", plannedEngagements:1, status:"Planned" },
+    ]
+  },
+  engagements: [
+    { id:"IAE-001", title:"Financial Statement Review Q1/Q2 2026/27", area:"Financial Management & Reporting", type:"Assurance", riskRating:"High", status:"Complete", phase:"Report Issued", auditor:"T. Nkosi", startDate:"2026-04-10", fieldworkEnd:"2026-05-15", reportDate:"2026-05-30", budgetDays:25, actualDays:28, opinion:"Qualified", findings:4, criticalFindings:1, recommendations:6, managementResponseDue:"2026-06-30", managementResponseStatus:"Received", notes:"Significant UIFW finding raised — referred to CFO and ARC." },
+    { id:"IAE-002", title:"SCM & Procurement Compliance Audit", area:"Supply Chain Management", type:"Compliance", riskRating:"High", status:"In Progress", phase:"Fieldwork", auditor:"M. Dube", startDate:"2026-05-01", fieldworkEnd:"2026-06-30", reportDate:"2026-07-15", budgetDays:30, actualDays:18, opinion:"", findings:2, criticalFindings:1, recommendations:3, managementResponseDue:"2026-07-31", managementResponseStatus:"Pending", notes:"Irregular expenditure pattern identified — ongoing." },
+    { id:"IAE-003", title:"Payroll & HR Compliance Review", area:"Human Resources & Payroll", type:"Assurance", riskRating:"Medium", status:"Complete", phase:"Follow-up", auditor:"S. Sithole", startDate:"2026-04-01", fieldworkEnd:"2026-04-25", reportDate:"2026-05-05", budgetDays:15, actualDays:14, opinion:"Unqualified", findings:2, criticalFindings:0, recommendations:4, managementResponseDue:"2026-06-05", managementResponseStatus:"Received", notes:"Good control environment. Minor payroll reconciliation gaps." },
+    { id:"IAE-004", title:"IT General Controls & Cybersecurity Assessment", area:"Information Technology & Cybersecurity", type:"Assurance", riskRating:"High", status:"Planned", phase:"Planning", auditor:"T. Nkosi", startDate:"2026-07-01", fieldworkEnd:"2026-08-15", reportDate:"2026-09-01", budgetDays:30, actualDays:0, opinion:"", findings:0, criticalFindings:0, recommendations:0, managementResponseDue:"", managementResponseStatus:"N/A", notes:"Scope to include access management, backup, disaster recovery." },
+    { id:"IAE-005", title:"Grant Disbursement Controls Audit", area:"Grant Disbursement & Management", type:"Assurance", riskRating:"High", status:"Planned", phase:"Planning", auditor:"M. Dube", startDate:"2026-08-01", fieldworkEnd:"2026-09-15", reportDate:"2026-10-01", budgetDays:35, actualDays:0, opinion:"", findings:0, criticalFindings:0, recommendations:0, managementResponseDue:"", managementResponseStatus:"N/A", notes:"Focus on discretionary grant disbursement controls and learner verification." },
+    { id:"IAE-006", title:"Fraud Risk Assessment — Ethics Hotline Review", area:"Governance & Ethics", type:"Advisory", riskRating:"Medium", status:"Planned", phase:"Planning", auditor:"S. Sithole", startDate:"2026-09-01", fieldworkEnd:"2026-09-30", reportDate:"2026-10-15", budgetDays:20, actualDays:0, opinion:"", findings:0, criticalFindings:0, recommendations:0, managementResponseDue:"", managementResponseStatus:"N/A", notes:"Assess adequacy of fraud prevention controls and ethics hotline uptake." },
+  ],
+  findings: [
+    { id:"IAF-001", engagementId:"IAE-001", title:"Unauthorised Expenditure — Budget Vote Overrun", category:"Financial Management", severity:"Critical", status:"Open", rootCause:"Inadequate budget monitoring controls and late budget variance reporting to CFO", recommendation:"Implement monthly budget-to-actual variance reports reviewed by CFO; establish expenditure threshold alerts in financial system", managementResponse:"CFO to implement monthly budget review process by 31 July 2026. System alerts to be configured by ICT by 30 August 2026.", responsiblePerson:"CFO", dueDate:"2026-07-31", implementationStatus:"In Progress", implementationEvidence:"", auditFollowUpDate:"2026-08-15", repeatedFinding:false, linkedRisk:"SR-001", linkedUIFW:"UIFW-001" },
+    { id:"IAF-002", engagementId:"IAE-001", title:"UIFW — Irregular Expenditure: SCM Deviation Not Approved", category:"Supply Chain Management", severity:"High", status:"Open", rootCause:"SCM policy deviation approval process not followed; supplier appointed without AA approval", recommendation:"Strengthen SCM deviation approval controls; retrain SCM unit on policy requirements; implement dual authorisation for deviations", managementResponse:"SCM Manager to implement revised deviation approval register and training by 15 August 2026", responsiblePerson:"SCM Manager", dueDate:"2026-08-15", implementationStatus:"Not Started", implementationEvidence:"", auditFollowUpDate:"2026-08-31", repeatedFinding:true, linkedRisk:"SR-002", linkedUIFW:"UIFW-003" },
+    { id:"IAF-003", engagementId:"IAE-001", title:"Financial Reporting — Incomplete Disclosure Notes", category:"Financial Management", severity:"Medium", status:"Resolved", rootCause:"Insufficient technical accounting expertise in finance team for GRAP compliance", recommendation:"Engage technical GRAP accounting support; include GRAP disclosure checklist in year-end close process", managementResponse:"CFO to appoint GRAP technical advisor by 30 June 2026. Checklist implemented for Q2 reporting.", responsiblePerson:"CFO", dueDate:"2026-06-30", implementationStatus:"Complete", implementationEvidence:"GRAP checklist adopted; technical advisor appointed — confirmed by CAE", auditFollowUpDate:"2026-07-15", repeatedFinding:false, linkedRisk:"", linkedUIFW:"" },
+    { id:"IAF-004", engagementId:"IAE-001", title:"Petty Cash — Inadequate Custodian Controls", category:"Financial Management", severity:"Low", status:"Resolved", rootCause:"No formal petty cash policy; custodian changes not documented", recommendation:"Formalise petty cash policy; implement custodian handover register and monthly reconciliation sign-off", managementResponse:"Finance Manager to implement petty cash policy and reconciliation by 31 May 2026", responsiblePerson:"Finance Manager", dueDate:"2026-05-31", implementationStatus:"Complete", implementationEvidence:"Petty cash policy signed off 28 May 2026; reconciliations confirmed by CAE on 15 June 2026", auditFollowUpDate:"2026-06-15", repeatedFinding:false, linkedRisk:"", linkedUIFW:"" },
+    { id:"IAF-005", engagementId:"IAE-002", title:"Bid Evaluation — Conflict of Interest Not Disclosed", category:"Supply Chain Management", severity:"Critical", status:"Open", rootCause:"BEC member failed to declare conflict of interest with bidding entity; no pre-evaluation COI screening process", recommendation:"Implement mandatory COI declaration before every BEC meeting; link to Declaration of Interest system; retrain all SCM officials", managementResponse:"SCM Manager and Legal to implement enhanced COI screening process by 31 July 2026. Disciplinary process initiated against implicated BEC member.", responsiblePerson:"SCM Manager", dueDate:"2026-07-31", implementationStatus:"In Progress", implementationEvidence:"Disciplinary process commenced — HR confirmation attached", auditFollowUpDate:"2026-08-15", repeatedFinding:false, linkedRisk:"SR-002", linkedUIFW:"UIFW-003" },
+    { id:"IAF-006", engagementId:"IAE-002", title:"Contract Management — No SLA Monitoring Register", category:"Supply Chain Management", severity:"Medium", status:"Open", rootCause:"No formal contract register or SLA monitoring process in place for active contracts", recommendation:"Implement contract register in GRC system; assign contract managers; conduct quarterly SLA reviews", managementResponse:"CFO / SCM to implement contract register and quarterly SLA review process by 31 August 2026", responsiblePerson:"CFO", dueDate:"2026-08-31", implementationStatus:"Not Started", implementationEvidence:"", auditFollowUpDate:"2026-09-15", repeatedFinding:false, linkedRisk:"", linkedUIFW:"" },
+    { id:"IAF-007", engagementId:"IAE-003", title:"Payroll — Terminated Employee Not Removed Timeously", category:"Human Resources & Payroll", severity:"High", status:"Open", rootCause:"HR-to-Payroll notification process breakdown; no automated termination trigger in HR system", recommendation:"Implement automated HR-to-Payroll notification; HR to confirm payroll removal within 3 days of termination; monthly exception report to CFO", managementResponse:"HR Executive to implement automated notification and monthly exception reporting by 30 June 2026", responsiblePerson:"HR Executive", dueDate:"2026-06-30", implementationStatus:"In Progress", implementationEvidence:"Automated notification process implemented — testing underway", auditFollowUpDate:"2026-07-15", repeatedFinding:true, linkedRisk:"", linkedUIFW:"UIFW-006" },
+    { id:"IAF-008", engagementId:"IAE-003", title:"Leave Management — Excess Leave Balances Not Managed", category:"Human Resources & Payroll", severity:"Low", status:"Resolved", rootCause:"No leave reduction plan implemented despite DPSA guidelines requirement", recommendation:"Implement leave reduction plan; cap leave balances at 30 days; enforce mandatory leave periods", managementResponse:"HR Executive to implement leave management policy and enforce caps by 31 May 2026", responsiblePerson:"HR Executive", dueDate:"2026-05-31", implementationStatus:"Complete", implementationEvidence:"Leave management policy signed off; payroll system caps implemented", auditFollowUpDate:"2026-06-15", repeatedFinding:false, linkedRisk:"", linkedUIFW:"" },
+  ],
+  followUp: [
+    { id:"FU-001", findingId:"IAF-001", engagementId:"IAE-001", title:"Budget Monitoring Controls", dueDate:"2026-07-31", reviewDate:"2026-08-15", status:"In Progress", progressNote:"CFO confirmed implementation of monthly budget review process. System alerts configuration 60% complete.", lastUpdated:"2026-06-15" },
+    { id:"FU-002", findingId:"IAF-002", engagementId:"IAE-001", title:"SCM Deviation Controls", dueDate:"2026-08-15", reviewDate:"2026-08-31", status:"Not Started", progressNote:"No action taken. SCM Manager has not responded to CAE follow-up requests. Escalation required.", lastUpdated:"2026-06-10" },
+    { id:"FU-003", findingId:"IAF-003", engagementId:"IAE-001", title:"GRAP Disclosure Notes", dueDate:"2026-06-30", reviewDate:"2026-07-15", status:"Closed", progressNote:"GRAP technical advisor appointed. Disclosure checklist implemented and verified by CAE.", lastUpdated:"2026-06-20" },
+    { id:"FU-004", findingId:"IAF-004", engagementId:"IAE-001", title:"Petty Cash Controls", dueDate:"2026-05-31", reviewDate:"2026-06-15", status:"Closed", progressNote:"Policy signed off and reconciliations confirmed complete. Finding closed.", lastUpdated:"2026-06-15" },
+    { id:"FU-005", findingId:"IAF-005", engagementId:"IAE-002", title:"BEC Conflict of Interest", dueDate:"2026-07-31", reviewDate:"2026-08-15", status:"In Progress", progressNote:"Disciplinary process underway. New COI declaration form drafted for BEC use.", lastUpdated:"2026-06-18" },
+    { id:"FU-006", findingId:"IAF-006", engagementId:"IAE-002", title:"Contract Management Register", dueDate:"2026-08-31", reviewDate:"2026-09-15", status:"Not Started", progressNote:"No action taken. CFO to be notified of upcoming due date.", lastUpdated:"2026-06-01" },
+    { id:"FU-007", findingId:"IAF-007", engagementId:"IAE-003", title:"Terminated Employee Payroll", dueDate:"2026-06-30", reviewDate:"2026-07-15", status:"In Progress", progressNote:"HR automated notification implemented. Testing phase. Removal verification still pending.", lastUpdated:"2026-06-18" },
+    { id:"FU-008", findingId:"IAF-008", engagementId:"IAE-003", title:"Leave Balance Management", dueDate:"2026-05-31", reviewDate:"2026-06-15", status:"Closed", progressNote:"Leave caps implemented in payroll system. Policy signed off. Closed.", lastUpdated:"2026-06-15" },
+  ],
+};
+
+// ─── IA HELPERS ───────────────────────────────────────────────────────────────
+function IAOpinionBadge({ opinion }) {
+  if (!opinion) return <span style={{ color:C.muted, fontSize:"0.75rem" }}>Pending</span>;
+  const cfg = {
+    "Unqualified":          { color:C.green, bg:"rgba(63,185,80,0.12)" },
+    "Qualified":            { color:C.amber, bg:"rgba(227,179,65,0.12)" },
+    "Adverse":              { color:C.red,   bg:"rgba(248,81,73,0.12)" },
+    "Disclaimer":           { color:C.red,   bg:"rgba(248,81,73,0.12)" },
+  };
+  const s = cfg[opinion] || { color:C.muted, bg:"rgba(110,118,129,0.12)" };
+  return <span style={{ background:s.bg, color:s.color, border:`1px solid ${s.color}`, borderRadius:4, padding:"2px 8px", fontSize:"0.72rem", fontWeight:700 }}>{opinion}</span>;
+}
+
+function IASeverityBadge({ severity }) {
+  const cfg = {
+    "Critical": { color:C.red,    bg:"rgba(248,81,73,0.12)" },
+    "High":     { color:C.amber,  bg:"rgba(227,179,65,0.12)" },
+    "Medium":   { color:C.blue,   bg:"rgba(88,166,255,0.12)" },
+    "Low":      { color:C.green,  bg:"rgba(63,185,80,0.12)" },
+  };
+  const s = cfg[severity] || { color:C.muted, bg:"rgba(110,118,129,0.12)" };
+  return <span style={{ background:s.bg, color:s.color, border:`1px solid ${s.color}`, borderRadius:4, padding:"2px 8px", fontSize:"0.72rem", fontWeight:700 }}>{severity}</span>;
+}
+
+function IAStatusBadge({ status }) {
+  const cfg = {
+    "Complete":    { color:C.green },
+    "In Progress": { color:C.amber },
+    "Planned":     { color:C.blue  },
+    "Resolved":    { color:C.green },
+    "Open":        { color:C.red   },
+    "Closed":      { color:C.green },
+    "Not Started": { color:C.muted },
+    "Overdue":     { color:C.red   },
+  };
+  const c = (cfg[status]||{color:C.muted}).color;
+  return <span style={{ color:c, fontWeight:700, fontSize:"0.78rem" }}>{status}</span>;
+}
+
+function IAPhasePipeline({ phase }) {
+  const steps = ["Planning","Fieldwork","Reporting","Follow-up"];
+  const idx   = steps.indexOf(phase);
+  return (
+    <div style={{ display:"flex", alignItems:"center", gap:3 }}>
+      {steps.map((s,i)=>{
+        const done    = i < idx;
+        const current = i === idx;
+        const c = done?C.green:current?C.blue:C.border;
+        return (
+          <div key={s} style={{ display:"flex", alignItems:"center", gap:3 }}>
+            <div style={{ fontSize:"0.6rem", fontWeight:700, color:done?C.green:current?C.blue:C.muted,
+              borderBottom:`2px solid ${c}`, paddingBottom:1, whiteSpace:"nowrap" }}>{s}</div>
+            {i<steps.length-1&&<div style={{ color:C.border, fontSize:"0.65rem" }}>→</div>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── INTERNAL AUDIT MODULE VIEW ────────────────────────────────────────────────
+function InternalAuditModule() {
+  const [sub, setSub]       = useState("dashboard");
+  const [search, setSearch] = useState("");
+  const [filterSev, setFilterSev]       = useState("All");
+  const [filterStatus, setFilterStatus] = useState("All");
+  const [selectedEng, setSelectedEng]   = useState(null);
+  const [selectedFind, setSelectedFind] = useState(null);
+  const [data, setData] = useState(STATIC_IA);
+
+  useEffect(()=>{
+    fetch(`${API}/api/dashboard`).then(r=>r.json()).then(d=>{
+      if (d.internalAudit) setData({ ...STATIC_IA, ...d.internalAudit });
+    }).catch(()=>{});
+  },[]);
+
+  const plan        = data.plan        || STATIC_IA.plan;
+  const engagements = data.engagements || [];
+  const findings    = data.findings    || [];
+  const followUp    = data.followUp    || [];
+
+  // KPIs
+  const totalFindings   = findings.length;
+  const openFindings    = findings.filter(f=>f.status==="Open").length;
+  const criticalOpen    = findings.filter(f=>f.severity==="Critical"&&f.status==="Open").length;
+  const resolved        = findings.filter(f=>f.status==="Resolved"||f.status==="Closed").length;
+  const overdueFollowUp = followUp.filter(f=>f.dueDate&&new Date(f.dueDate)<new Date()&&f.status!=="Closed").length;
+  const repeatFindings  = findings.filter(f=>f.repeatedFinding).length;
+  const budgetPct       = Math.round((plan.usedBudgetDays/plan.totalBudgetDays)*100);
+  const completeEngs    = engagements.filter(e=>e.status==="Complete").length;
+
+  const filterFn = arr => arr.filter(r=>
+    (filterSev==="All"    || r.severity===filterSev) &&
+    (filterStatus==="All" || r.status===filterStatus) &&
+    JSON.stringify(r).toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
+      {/* Header */}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:"0.5rem" }}>
+        <div>
+          <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Internal Audit</h1>
+          <p style={{ color:C.muted, fontSize:"0.82rem", margin:"2px 0 0" }}>Annual Plan · Engagements · Findings · Follow-up — {plan.year}</p>
+        </div>
+        <input placeholder="Search IA…" value={search} onChange={e=>setSearch(e.target.value)} style={{ ...inputSt, width:220 }}/>
+      </div>
+
+      {/* Critical alerts */}
+      {criticalOpen > 0 && (
+        <div style={{ background:"rgba(248,81,73,0.08)", border:`1px solid ${C.red}`, borderRadius:10, padding:"0.85rem 1.25rem" }}>
+          <span style={{ color:C.red, fontWeight:700, fontSize:"0.85rem" }}>
+            🚨 {criticalOpen} Critical finding{criticalOpen>1?"s":""} outstanding — immediate management action required
+          </span>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:"0.5rem", marginTop:"0.4rem" }}>
+            {findings.filter(f=>f.severity==="Critical"&&f.status==="Open").map(f=>(
+              <span key={f.id} onClick={()=>{ setSub("findings"); setSelectedFind(f); }}
+                style={{ background:C.card, border:`1px solid ${C.red}`, borderRadius:6, padding:"3px 10px",
+                  fontSize:"0.75rem", color:C.red, fontWeight:700, cursor:"pointer" }}>
+                {f.id}: {f.title.slice(0,45)}…
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {overdueFollowUp > 0 && (
+        <div style={{ background:"rgba(227,179,65,0.08)", border:`1px solid ${C.amber}`, borderRadius:10, padding:"0.75rem 1.25rem" }}>
+          <span style={{ color:C.amber, fontWeight:700, fontSize:"0.85rem" }}>
+            ⏰ {overdueFollowUp} follow-up action{overdueFollowUp>1?"s":""} overdue — management response required
+          </span>
+        </div>
+      )}
+
+      {/* KPI strip */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(8,1fr)", gap:"0.6rem" }}>
+        {[
+          ["Engagements",   engagements.length,   C.blue ],
+          ["Complete",      completeEngs,          C.green],
+          ["Total Findings",totalFindings,          C.blue ],
+          ["Open Findings", openFindings,           openFindings>0?C.red:C.green ],
+          ["Critical Open", criticalOpen,           criticalOpen>0?C.red:C.green ],
+          ["Resolved",      resolved,               C.green],
+          ["Overdue F/U",   overdueFollowUp,        overdueFollowUp>0?C.red:C.green ],
+          ["Repeat Findings",repeatFindings,        repeatFindings>0?C.red:C.green ],
+        ].map(([l,v,c])=>(
+          <div key={l} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8, padding:"0.6rem 0.75rem", borderTop:`3px solid ${c}` }}>
+            <div style={{ color:C.muted, fontSize:"0.6rem", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em" }}>{l}</div>
+            <div style={{ color:c, fontSize:"1.3rem", fontWeight:800 }}>{v}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Sub tabs */}
+      <div style={{ display:"flex", borderBottom:`1px solid ${C.border}` }}>
+        {[
+          ["dashboard","📊 Overview"],
+          ["plan","📋 Annual Plan"],
+          ["engagements","🔍 Engagements"],
+          ["findings","⚠️ Findings Register"],
+          ["followup","✅ Follow-up & Monitoring"],
+        ].map(([id,label])=>(
+          <button key={id} onClick={()=>{ setSub(id); setSelectedEng(null); setSelectedFind(null); }}
+            style={{ padding:"0.5rem 1.0rem", border:"none", background:"transparent", cursor:"pointer",
+              fontSize:"0.8rem", fontWeight:600, color:sub===id?C.text:C.muted,
+              borderBottom:sub===id?`2px solid ${C.blue}`:"2px solid transparent", whiteSpace:"nowrap" }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── OVERVIEW ── */}
+      {sub==="dashboard" && (
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1.25rem" }}>
+          {/* Annual Plan summary */}
+          <Card>
+            <h3 style={{ color:C.text, fontWeight:700, margin:"0 0 1rem", fontSize:"0.95rem" }}>📋 Annual Audit Plan {plan.year}</h3>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.75rem", marginBottom:"1rem" }}>
+              {[
+                ["Status", plan.status, C.green],
+                ["Approved By", plan.approvedBy, C.blue],
+                ["CAE", plan.chiefAuditExecutive, C.text],
+                ["Engagements", `${completeEngs}/${plan.totalEngagements} complete`, C.text],
+              ].map(([l,v,c])=>(
+                <div key={l}>
+                  <div style={{ color:C.muted, fontSize:"0.68rem", textTransform:"uppercase", fontWeight:700 }}>{l}</div>
+                  <div style={{ color:c, fontSize:"0.85rem", fontWeight:600 }}>{v}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ marginBottom:"0.4rem" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:"0.25rem" }}>
+                <span style={{ color:C.muted, fontSize:"0.78rem" }}>Budget Utilisation</span>
+                <span style={{ color:budgetPct>85?C.red:C.text, fontWeight:700, fontSize:"0.78rem" }}>{plan.usedBudgetDays}/{plan.totalBudgetDays} days ({budgetPct}%)</span>
+              </div>
+              <ProgressBar value={budgetPct} color={budgetPct>85?C.red:C.amber}/>
+            </div>
+            <div style={{ marginTop:"1rem" }}>
+              {plan.coverage?.map(c=>(
+                <div key={c.area} style={{ display:"flex", alignItems:"center", gap:"0.5rem", marginBottom:"0.4rem" }}>
+                  <div style={{ flex:1, color:C.muted, fontSize:"0.75rem", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={c.area}>{c.area}</div>
+                  <span style={{ color:c.status==="Complete"?C.green:c.status==="In Progress"?C.amber:C.blue, fontSize:"0.7rem", fontWeight:700, whiteSpace:"nowrap" }}>{c.status}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Findings by severity */}
+          <Card>
+            <h3 style={{ color:C.text, fontWeight:700, margin:"0 0 1rem", fontSize:"0.95rem" }}>⚠️ Findings by Severity</h3>
+            {["Critical","High","Medium","Low"].map(sev=>{
+              const total = findings.filter(f=>f.severity===sev).length;
+              const open  = findings.filter(f=>f.severity===sev&&f.status==="Open").length;
+              const col   = sev==="Critical"?C.red:sev==="High"?C.amber:sev==="Medium"?C.blue:C.green;
+              return (
+                <div key={sev} style={{ marginBottom:"0.85rem" }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", marginBottom:"0.2rem" }}>
+                    <span style={{ color:col, fontWeight:700, fontSize:"0.82rem" }}>{sev}</span>
+                    <span style={{ color:C.muted, fontSize:"0.78rem" }}>{open} open / {total} total</span>
+                  </div>
+                  <ProgressBar value={total===0?0:Math.round((open/total)*100)} color={col}/>
+                </div>
+              );
+            })}
+            <div style={{ marginTop:"1rem", padding:"0.75rem", background:C.surface, borderRadius:8, borderLeft:`3px solid ${C.amber}` }}>
+              <div style={{ color:C.amber, fontWeight:700, fontSize:"0.78rem", marginBottom:"0.25rem" }}>Repeat Findings ({repeatFindings})</div>
+              {findings.filter(f=>f.repeatedFinding).map(f=>(
+                <div key={f.id} style={{ color:C.muted, fontSize:"0.75rem", marginBottom:"0.2rem" }}>⟳ {f.id}: {f.title.slice(0,50)}</div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Engagement status */}
+          <Card>
+            <h3 style={{ color:C.text, fontWeight:700, margin:"0 0 1rem", fontSize:"0.95rem" }}>🔍 Engagement Status</h3>
+            {engagements.map(e=>(
+              <div key={e.id} onClick={()=>{ setSub("engagements"); setSelectedEng(e); }}
+                style={{ padding:"0.6rem 0.75rem", background:C.surface, borderRadius:8, marginBottom:"0.4rem",
+                  cursor:"pointer", border:`1px solid ${C.border}` }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <div>
+                    <span style={{ color:C.blue, fontWeight:700, fontSize:"0.72rem" }}>{e.id}</span>
+                    <div style={{ color:C.text, fontSize:"0.8rem", fontWeight:600 }}>{e.title.slice(0,50)}</div>
+                  </div>
+                  <IAStatusBadge status={e.status}/>
+                </div>
+              </div>
+            ))}
+          </Card>
+
+          {/* Follow-up status */}
+          <Card>
+            <h3 style={{ color:C.text, fontWeight:700, margin:"0 0 1rem", fontSize:"0.95rem" }}>✅ Follow-up Status</h3>
+            {["Closed","In Progress","Not Started"].map(st=>{
+              const cnt = followUp.filter(f=>f.status===st).length;
+              const col = st==="Closed"?C.green:st==="In Progress"?C.amber:C.red;
+              return (
+                <div key={st} style={{ display:"flex", alignItems:"center", gap:"0.75rem", marginBottom:"0.75rem" }}>
+                  <div style={{ width:10, height:10, borderRadius:"50%", background:col, flexShrink:0 }}/>
+                  <div style={{ flex:1, color:C.muted, fontSize:"0.82rem" }}>{st}</div>
+                  <ProgressBar value={followUp.length===0?0:Math.round((cnt/followUp.length)*100)} color={col}/>
+                  <div style={{ color:col, fontWeight:800, minWidth:24, textAlign:"right" }}>{cnt}</div>
+                </div>
+              );
+            })}
+            {overdueFollowUp>0 && (
+              <div style={{ marginTop:"0.75rem", padding:"0.5rem 0.75rem", background:"rgba(248,81,73,0.08)", borderRadius:6, border:`1px solid ${C.red}` }}>
+                <div style={{ color:C.red, fontWeight:700, fontSize:"0.78rem" }}>⏰ {overdueFollowUp} overdue</div>
+                {followUp.filter(f=>f.dueDate&&new Date(f.dueDate)<new Date()&&f.status!=="Closed").map(f=>(
+                  <div key={f.id} style={{ color:C.muted, fontSize:"0.75rem", marginTop:"0.2rem" }}>• {f.id}: {f.title}</div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
+
+      {/* ── ANNUAL PLAN ── */}
+      {sub==="plan" && (
+        <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
+          <Card>
+            <h3 style={{ color:C.text, fontWeight:700, margin:"0 0 1rem", fontSize:"0.95rem" }}>Annual Audit Plan — {plan.year}</h3>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"1rem", marginBottom:"1rem" }}>
+              {[
+                ["Plan Status",     plan.status,                   C.green],
+                ["Approved By",     plan.approvedBy,               C.blue ],
+                ["Approval Date",   plan.approvalDate,             C.muted],
+                ["CAE",             plan.chiefAuditExecutive,      C.text ],
+                ["Total Engagements",String(plan.totalEngagements),C.blue ],
+                ["Budget (Days)",   String(plan.totalBudgetDays),  C.text ],
+                ["Used (Days)",     String(plan.usedBudgetDays),   budgetPct>85?C.red:C.amber],
+                ["Budget Used",     `${budgetPct}%`,               budgetPct>85?C.red:C.amber],
+              ].map(([l,v,c])=>(
+                <div key={l} style={{ background:C.surface, borderRadius:8, padding:"0.6rem 0.85rem" }}>
+                  <div style={{ color:C.muted, fontSize:"0.65rem", textTransform:"uppercase", fontWeight:700 }}>{l}</div>
+                  <div style={{ color:c, fontSize:"0.95rem", fontWeight:700 }}>{v||"—"}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ color:C.muted, fontSize:"0.78rem", marginBottom:"0.5rem", fontStyle:"italic" }}>{plan.methodology}</div>
+          </Card>
+          <Card>
+            <h3 style={{ color:C.text, fontWeight:700, margin:"0 0 1rem", fontSize:"0.95rem" }}>Audit Coverage by Area</h3>
+            <Table
+              headers={["Audit Area","Risk Rating","Planned Engagements","Status"]}
+              rows={(plan.coverage||[]).map(c=>[
+                c.area,
+                <Badge label={c.riskRating} color={c.riskRating==="High"?"red":c.riskRating==="Medium"?"amber":"green"}/>,
+                c.plannedEngagements,
+                <IAStatusBadge status={c.status}/>,
+              ])}
+            />
+          </Card>
+        </div>
+      )}
+
+      {/* ── ENGAGEMENTS ── */}
+      {sub==="engagements" && (
+        <div>
+          {selectedEng && (
+            <div style={{ background:C.card, border:`1px solid ${C.blue}`, borderRadius:12, padding:"1.5rem", marginBottom:"1.25rem" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"1rem" }}>
+                <div>
+                  <div style={{ display:"flex", gap:"0.75rem", alignItems:"center", marginBottom:"0.3rem" }}>
+                    <span style={{ color:C.blue, fontWeight:800 }}>{selectedEng.id}</span>
+                    <IAOpinionBadge opinion={selectedEng.opinion}/>
+                    <Badge label={selectedEng.type} color="blue"/>
+                    <Badge label={selectedEng.riskRating} color={selectedEng.riskRating==="High"?"red":"amber"}/>
+                  </div>
+                  <h3 style={{ color:C.text, margin:"0 0 0.2rem", fontWeight:700 }}>{selectedEng.title}</h3>
+                  <p style={{ color:C.muted, margin:0, fontSize:"0.82rem" }}>{selectedEng.area} · Auditor: {selectedEng.auditor}</p>
+                </div>
+                <button onClick={()=>setSelectedEng(null)} style={{ background:"transparent", border:"none", color:C.muted, cursor:"pointer", fontSize:"1.2rem" }}>✕</button>
+              </div>
+              <IAPhasePipeline phase={selectedEng.phase}/>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"1rem", marginTop:"1rem" }}>
+                {[
+                  ["Start Date",      selectedEng.startDate],
+                  ["Fieldwork End",   selectedEng.fieldworkEnd],
+                  ["Report Date",     selectedEng.reportDate],
+                  ["Budget/Actual",   `${selectedEng.budgetDays}/${selectedEng.actualDays} days`],
+                  ["Findings",        selectedEng.findings],
+                  ["Critical",        selectedEng.criticalFindings],
+                  ["Recommendations", selectedEng.recommendations],
+                  ["Mgmt Response",   selectedEng.managementResponseStatus],
+                ].map(([l,v])=>(
+                  <div key={l}>
+                    <div style={{ color:C.muted, fontSize:"0.68rem", textTransform:"uppercase", fontWeight:700 }}>{l}</div>
+                    <div style={{ color:C.text, fontSize:"0.85rem", fontWeight:600 }}>{String(v||"—")}</div>
+                  </div>
+                ))}
+              </div>
+              {selectedEng.notes && <div style={{ marginTop:"0.75rem", color:C.muted, fontSize:"0.82rem", padding:"0.5rem 0.75rem", background:C.surface, borderRadius:6, borderLeft:`3px solid ${C.blue}` }}>{selectedEng.notes}</div>}
+              <div style={{ marginTop:"1rem" }}>
+                <div style={{ color:C.muted, fontSize:"0.72rem", textTransform:"uppercase", fontWeight:700, marginBottom:"0.5rem" }}>Findings from this engagement</div>
+                {findings.filter(f=>f.engagementId===selectedEng.id).map(f=>(
+                  <div key={f.id} onClick={()=>{ setSub("findings"); setSelectedFind(f); }}
+                    style={{ display:"flex", alignItems:"center", gap:"0.75rem", padding:"0.5rem 0.75rem", background:C.surface, borderRadius:6, marginBottom:"0.35rem", cursor:"pointer", border:`1px solid ${C.border}` }}>
+                    <IASeverityBadge severity={f.severity}/>
+                    <span style={{ color:C.blue, fontWeight:700, fontSize:"0.75rem" }}>{f.id}</span>
+                    <span style={{ color:C.text, fontSize:"0.82rem", flex:1 }}>{f.title}</span>
+                    <IAStatusBadge status={f.status}/>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <Card>
+            <Table
+              headers={["ID","Title","Area","Type","Phase","Opinion","Findings","Critical","Budget/Actual","Status"]}
+              rows={engagements.filter(e=>JSON.stringify(e).toLowerCase().includes(search.toLowerCase())).map(e=>[
+                <span style={{ color:C.blue, fontWeight:700, fontSize:"0.72rem", cursor:"pointer" }} onClick={()=>setSelectedEng(e)}>{e.id}</span>,
+                <div style={{ cursor:"pointer", maxWidth:160, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} onClick={()=>setSelectedEng(e)} title={e.title}><span style={{ fontWeight:600, fontSize:"0.8rem" }}>{e.title}</span></div>,
+                <span style={{ fontSize:"0.75rem", color:C.muted }}>{e.area.split(" ")[0]}</span>,
+                <Badge label={e.type} color="blue"/>,
+                <IAPhasePipeline phase={e.phase}/>,
+                <IAOpinionBadge opinion={e.opinion}/>,
+                <span style={{ color:e.findings>0?C.amber:C.muted, fontWeight:700 }}>{e.findings}</span>,
+                <span style={{ color:e.criticalFindings>0?C.red:C.muted, fontWeight:700 }}>{e.criticalFindings}</span>,
+                <span style={{ color:C.muted, fontSize:"0.75rem" }}>{e.budgetDays}/{e.actualDays}d</span>,
+                <IAStatusBadge status={e.status}/>,
+              ])}
+            />
+          </Card>
+        </div>
+      )}
+
+      {/* ── FINDINGS REGISTER ── */}
+      {sub==="findings" && (
+        <div>
+          <div style={{ display:"flex", gap:"0.75rem", marginBottom:"1rem", flexWrap:"wrap" }}>
+            <select value={filterSev} onChange={e=>setFilterSev(e.target.value)} style={inputSt}>
+              {["All","Critical","High","Medium","Low"].map(s=><option key={s} value={s}>{s}</option>)}
+            </select>
+            <select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)} style={inputSt}>
+              {["All","Open","Resolved"].map(s=><option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+
+          {selectedFind && (
+            <div style={{ background:C.card, border:`1px solid ${C.amber}`, borderRadius:12, padding:"1.5rem", marginBottom:"1.25rem" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"1rem" }}>
+                <div>
+                  <div style={{ display:"flex", gap:"0.75rem", alignItems:"center", marginBottom:"0.3rem" }}>
+                    <span style={{ color:C.amber, fontWeight:800 }}>{selectedFind.id}</span>
+                    <IASeverityBadge severity={selectedFind.severity}/>
+                    <IAStatusBadge status={selectedFind.status}/>
+                    {selectedFind.repeatedFinding && <span style={{ color:C.red, fontSize:"0.72rem", fontWeight:700, border:`1px solid ${C.red}`, borderRadius:4, padding:"1px 6px" }}>⟳ REPEAT</span>}
+                  </div>
+                  <h3 style={{ color:C.text, margin:"0 0 0.2rem", fontWeight:700 }}>{selectedFind.title}</h3>
+                  <p style={{ color:C.muted, margin:0, fontSize:"0.82rem" }}>{selectedFind.category} · Engagement: {selectedFind.engagementId}</p>
+                </div>
+                <button onClick={()=>setSelectedFind(null)} style={{ background:"transparent", border:"none", color:C.muted, cursor:"pointer", fontSize:"1.2rem" }}>✕</button>
+              </div>
+              {[
+                ["Root Cause",          selectedFind.rootCause,          C.red   ],
+                ["Recommendation",      selectedFind.recommendation,     C.blue  ],
+                ["Management Response", selectedFind.managementResponse, C.text  ],
+                ["Implementation Evidence", selectedFind.implementationEvidence||"No evidence recorded yet.", C.green],
+              ].map(([label, val, col])=>(
+                <div key={label} style={{ marginBottom:"0.85rem" }}>
+                  <div style={{ color:C.muted, fontSize:"0.68rem", textTransform:"uppercase", fontWeight:700, marginBottom:"0.25rem" }}>{label}</div>
+                  <div style={{ color:C.text, fontSize:"0.83rem", lineHeight:1.65, padding:"0.5rem 0.75rem", background:C.surface, borderRadius:6, borderLeft:`3px solid ${col}` }}>{val}</div>
+                </div>
+              ))}
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"1rem" }}>
+                {[
+                  ["Responsible", selectedFind.responsiblePerson],
+                  ["Due Date",    selectedFind.dueDate],
+                  ["Follow-up",   selectedFind.auditFollowUpDate],
+                  ["Linked Risk", selectedFind.linkedRisk||"—"],
+                ].map(([l,v])=>(
+                  <div key={l}>
+                    <div style={{ color:C.muted, fontSize:"0.68rem", textTransform:"uppercase", fontWeight:700 }}>{l}</div>
+                    <div style={{ color:C.text, fontSize:"0.85rem" }}>{v||"—"}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <Card>
+            <Table
+              headers={["ID","Title","Category","Severity","Status","Responsible","Due Date","Repeat","Linked Risk"]}
+              rows={filterFn(findings).map(f=>[
+                <span style={{ color:C.amber, fontWeight:700, fontSize:"0.72rem", cursor:"pointer" }} onClick={()=>setSelectedFind(f)}>{f.id}</span>,
+                <div style={{ cursor:"pointer", maxWidth:180, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} onClick={()=>setSelectedFind(f)} title={f.title}><span style={{ fontWeight:600, fontSize:"0.8rem" }}>{f.title}</span></div>,
+                <span style={{ fontSize:"0.75rem", color:C.muted }}>{f.category}</span>,
+                <IASeverityBadge severity={f.severity}/>,
+                <IAStatusBadge status={f.status}/>,
+                f.responsiblePerson,
+                <span style={{ color:f.dueDate&&new Date(f.dueDate)<new Date()&&f.status!=="Resolved"?C.red:C.muted, fontSize:"0.75rem", fontWeight:f.dueDate&&new Date(f.dueDate)<new Date()&&f.status!=="Resolved"?700:400 }}>{f.dueDate||"—"}</span>,
+                f.repeatedFinding?<span style={{ color:C.red, fontWeight:700, fontSize:"0.72rem" }}>⟳ Yes</span>:<span style={{ color:C.muted, fontSize:"0.75rem" }}>No</span>,
+                <span style={{ color:C.blue, fontSize:"0.75rem" }}>{f.linkedRisk||"—"}</span>,
+              ])}
+            />
+          </Card>
+        </div>
+      )}
+
+      {/* ── FOLLOW-UP ── */}
+      {sub==="followup" && (
+        <Card>
+          <Table
+            headers={["ID","Finding","Due Date","Review Date","Status","Progress Note","Last Updated"]}
+            rows={followUp.filter(f=>JSON.stringify(f).toLowerCase().includes(search.toLowerCase())).map(f=>{
+              const isOverdue = f.dueDate && new Date(f.dueDate)<new Date() && f.status!=="Closed";
+              return [
+                <span style={{ color:C.green, fontWeight:700, fontSize:"0.72rem" }}>{f.id}</span>,
+                <div>
+                  <div style={{ color:C.blue, fontSize:"0.72rem", fontWeight:700 }}>{f.findingId}</div>
+                  <div style={{ fontSize:"0.8rem", color:C.text, fontWeight:600 }}>{f.title}</div>
+                </div>,
+                <span style={{ color:isOverdue?C.red:C.muted, fontWeight:isOverdue?700:400, fontSize:"0.75rem" }}>{f.dueDate}{isOverdue?" ⚠":""}</span>,
+                <span style={{ color:C.muted, fontSize:"0.75rem" }}>{f.reviewDate||"—"}</span>,
+                <IAStatusBadge status={f.status}/>,
+                <span style={{ fontSize:"0.75rem", color:C.muted, maxWidth:200, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={f.progressNote}>{f.progressNote}</span>,
+                <span style={{ color:C.muted, fontSize:"0.72rem" }}>{f.lastUpdated}</span>,
+              ];
+            })}
+          />
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ─── INTERNAL AUDIT ADMIN ─────────────────────────────────────────────────────
+function InternalAuditAdmin() {
+  const [view, setView]       = useState("engagements");
+  const [items, setItems]     = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving]   = useState(false);
+  const [toast, setToast]     = useState(null);
+  const [mode, setMode]       = useState(null);
+  const [confirmDel, setConfirmDel] = useState(null);
+
+  function showToast(msg, type="ok") { setToast({ msg, type }); setTimeout(()=>setToast(null), 3500); }
+  const DEFAULTS = { engagements:STATIC_IA.engagements, findings:STATIC_IA.findings, followUp:STATIC_IA.followUp };
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res  = await fetch(`${API}/api/dashboard`);
+      const data = await res.json();
+      setItems((data.internalAudit?.[view]) || DEFAULTS[view]);
+    } catch { setItems(DEFAULTS[view]); }
+    finally { setLoading(false); }
+  }, [view]);
+
+  useEffect(()=>{ load(); }, [load]);
+
+  async function saveToServer(updatedItems) {
+    const res  = await fetch(`${API}/api/dashboard`);
+    const data = await res.json();
+    if (!data.internalAudit) data.internalAudit = {};
+    data.internalAudit[view] = updatedItems;
+    // also persist plan
+    if (!data.internalAudit.plan) data.internalAudit.plan = STATIC_IA.plan;
+    const saveRes = await fetch(`${API}/api/dashboard`, { method:"PUT", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(data) });
+    if (!saveRes.ok) throw new Error("Failed to save");
+  }
+
+  async function seedDemoData() {
+    setSaving(true);
+    try {
+      const res  = await fetch(`${API}/api/dashboard`);
+      const data = await res.json();
+      data.internalAudit = {
+        plan: STATIC_IA.plan,
+        engagements: STATIC_IA.engagements,
+        findings: STATIC_IA.findings,
+        followUp: STATIC_IA.followUp,
+      };
+      await fetch(`${API}/api/dashboard`, { method:"PUT", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(data) });
+      showToast(`✅ Seeded ${STATIC_IA.engagements.length} engagements, ${STATIC_IA.findings.length} findings, ${STATIC_IA.followUp.length} follow-ups.`);
+      load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  async function handleSave(f) {
+    setSaving(true);
+    try {
+      const isEdit = mode?.id;
+      const before = isEdit ? items.find(i=>i.id===f.id) : null;
+      const updated = isEdit
+        ? items.map(i => i.id===f.id ? { ...i, ...f, updatedAt:new Date().toISOString() } : i)
+        : [...items, { ...f, createdAt:new Date().toISOString() }];
+      await saveToServer(updated);
+      await logAudit({ module:"Internal Audit", action:isEdit?"Edit":"Add", recordId:f.id,
+        description:`${isEdit?"Updated":"Added"} IA ${view.slice(0,-1)}: ${f.title||f.id}`, before, after:f });
+      showToast(isEdit ? `✅ ${f.id} updated.` : `✅ ${f.id} added.`);
+      setMode(null); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  async function handleDelete(id) {
+    setSaving(true);
+    try {
+      const before = items.find(i=>i.id===id);
+      await saveToServer(items.filter(i=>i.id!==id));
+      await logAudit({ module:"Internal Audit", action:"Delete", recordId:id, description:`Deleted IA ${view.slice(0,-1)} ${id}`, before });
+      showToast(`🗑 ${id} deleted.`); setConfirmDel(null); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  function EngagementForm({ initial={}, onSave, onCancel, saving }) {
+    const EMPTY = { id:"", title:"", area:"Financial Management & Reporting", type:"Assurance", riskRating:"High", status:"Planned", phase:"Planning", auditor:"", startDate:"", fieldworkEnd:"", reportDate:"", budgetDays:"20", actualDays:"0", opinion:"", findings:"0", criticalFindings:"0", recommendations:"0", managementResponseDue:"", managementResponseStatus:"Pending", notes:"" };
+    const [f, setF] = useState({ ...EMPTY, ...initial });
+    const set = k => v => setF(p=>({ ...p, [k]:v }));
+    return (
+      <div style={{ background:C.surface, border:`1px solid ${C.blue}`, borderRadius:10, padding:"1.5rem", marginBottom:"1.5rem" }}>
+        <h3 style={{ color:C.blue, fontWeight:700, margin:"0 0 1.25rem" }}>{initial.id?"Edit Engagement":"Add Engagement"}</h3>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 3fr", gap:"1rem" }}>
+          <FInput label="Engagement ID" value={f.id} onChange={set("id")} required placeholder="IAE-007"/>
+          <FInput label="Engagement Title" value={f.title} onChange={set("title")} required placeholder="e.g. SCM Compliance Audit"/>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr 1fr 1fr", gap:"1rem" }}>
+          <FSelect label="Audit Area" value={f.area} onChange={set("area")} options={["Financial Management & Reporting","Supply Chain Management","Grant Disbursement & Management","Information Technology & Cybersecurity","Human Resources & Payroll","Performance Management (APP)","Governance & Ethics","Risk Management","Compliance"]}/>
+          <FSelect label="Type" value={f.type} onChange={set("type")} options={["Assurance","Compliance","Advisory","Investigation"]}/>
+          <FSelect label="Risk Rating" value={f.riskRating} onChange={set("riskRating")} options={["High","Medium","Low"]}/>
+          <FSelect label="Phase" value={f.phase} onChange={set("phase")} options={["Planning","Fieldwork","Reporting","Follow-up"]}/>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:"1rem" }}>
+          <FSelect label="Status" value={f.status} onChange={set("status")} options={["Planned","In Progress","Complete","Cancelled"]}/>
+          <FInput label="Auditor" value={f.auditor} onChange={set("auditor")} placeholder="e.g. T. Nkosi"/>
+          <FSelect label="Audit Opinion" value={f.opinion} onChange={set("opinion")} options={["","Unqualified","Qualified","Adverse","Disclaimer"]}/>
+          <FSelect label="Mgmt Response" value={f.managementResponseStatus} onChange={set("managementResponseStatus")} options={["N/A","Pending","Received","Overdue"]}/>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr 1fr", gap:"1rem" }}>
+          <FInput label="Start Date" value={f.startDate} onChange={set("startDate")} type="date"/>
+          <FInput label="Fieldwork End" value={f.fieldworkEnd} onChange={set("fieldworkEnd")} type="date"/>
+          <FInput label="Report Date" value={f.reportDate} onChange={set("reportDate")} type="date"/>
+          <FInput label="Budget Days" value={f.budgetDays} onChange={set("budgetDays")} type="number"/>
+          <FInput label="Actual Days" value={f.actualDays} onChange={set("actualDays")} type="number"/>
+          <FInput label="Findings #" value={f.findings} onChange={set("findings")} type="number"/>
+        </div>
+        <FTextarea label="Notes" value={f.notes} onChange={set("notes")} rows={2} placeholder="Scope, key focus areas, or significant matters…"/>
+        <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.5rem" }}>
+          <button onClick={()=>onSave(f)} disabled={saving} style={{ padding:"0.65rem 1.75rem", background:C.blue, color:"#fff", border:"none", borderRadius:8, fontWeight:700, cursor:"pointer", opacity:saving?0.6:1 }}>{saving?"Saving…":initial.id?"Update":"Add Engagement"}</button>
+          <button onClick={onCancel} style={{ padding:"0.65rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer" }}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
+
+  function FindingForm({ initial={}, onSave, onCancel, saving }) {
+    const EMPTY = { id:"", engagementId:"", title:"", category:"Financial Management", severity:"High", status:"Open", rootCause:"", recommendation:"", managementResponse:"", responsiblePerson:"", dueDate:"", implementationStatus:"Not Started", implementationEvidence:"", auditFollowUpDate:"", repeatedFinding:false, linkedRisk:"", linkedUIFW:"" };
+    const [f, setF] = useState({ ...EMPTY, ...initial });
+    const set = k => v => setF(p=>({ ...p, [k]:v }));
+    return (
+      <div style={{ background:C.surface, border:`1px solid ${C.amber}`, borderRadius:10, padding:"1.5rem", marginBottom:"1.5rem" }}>
+        <h3 style={{ color:C.amber, fontWeight:700, margin:"0 0 1.25rem" }}>{initial.id?"Edit Finding":"Log New Finding"}</h3>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 3fr", gap:"1rem" }}>
+          <FInput label="Finding ID" value={f.id} onChange={set("id")} required placeholder="IAF-009"/>
+          <FInput label="Engagement ID" value={f.engagementId} onChange={set("engagementId")} placeholder="IAE-001"/>
+          <FInput label="Finding Title" value={f.title} onChange={set("title")} required placeholder="e.g. Unauthorised expenditure…"/>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr", gap:"1rem" }}>
+          <FSelect label="Category" value={f.category} onChange={set("category")} options={["Financial Management","Supply Chain Management","Human Resources & Payroll","Information Technology","Grant Management","Governance & Ethics","Compliance","Risk Management"]}/>
+          <FSelect label="Severity" value={f.severity} onChange={set("severity")} options={["Critical","High","Medium","Low"]}/>
+          <FSelect label="Status" value={f.status} onChange={set("status")} options={["Open","Resolved"]}/>
+          <FSelect label="Implementation" value={f.implementationStatus} onChange={set("implementationStatus")} options={["Not Started","In Progress","Complete"]}/>
+          <div style={{ marginBottom:"0.85rem" }}>
+            <label style={labelSt}>Repeated Finding</label>
+            <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.4rem" }}>
+              {["Yes","No"].map(opt=>(
+                <label key={opt} style={{ display:"flex", alignItems:"center", gap:"0.4rem", cursor:"pointer", color:C.muted, fontSize:"0.85rem" }}>
+                  <input type="radio" name="repeat" value={opt} checked={(f.repeatedFinding?"Yes":"No")===opt} onChange={()=>setF(p=>({ ...p, repeatedFinding:opt==="Yes" }))}/>
+                  {opt}
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+        <FTextarea label="Root Cause" value={f.rootCause} onChange={set("rootCause")} rows={2} placeholder="Why did this finding occur?"/>
+        <FTextarea label="Recommendation" value={f.recommendation} onChange={set("recommendation")} rows={2} placeholder="What action is required to resolve this finding?"/>
+        <FTextarea label="Management Response" value={f.managementResponse} onChange={set("managementResponse")} rows={2} placeholder="Management's response and commitment…"/>
+        <FTextarea label="Implementation Evidence" value={f.implementationEvidence} onChange={set("implementationEvidence")} rows={1} placeholder="Evidence of implementation provided by management…"/>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:"1rem" }}>
+          <FInput label="Responsible Person" value={f.responsiblePerson} onChange={set("responsiblePerson")} placeholder="e.g. CFO"/>
+          <FInput label="Due Date" value={f.dueDate} onChange={set("dueDate")} type="date"/>
+          <FInput label="Follow-up Date" value={f.auditFollowUpDate} onChange={set("auditFollowUpDate")} type="date"/>
+          <FInput label="Linked Risk ID" value={f.linkedRisk} onChange={set("linkedRisk")} placeholder="e.g. SR-001"/>
+        </div>
+        <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.5rem" }}>
+          <button onClick={()=>onSave(f)} disabled={saving} style={{ padding:"0.65rem 1.75rem", background:C.amber, color:C.bg, border:"none", borderRadius:8, fontWeight:700, cursor:"pointer", opacity:saving?0.6:1 }}>{saving?"Saving…":initial.id?"Update":"Log Finding"}</button>
+          <button onClick={onCancel} style={{ padding:"0.65rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer" }}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
+
+  function FollowUpForm({ initial={}, onSave, onCancel, saving }) {
+    const EMPTY = { id:"", findingId:"", engagementId:"", title:"", dueDate:"", reviewDate:"", status:"Not Started", progressNote:"", lastUpdated:"" };
+    const [f, setF] = useState({ ...EMPTY, ...initial });
+    const set = k => v => setF(p=>({ ...p, [k]:v }));
+    return (
+      <div style={{ background:C.surface, border:`1px solid ${C.green}`, borderRadius:10, padding:"1.5rem", marginBottom:"1.5rem" }}>
+        <h3 style={{ color:C.green, fontWeight:700, margin:"0 0 1.25rem" }}>{initial.id?"Edit Follow-up":"Add Follow-up"}</h3>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 2fr", gap:"1rem" }}>
+          <FInput label="Follow-up ID" value={f.id} onChange={set("id")} required placeholder="FU-009"/>
+          <FInput label="Finding ID" value={f.findingId} onChange={set("findingId")} placeholder="IAF-001"/>
+          <FInput label="Engagement ID" value={f.engagementId} onChange={set("engagementId")} placeholder="IAE-001"/>
+          <FInput label="Title" value={f.title} onChange={set("title")} placeholder="e.g. Budget Monitoring Controls"/>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
+          <FInput label="Due Date" value={f.dueDate} onChange={set("dueDate")} type="date"/>
+          <FInput label="Review Date" value={f.reviewDate} onChange={set("reviewDate")} type="date"/>
+          <FSelect label="Status" value={f.status} onChange={set("status")} options={["Not Started","In Progress","Closed"]}/>
+        </div>
+        <FTextarea label="Progress Note" value={f.progressNote} onChange={set("progressNote")} rows={2} placeholder="Update on implementation progress…"/>
+        <FInput label="Last Updated" value={f.lastUpdated} onChange={set("lastUpdated")} type="date"/>
+        <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.5rem" }}>
+          <button onClick={()=>onSave(f)} disabled={saving} style={{ padding:"0.65rem 1.75rem", background:C.green, color:C.bg, border:"none", borderRadius:8, fontWeight:700, cursor:"pointer", opacity:saving?0.6:1 }}>{saving?"Saving…":initial.id?"Update":"Add Follow-up"}</button>
+          <button onClick={onCancel} style={{ padding:"0.65rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer" }}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
+
+  const FormMap = { engagements:EngagementForm, findings:FindingForm, followUp:FollowUpForm };
+  const FormComponent = FormMap[view];
+  const addColor = view==="engagements"?C.blue:view==="findings"?C.amber:C.green;
+  const addLabel = view==="engagements"?"Add Engagement":view==="findings"?"Log Finding":"Add Follow-up";
+
+  return (
+    <div>
+      {toast && <div style={{ position:"fixed", top:16, right:16, zIndex:1000, padding:"0.75rem 1.25rem", borderRadius:8, background:toast.type==="ok"?"rgba(63,185,80,0.15)":"rgba(248,81,73,0.15)", border:`1px solid ${toast.type==="ok"?C.green:C.red}`, color:toast.type==="ok"?C.green:C.red, fontWeight:600, fontSize:"0.88rem" }}>{toast.msg}</div>}
+      {confirmDel && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", zIndex:999, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div style={{ background:C.card, border:`1px solid ${C.red}`, borderRadius:12, padding:"2rem", maxWidth:400, width:"90%" }}>
+            <h3 style={{ color:C.red, margin:"0 0 0.75rem" }}>Delete Item</h3>
+            <p style={{ color:C.text, marginBottom:"1.5rem" }}>Delete <strong>{confirmDel}</strong>?</p>
+            <div style={{ display:"flex", gap:"0.75rem" }}>
+              <button onClick={()=>handleDelete(confirmDel)} disabled={saving} style={{ padding:"0.6rem 1.5rem", background:C.red, color:"#fff", border:"none", borderRadius:7, fontWeight:700, cursor:"pointer" }}>{saving?"Deleting…":"Yes, Delete"}</button>
+              <button onClick={()=>setConfirmDel(null)} style={{ padding:"0.6rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:7, cursor:"pointer" }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ display:"flex", borderBottom:`1px solid ${C.border}`, marginBottom:"1.25rem" }}>
+        {[["engagements","🔍 Engagements"],["findings","⚠️ Findings"],["followUp","✅ Follow-up"]].map(([k,l])=>(
+          <button key={k} onClick={()=>{ setView(k); setMode(null); }}
+            style={{ padding:"0.5rem 1.1rem", border:"none", background:"transparent", cursor:"pointer",
+              fontSize:"0.82rem", fontWeight:600, color:view===k?C.text:C.muted,
+              borderBottom:view===k?`2px solid ${C.blue}`:"2px solid transparent" }}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.25rem", flexWrap:"wrap", gap:"0.75rem" }}>
+        <div>
+          <h3 style={{ color:C.text, margin:"0 0 0.2rem", fontWeight:700 }}>
+            {view==="engagements"?"Engagements":view==="findings"?"Findings Register":"Follow-up Register"} — Edit Mode
+          </h3>
+          <p style={{ color:C.muted, fontSize:"0.82rem", margin:0 }}>{items.length} items</p>
+        </div>
+        <div style={{ display:"flex", gap:"0.75rem" }}>
+          <button onClick={()=>setMode("add")} disabled={!!mode} style={{ padding:"0.6rem 1.25rem", background:addColor, color:addColor===C.amber||addColor===C.green?C.bg:"#fff", border:"none", borderRadius:8, fontWeight:700, fontSize:"0.88rem", cursor:"pointer", opacity:mode?0.5:1 }}>+ {addLabel}</button>
+          <button onClick={seedDemoData} disabled={saving||!!mode} style={{ padding:"0.6rem 1.1rem", background:"transparent", color:C.green, border:`1px solid ${C.green}`, borderRadius:8, fontWeight:700, fontSize:"0.88rem", cursor:"pointer", opacity:(saving||mode)?0.5:1 }}>🌱 Seed Demo Data</button>
+          <button onClick={load} style={{ padding:"0.6rem 0.9rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer", fontSize:"0.88rem" }}>↻ Refresh</button>
+        </div>
+      </div>
+
+      {mode==="add"         && <FormComponent onSave={handleSave} onCancel={()=>setMode(null)} saving={saving}/>}
+      {mode && mode!=="add" && <FormComponent initial={mode} onSave={handleSave} onCancel={()=>setMode(null)} saving={saving}/>}
+
+      {loading ? <div style={{ textAlign:"center", padding:"3rem", color:C.muted }}>Loading…</div> : (
+        <Card>
+          {view==="engagements" && (
+            <Table
+              headers={["ID","Title","Area","Type","Phase","Opinion","Findings","Status","Actions"]}
+              rows={items.map(e=>[
+                <span style={{ color:C.blue, fontWeight:700, fontSize:"0.72rem" }}>{e.id}</span>,
+                <span style={{ fontWeight:600, fontSize:"0.8rem", maxWidth:140, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={e.title}>{e.title}</span>,
+                <span style={{ fontSize:"0.72rem", color:C.muted }}>{e.area.split(" ")[0]}</span>,
+                <Badge label={e.type} color="blue"/>,
+                <span style={{ fontSize:"0.72rem", color:C.muted }}>{e.phase}</span>,
+                <IAOpinionBadge opinion={e.opinion}/>,
+                <span style={{ color:e.findings>0?C.amber:C.muted, fontWeight:700 }}>{e.findings}</span>,
+                <IAStatusBadge status={e.status}/>,
+                <div style={{ display:"flex", gap:"0.4rem" }}>
+                  <button onClick={()=>setMode({ ...e })} disabled={!!mode} style={{ padding:"0.3rem 0.6rem", background:"transparent", color:C.blue, border:`1px solid ${C.blue}`, borderRadius:5, fontSize:"0.72rem", cursor:"pointer", opacity:mode?0.4:1 }}>Edit</button>
+                  <button onClick={()=>setConfirmDel(e.id)} disabled={!!mode} style={{ padding:"0.3rem 0.6rem", background:"transparent", color:C.red, border:`1px solid ${C.red}`, borderRadius:5, fontSize:"0.72rem", cursor:"pointer", opacity:mode?0.4:1 }}>Del</button>
+                </div>,
+              ])}
+            />
+          )}
+          {view==="findings" && (
+            <Table
+              headers={["ID","Title","Severity","Status","Responsible","Due Date","Repeat","Actions"]}
+              rows={items.map(f=>[
+                <span style={{ color:C.amber, fontWeight:700, fontSize:"0.72rem" }}>{f.id}</span>,
+                <span style={{ fontWeight:600, fontSize:"0.8rem", maxWidth:180, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={f.title}>{f.title}</span>,
+                <IASeverityBadge severity={f.severity}/>,
+                <IAStatusBadge status={f.status}/>,
+                f.responsiblePerson,
+                <span style={{ color:f.dueDate&&new Date(f.dueDate)<new Date()&&f.status!=="Resolved"?C.red:C.muted, fontSize:"0.75rem" }}>{f.dueDate||"—"}</span>,
+                f.repeatedFinding?<span style={{ color:C.red, fontWeight:700, fontSize:"0.72rem" }}>⟳</span>:<span style={{ color:C.muted, fontSize:"0.75rem" }}>—</span>,
+                <div style={{ display:"flex", gap:"0.4rem" }}>
+                  <button onClick={()=>setMode({ ...f })} disabled={!!mode} style={{ padding:"0.3rem 0.6rem", background:"transparent", color:C.blue, border:`1px solid ${C.blue}`, borderRadius:5, fontSize:"0.72rem", cursor:"pointer", opacity:mode?0.4:1 }}>Edit</button>
+                  <button onClick={()=>setConfirmDel(f.id)} disabled={!!mode} style={{ padding:"0.3rem 0.6rem", background:"transparent", color:C.red, border:`1px solid ${C.red}`, borderRadius:5, fontSize:"0.72rem", cursor:"pointer", opacity:mode?0.4:1 }}>Del</button>
+                </div>,
+              ])}
+            />
+          )}
+          {view==="followUp" && (
+            <Table
+              headers={["ID","Finding","Title","Due Date","Status","Progress","Actions"]}
+              rows={items.map(f=>{
+                const isOverdue = f.dueDate&&new Date(f.dueDate)<new Date()&&f.status!=="Closed";
+                return [
+                  <span style={{ color:C.green, fontWeight:700, fontSize:"0.72rem" }}>{f.id}</span>,
+                  <span style={{ color:C.amber, fontSize:"0.75rem", fontWeight:700 }}>{f.findingId}</span>,
+                  <span style={{ fontWeight:600, fontSize:"0.8rem" }}>{f.title}</span>,
+                  <span style={{ color:isOverdue?C.red:C.muted, fontWeight:isOverdue?700:400, fontSize:"0.75rem" }}>{f.dueDate}{isOverdue?" ⚠":""}</span>,
+                  <IAStatusBadge status={f.status}/>,
+                  <span style={{ fontSize:"0.72rem", color:C.muted, maxWidth:140, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={f.progressNote}>{f.progressNote||"—"}</span>,
+                  <div style={{ display:"flex", gap:"0.4rem" }}>
+                    <button onClick={()=>setMode({ ...f })} disabled={!!mode} style={{ padding:"0.3rem 0.6rem", background:"transparent", color:C.blue, border:`1px solid ${C.blue}`, borderRadius:5, fontSize:"0.72rem", cursor:"pointer", opacity:mode?0.4:1 }}>Edit</button>
+                    <button onClick={()=>setConfirmDel(f.id)} disabled={!!mode} style={{ padding:"0.3rem 0.6rem", background:"transparent", color:C.red, border:`1px solid ${C.red}`, borderRadius:5, fontSize:"0.72rem", cursor:"pointer", opacity:mode?0.4:1 }}>Del</button>
+                  </div>,
+                ];
+              })}
+            />
+          )}
+        </Card>
+      )}
+    </div>
+  );
+}
+
 // ─── SIDEBAR ──────────────────────────────────────────────────────────────────
 const NAV = [
   { id:"executive",     label:"Executive Overview",  icon:"🏛" },
@@ -5990,6 +6842,7 @@ const NAV = [
   { id:"policy",         label:"Policy & Process",      icon:"📜" },
   { id:"declarations",   label:"Declarations",          icon:"📝" },
   { id:"projects",       label:"Projects & Contracts",  icon:"📁" },
+  { id:"internalaudit", label:"Internal Audit",        icon:"🔎" },
   { id:"auditlog",      label:"Audit Log",            icon:"🔍" },
   { id:"admin",         label:"Admin Panel",          icon:"⚙" },
 ];

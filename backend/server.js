@@ -1044,6 +1044,103 @@ function buildPolicy(data) {
   ];
 }
 
+function buildInternalAudit(data) {
+  const ia          = data.internalAudit || {};
+  const plan        = ia.plan        || {};
+  const engagements = ia.engagements || [];
+  const findings    = ia.findings    || [];
+  const followUp    = ia.followUp    || [];
+
+  const totalFindings  = findings.length;
+  const openFindings   = findings.filter(f=>f.status==="Open").length;
+  const criticalOpen   = findings.filter(f=>f.severity==="Critical"&&f.status==="Open").length;
+  const resolved       = findings.filter(f=>f.status==="Resolved"||f.status==="Closed").length;
+  const overdueFollowUp= followUp.filter(f=>f.dueDate&&new Date(f.dueDate)<new Date()&&f.status!=="Closed").length;
+  const repeatFindings = findings.filter(f=>f.repeatedFinding).length;
+  const completeEngs   = engagements.filter(e=>e.status==="Complete").length;
+
+  const W1 = [800,2200,1000,900,900,1000,1226];
+  const W2 = [800,2000,900,900,1000,1100,1326];
+  const W3 = [800,2000,900,900,900,1726];
+
+  function sevColor(s) {
+    if (s==="Critical") return RED;
+    if (s==="High")     return AMBER;
+    if (s==="Medium")   return BLUE;
+    return GREEN;
+  }
+
+  return [
+    heading1("12. Internal Audit"),
+    kpiTable([
+      ["Engagements",    String(engagements.length),  "",                  NAVY  ],
+      ["Complete",       String(completeEngs),         "",                  GREEN ],
+      ["Total Findings", String(totalFindings),        "",                  NAVY  ],
+      ["Open Findings",  String(openFindings),         openFindings>0?"Action required":"",  openFindings>0?RED:GREEN ],
+      ["Critical Open",  String(criticalOpen),         criticalOpen>0?"URGENT":"",           criticalOpen>0?RED:GREEN ],
+      ["Overdue F/U",    String(overdueFollowUp),      overdueFollowUp>0?"Escalate":"",      overdueFollowUp>0?RED:GREEN ],
+    ]),
+    new Paragraph({ spacing:{before:160,after:160}, children:[] }),
+
+    heading2("Audit Engagements"),
+    engagements.length>0 ? new Table({
+      width:{ size:9026, type:WidthType.DXA }, columnWidths:W1,
+      rows:[
+        headerRow(["ID","Title","Area","Type","Phase","Opinion","Status"], W1),
+        ...engagements.map(e => new TableRow({ children:[
+          cell(e.id,           { width:W1[0], size:16, color:BLUE, bold:true }),
+          cell(e.title,         { width:W1[1], size:15 }),
+          cell((e.area||"").split(" ")[0]||"—", { width:W1[2], size:15 }),
+          cell(e.type||"—",    { width:W1[3], size:15 }),
+          cell(e.phase||"—",   { width:W1[4], size:15 }),
+          cell(e.opinion||"Pending", { width:W1[5], size:15, bold:!!e.opinion, color:e.opinion==="Unqualified"?GREEN:e.opinion==="Qualified"?AMBER:e.opinion?RED:GREY }),
+          cell(e.status||"—",  { width:W1[6], size:15, bold:true, color:statusColor(e.status) }),
+        ]})),
+      ],
+    }) : para("No engagements recorded.", { color:GREY }),
+
+    new Paragraph({ spacing:{before:200,after:0}, children:[] }),
+    heading2("Findings Register"),
+    findings.length>0 ? new Table({
+      width:{ size:9026, type:WidthType.DXA }, columnWidths:W2,
+      rows:[
+        headerRow(["ID","Title","Category","Severity","Status","Responsible","Due Date"], W2),
+        ...findings.map(f => new TableRow({ children:[
+          cell(f.id,              { width:W2[0], size:16, color:AMBER, bold:true }),
+          cell(f.title,            { width:W2[1], size:15 }),
+          cell(f.category||"—",   { width:W2[2], size:15 }),
+          cell(f.severity||"—",   { width:W2[3], size:15, bold:true, color:sevColor(f.severity) }),
+          cell(f.status||"—",     { width:W2[4], size:15, bold:true, color:f.status==="Resolved"?GREEN:RED }),
+          cell(f.responsiblePerson||"—", { width:W2[5], size:15 }),
+          cell(f.dueDate||"—",    { width:W2[6], size:15, color:f.dueDate&&new Date(f.dueDate)<new Date()&&f.status!=="Resolved"?RED:"1F2937" }),
+        ]})),
+      ],
+    }) : para("No findings recorded.", { color:GREY }),
+
+    new Paragraph({ spacing:{before:200,after:0}, children:[] }),
+    heading2("Follow-up & Implementation Status"),
+    followUp.length>0 ? new Table({
+      width:{ size:9026, type:WidthType.DXA }, columnWidths:W3,
+      rows:[
+        headerRow(["ID","Finding","Due Date","Status","Review Date","Progress Note"], W3),
+        ...followUp.map(f => {
+          const isOverdue = f.dueDate&&new Date(f.dueDate)<new Date()&&f.status!=="Closed";
+          return new TableRow({ children:[
+            cell(f.id,           { width:W3[0], size:16, color:GREEN, bold:true }),
+            cell(f.findingId||"—",{ width:W3[1], size:15, color:BLUE }),
+            cell(f.dueDate||"—", { width:W3[2], size:15, color:isOverdue?RED:"1F2937" }),
+            cell(f.status||"—",  { width:W3[3], size:15, bold:true, color:f.status==="Closed"?GREEN:f.status==="In Progress"?AMBER:RED }),
+            cell(f.reviewDate||"—",{ width:W3[4], size:15 }),
+            cell((f.progressNote||"—").slice(0,120), { width:W3[5], size:14 }),
+          ]});
+        }),
+      ],
+    }) : para("No follow-up items recorded.", { color:GREY }),
+    new Paragraph({ spacing:{before:160,after:0}, children:[] }),
+    divider(),
+  ];
+}
+
 // ── Report configs ────────────────────────────────────────────────────────────
 const REPORT_CONFIGS = {
   excom: {
@@ -1056,13 +1153,13 @@ const REPORT_CONFIGS = {
     title:    "ARC Risk Report",
     subtitle: "Audit & Risk Committee — Quarterly GRC Report",
     audience: "Audit & Risk Committee",
-    sections: ["summary","toprisks","treatments","uifw","fraud","bcm","compliance","projects","iam","policy"],
+    sections: ["summary","toprisks","treatments","uifw","fraud","bcm","compliance","projects","iam","policy","internalaudit"],
   },
   board: {
     title:    "Board GRC Report",
     subtitle: "Board of Directors — Quarterly GRC Overview",
     audience: "Board of Directors",
-    sections: ["summary","toprisks","treatments","uifw","fraud","bcm","app","compliance","projects","iam","policy"],
+    sections: ["summary","toprisks","treatments","uifw","fraud","bcm","app","compliance","projects","iam","policy","internalaudit"],
   },
 };
 
@@ -1082,7 +1179,8 @@ async function generateReport(type, data) {
     compliance: buildCompliance,
     projects:   buildProjects,
     iam:        buildIAM,
-    policy:     buildPolicy,
+    policy:        buildPolicy,
+    internalaudit: buildInternalAudit,
   };
 
   const children = [
