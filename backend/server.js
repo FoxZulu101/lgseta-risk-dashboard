@@ -611,6 +611,40 @@ function buildTopRisks(data) {
   ];
 }
 
+function buildOperationalRisks(data) {
+  const risks = [...(data.operationalRisks || [])]
+    .sort((a,b)=>(Number(b.current||b.residual||b.inherent||0))-(Number(a.current||a.residual||a.inherent||0)));
+  const total=risks.length, critical=risks.filter(r=>Number(r.current)>=15).length;
+  const improving=risks.filter(r=>r.trend==="Improving").length;
+  const portfolios=new Set(risks.map(r=>r.portfolio).filter(Boolean)).size;
+  const W=[800,2600,1900,750,750,750,726];
+  return [
+    heading1("Operational Risk Register"),
+    para("Operational risks maintained across portfolios. "+critical+" rated Critical; "+improving+" improving.",{after:160}),
+    kpiTable([
+      ["Operational Risks",String(total),"",NAVY],
+      ["Critical (>=15)",String(critical),"Require attention",critical>0?RED:GREEN],
+      ["Improving",String(improving),"Positive trend",GREEN],
+      ["Portfolios",String(portfolios),"",BLUE],
+    ]),
+    new Paragraph({ spacing:{before:160,after:160}, children:[] }),
+    new Table({ width:{size:9026,type:WidthType.DXA}, columnWidths:W, rows:[
+      headerRow(["ID","Risk Name","Portfolio / Unit","Inh.","Res.","Cur.","Tgt."], W),
+      ...risks.slice(0,20).map(r=>new TableRow({ children:[
+        cell(r.id,{width:W[0],size:16,color:BLUE,bold:true}),
+        cell(r.name||"-",{width:W[1],size:16}),
+        cell((r.portfolio||"-")+" / "+(r.unit||"-"),{width:W[2],size:15,color:"6B7280"}),
+        cell(String(r.inherent||"-"),{width:W[3],size:16,align:AlignmentType.CENTER}),
+        cell(String(r.residual||"-"),{width:W[4],size:16,align:AlignmentType.CENTER}),
+        cell(String(r.current||"-"),{width:W[5],size:16,align:AlignmentType.CENTER,bold:true,color:Number(r.current)>=15?RED:Number(r.current)>=10?AMBER:GREEN}),
+        cell(String(r.target||"-"),{width:W[6],size:16,align:AlignmentType.CENTER,color:GREEN}),
+      ]})),
+    ]}),
+    new Paragraph({ spacing:{before:160,after:0}, children:[] }),
+    divider(),
+  ];
+}
+
 function buildTreatmentActions(data) {
   const actions  = data.treatmentActions || [];
   const complete = actions.filter(a=>a.status==="Complete").length;
@@ -1163,19 +1197,19 @@ const REPORT_CONFIGS = {
     title:    "EXCOM Risk Report",
     subtitle: "Executive Committee — Quarterly GRC Update",
     audience: "Executive Committee",
-    sections: ["summary","toprisks","treatments","uifw"],
+    sections: ["summary","toprisks","oprisks","treatments","uifw"],
   },
   arc: {
     title:    "ARC Risk Report",
     subtitle: "Audit & Risk Committee — Quarterly GRC Report",
     audience: "Audit & Risk Committee",
-    sections: ["summary","toprisks","treatments","uifw","fraud","bcm","compliance","projects","iam","policy","internalaudit"],
+    sections: ["summary","toprisks","oprisks","treatments","uifw","fraud","bcm","compliance","projects","iam","policy","internalaudit"],
   },
   board: {
     title:    "Board GRC Report",
     subtitle: "Board of Directors — Quarterly GRC Overview",
     audience: "Board of Directors",
-    sections: ["summary","toprisks","treatments","uifw","fraud","bcm","app","compliance","projects","iam","policy","internalaudit"],
+    sections: ["summary","toprisks","oprisks","treatments","uifw","fraud","bcm","app","compliance","projects","iam","policy","internalaudit"],
   },
 };
 
@@ -1197,6 +1231,7 @@ async function generateReport(type, data) {
     iam:        buildIAM,
     policy:        buildPolicy,
     internalaudit: buildInternalAudit,
+    oprisks:       buildOperationalRisks,
   };
 
   const children = [
