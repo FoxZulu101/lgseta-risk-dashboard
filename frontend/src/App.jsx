@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+  AreaChart, Area, ComposedChart,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from "recharts";
 
@@ -1471,7 +1472,38 @@ function CombinedAssurance() {
 // ─── MODULE: BCM RESILIENCE ───────────────────────────────────────────────────
 function BCMResilience() {
   const [sub, setSub] = useState("overview");
+  const [data, setData] = useState(STATIC_BCM);
+  useEffect(()=>{
+    fetch(`${API}/api/dashboard`).then(r=>r.json()).then(d=>{ if(d.bcmResilience) setData({ ...STATIC_BCM, ...d.bcmResilience }); }).catch(()=>{});
+  },[]);
+  const ov = data.overview || STATIC_BCM.overview;
+  const incidents = data.incidents || STATIC_BCM.incidents;
+
   const tabs=["overview","incidents","plans","crisis","recovery","communications","testing","suppliers","dependencies","it-dr","training"];
+
+  // Resilience metric gauges — RTO/RPO compliance, MTTR, MBCO, RSL, MTPD maturity
+  const gauges = [
+    { label:"RTO Compliance",  sublabel:"4-hour target",       value:78, color:C.green },
+    { label:"RPO Compliance",  sublabel:"2-hour target",       value:65, color:C.amber },
+    { label:"MTTR",            sublabel:"Mean Time to Recovery",value:72, color:C.blue  },
+    { label:"MBCO",            sublabel:"Min Continuity Obj.",  value:60, color:C.purple },
+    { label:"RSL",             sublabel:"Recovery Service Lvl", value:82, color:C.green },
+    { label:"MTPD Maturity",   sublabel:"Max Tolerable Disrupt",value:62, color:C.amber },
+  ];
+
+  // BCM Readiness index — composite from BIA + plans tested + processes with BCP
+  const readiness = Math.round(((ov.biaComplete||0) + ((ov.plansTested/Math.max(ov.plansTotal,1))*100) + ((ov.processesWithBCP/Math.max(ov.criticalProcesses,1))*100))/3);
+  const readinessLabel = readiness>=80?"Strong":readiness>=60?"Moderate":"Weak";
+
+  // Critical processes (demo, mirrors reference) with RTO/RPO/maturity/test result
+  const criticalProcs = [
+    { name:"Payroll Processing",        rto:"4 hours",  rpo:"1 hour",  lastTest:"2026-02-15", maturity:4.2, result:"Passed" },
+    { name:"Levy Collection & Mgmt",    rto:"8 hours",  rpo:"2 hours", lastTest:"2026-01-20", maturity:3.8, result:"Passed" },
+    { name:"Grant Disbursement",        rto:"24 hours", rpo:"4 hours", lastTest:"2026-02-28", maturity:2.5, result:"Failed" },
+    { name:"ICT Core Infrastructure",   rto:"2 hours",  rpo:"1 hour",  lastTest:"2026-03-10", maturity:3.5, result:"Passed" },
+  ];
+  const testStatus = { Passed:criticalProcs.filter(p=>p.result==="Passed").length, Failed:criticalProcs.filter(p=>p.result==="Failed").length, Pending:1, "Not Tested":0 };
+
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
       <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>BCM & Resilience</h1>
@@ -1484,25 +1516,98 @@ function BCMResilience() {
           </button>
         ))}
       </div>
+
       {sub==="overview"&&(
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))", gap:"0.85rem" }}>
-          <KPICard label="BIA Completion"    value={`${STATIC_BCM.overview.biaComplete}%`}   color={C.green}/>
-          <KPICard label="Plans Tested"       value={`${STATIC_BCM.overview.plansTested}/${STATIC_BCM.overview.plansTotal}`} color={C.amber}/>
-          <KPICard label="RTO Target"         value={STATIC_BCM.overview.rto}                color={C.blue}/>
-          <KPICard label="RPO Target"         value={STATIC_BCM.overview.rpo}                color={C.purple}/>
-          <KPICard label="Critical Processes" value={STATIC_BCM.overview.criticalProcesses}  color={C.blue}/>
-          <KPICard label="Processes w/ BCP"   value={STATIC_BCM.overview.processesWithBCP}   color={C.green}/>
+        <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
+          {/* Resilience metric gauges */}
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))", gap:"0.85rem" }}>
+            {gauges.map(g=>(
+              <Card key={g.label} style={{ display:"flex", justifyContent:"center" }}>
+                <GaugeRing value={g.value} max={100} label={g.label} sublabel={g.sublabel} color={g.color} size={120}/>
+              </Card>
+            ))}
+          </div>
+
+          {/* Readiness donut + critical processes + test status */}
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1.5fr 1fr", gap:"1rem" }}>
+            <Card>
+              <SectionTitle>BCM Readiness Index</SectionTitle>
+              <div style={{ display:"flex", justifyContent:"center", padding:"0.5rem 0" }}>
+                <DonutChart
+                  segments={[{ label:"Ready", value:readiness, color:readiness>=80?C.green:readiness>=60?C.amber:C.red },{ label:"Gap", value:100-readiness, color:C.border }]}
+                  size={170} thickness={20}
+                  centerValue={`${readiness}%`} centerLabel={readinessLabel}/>
+              </div>
+              <div style={{ display:"flex", justifyContent:"space-around", marginTop:"0.5rem" }}>
+                {[["Compliant",criticalProcs.filter(p=>p.result==="Passed").length,C.green],["Partial",1,C.amber],["Non-Compliant",criticalProcs.filter(p=>p.result==="Failed").length,C.red]].map(([l,v,c])=>(
+                  <div key={l} style={{ textAlign:"center" }}>
+                    <div style={{ color:c, fontWeight:800, fontSize:"1.1rem" }}>{v}</div>
+                    <div style={{ color:C.muted, fontSize:"0.65rem" }}>{l}</div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            <Card>
+              <SectionTitle>Critical Processes</SectionTitle>
+              <div style={{ display:"flex", flexDirection:"column", gap:"0.6rem" }}>
+                {criticalProcs.map(p=>(
+                  <div key={p.name} style={{ background:C.surface, borderRadius:8, padding:"0.65rem 0.85rem", border:`1px solid ${C.border}` }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"0.4rem" }}>
+                      <span style={{ color:C.text, fontWeight:600, fontSize:"0.85rem" }}>● {p.name}</span>
+                      <Badge label={p.result} color={p.result==="Passed"?"green":"red"}/>
+                    </div>
+                    <div style={{ display:"flex", gap:"1.5rem", marginBottom:"0.4rem" }}>
+                      <div><div style={{ color:C.muted, fontSize:"0.62rem" }}>RTO</div><div style={{ color:C.blue, fontSize:"0.82rem", fontWeight:700 }}>{p.rto}</div></div>
+                      <div><div style={{ color:C.muted, fontSize:"0.62rem" }}>RPO</div><div style={{ color:C.blue, fontSize:"0.82rem", fontWeight:700 }}>{p.rpo}</div></div>
+                      <div style={{ marginLeft:"auto", textAlign:"right" }}><div style={{ color:C.muted, fontSize:"0.62rem" }}>Last Tested</div><div style={{ color:C.text, fontSize:"0.82rem" }}>{p.lastTest}</div></div>
+                    </div>
+                    <div style={{ display:"flex", alignItems:"center", gap:"0.5rem" }}>
+                      <span style={{ color:C.muted, fontSize:"0.62rem" }}>Maturity</span>
+                      <div style={{ flex:1 }}><ProgressBar value={p.maturity} max={5} color={p.maturity>=4?C.green:p.maturity>=3?C.amber:C.red}/></div>
+                      <span style={{ color:C.text, fontSize:"0.75rem", fontWeight:700 }}>{p.maturity}/5</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            <Card>
+              <SectionTitle>Test Status</SectionTitle>
+              <div style={{ display:"flex", flexDirection:"column", gap:"0.85rem", marginTop:"0.5rem" }}>
+                {[["Passed",testStatus.Passed,C.green],["Failed",testStatus.Failed,C.red],["Pending",testStatus.Pending,C.amber],["Not Tested",testStatus["Not Tested"],C.muted]].map(([l,v,c])=>(
+                  <div key={l} style={{ display:"flex", alignItems:"center", gap:"0.6rem" }}>
+                    <div style={{ width:9, height:9, borderRadius:"50%", background:c, flexShrink:0 }}/>
+                    <span style={{ flex:1, color:C.text, fontSize:"0.85rem" }}>{l}</span>
+                    <span style={{ color:c, fontWeight:800, fontSize:"1rem" }}>{v}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ marginTop:"1.25rem" }}>
+                <SectionTitle>Key Targets</SectionTitle>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.5rem" }}>
+                  {[["BIA Complete",`${ov.biaComplete}%`],["Plans Tested",`${ov.plansTested}/${ov.plansTotal}`],["RTO",ov.rto],["RPO",ov.rpo],["Critical Procs",ov.criticalProcesses],["With BCP",ov.processesWithBCP]].map(([l,v])=>(
+                    <div key={l} style={{ background:C.surface, borderRadius:6, padding:"0.4rem 0.6rem" }}>
+                      <div style={{ color:C.muted, fontSize:"0.6rem", textTransform:"uppercase", fontWeight:700 }}>{l}</div>
+                      <div style={{ color:C.text, fontSize:"0.9rem", fontWeight:700 }}>{v}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Card>
+          </div>
         </div>
       )}
+
       {sub==="incidents"&&(
         <Card>
           <Table
             headers={["ID","Date","Type","Duration","Impact","RTO Met","Resolution"]}
-            rows={STATIC_BCM.incidents.map(i=>[
+            rows={incidents.map(i=>[
               i.id,i.date,i.type,i.duration,
               <StatusBadge status={i.impact}/>,
-              i.rtoMet?<Badge label="Yes" color="green"/>:<Badge label="No" color="red"/>,
-              i.resolution,
+              (i.rtoMet&&i.rtoBreached!=="Yes")?<Badge label="Yes" color="green"/>:<Badge label="No" color="red"/>,
+              i.resolution||i.status,
             ])}
           />
         </Card>
@@ -1516,22 +1621,126 @@ function BCMResilience() {
 
 // ─── MODULE: FRAUD & ETHICS ───────────────────────────────────────────────────
 function FraudEthics() {
+  const [cases, setCases] = useState(STATIC_FRAUD);
+  useEffect(()=>{
+    fetch(`${API}/api/dashboard`).then(r=>r.json()).then(d=>{
+      const f = d.fraudEthics?.cases || d.fraudCases;
+      if (Array.isArray(f) && f.length) setCases(f);
+    }).catch(()=>{});
+  },[]);
+
+  const total = cases.length;
+  const underInv = cases.filter(f=>f.status==="Under Investigation").length;
+  const open = cases.filter(f=>!["Resolved","Closed","Written Off"].includes(f.status)).length;
+  const exposure = cases.reduce((s,f)=>s+(Number(f.amount)||0),0);
+
+  // 12-month fraud trend (demo)
+  const fraudTrend = [
+    { m:"Jan",v:4 },{ m:"Feb",v:3 },{ m:"Mar",v:5 },{ m:"Apr",v:2 },{ m:"May",v:3 },{ m:"Jun",v:4 },
+    { m:"Jul",v:2 },{ m:"Aug",v:3 },{ m:"Sep",v:2 },{ m:"Oct",v:1 },{ m:"Nov",v:3 },{ m:"Dec",v:2 },
+  ];
+  const rollingAvg = (fraudTrend.reduce((s,x)=>s+x.v,0)/fraudTrend.length).toFixed(1);
+
+  // Ethics category breakdown donut (derive from cases + demo categories)
+  const ethicsCats = [
+    { label:"Conflict of Interest", value:12, color:C.purple },
+    { label:"Gifts & Hospitality",  value:8,  color:C.blue   },
+    { label:"Bullying & Harassment",value:5,  color:C.amber  },
+    { label:"Discrimination",       value:3,  color:C.red    },
+    { label:"Other",                value:4,  color:C.green  },
+  ];
+  const ethicsTotal = ethicsCats.reduce((s,c)=>s+c.value,0);
+
+  // Compliance breaches feed (demo, mirrors reference)
+  const breaches = [
+    { title:"SDL Act Breach",       status:"Open",          desc:"Failure to submit mandatory quarterly reports to DHET within stipulated timeframe", date:"2026-01-30", owner:"Compliance Office" },
+    { title:"POPIA Non-Compliance", status:"Investigating", desc:"Learner personal information stored without adequate encryption",                    date:"2026-02-10", owner:"ICT Security" },
+    { title:"PFMA Breach",          status:"Investigating", desc:"Irregular expenditure identified in Q3 financial statements",                        date:"2026-02-25", owner:"CFO Office" },
+  ];
+  const breachColor = s => s==="Open"?"amber":s==="Investigating"?"blue":s==="Resolved"?"green":"red";
+
+  const typeColor = t => /fraud/i.test(t)?C.red:/ethics/i.test(t)?C.purple:C.amber;
+
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
       <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Fraud & Ethics Register</h1>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"0.85rem" }}>
-        <KPICard label="Total Cases"         value={STATIC_FRAUD.length} color={C.red}/>
-        <KPICard label="Under Investigation" value={STATIC_FRAUD.filter(f=>f.status==="Under Investigation").length} color={C.amber}/>
-        <KPICard label="Total Exposure"      value={`R${(STATIC_FRAUD.reduce((s,f)=>s+f.amount,0)/1e6).toFixed(2)}M`} color={C.red}/>
+
+      {/* KPI strip */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:"0.85rem" }}>
+        <KPICardPro label="Fraud Cases"          value={total}     sub={`${open} open`}            color={C.red}    delta={-1} deltaGood={true}/>
+        <KPICardPro label="Ethics Cases"         value={ethicsCats.length} sub="categories tracked" color={C.purple}/>
+        <KPICardPro label="Compliance Breaches"  value={breaches.length}   sub={`${breaches.filter(b=>b.status==="Open").length} open`} color={C.amber}/>
+        <KPICardPro label="Active Investigations" value={underInv}  sub="being investigated"        color={C.amber}/>
+        <KPICardPro label="Total Exposure"       value={`R${(exposure/1e6).toFixed(2)}M`} sub="financial loss" color={C.red}/>
       </div>
+
+      {/* Trend + ethics donut + breaches */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
+        <Card>
+          <SectionTitle>Fraud Trend (12-month)</SectionTitle>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={fraudTrend}>
+              <CartesianGrid strokeDasharray="3 3" stroke={C.border}/>
+              <XAxis dataKey="m" stroke={C.muted} tick={{ fill:C.muted, fontSize:10 }}/>
+              <YAxis stroke={C.muted} tick={{ fill:C.muted, fontSize:10 }} width={20}/>
+              <Tooltip contentStyle={{ background:C.card, border:`1px solid ${C.border}`, color:C.text, fontSize:"0.78rem" }}/>
+              <Bar dataKey="v" fill={C.red} name="Cases" radius={[3,3,0,0]}/>
+            </BarChart>
+          </ResponsiveContainer>
+          <div style={{ color:C.muted, fontSize:"0.75rem", textAlign:"center", marginTop:"0.25rem" }}>
+            12-month rolling average: <span style={{ color:C.red, fontWeight:700 }}>{rollingAvg} cases/month</span>
+          </div>
+        </Card>
+
+        <Card>
+          <SectionTitle>Ethics Dashboard</SectionTitle>
+          <div style={{ display:"flex", justifyContent:"center", padding:"0.25rem 0" }}>
+            <DonutChart segments={ethicsCats} size={160} thickness={20} centerValue={ethicsTotal} centerLabel="cases"/>
+          </div>
+          <div style={{ display:"flex", flexDirection:"column", gap:"0.4rem", marginTop:"0.5rem" }}>
+            {ethicsCats.map(c=>(
+              <div key={c.label} style={{ display:"flex", alignItems:"center", gap:"0.5rem" }}>
+                <div style={{ width:9, height:9, borderRadius:"50%", background:c.color, flexShrink:0 }}/>
+                <span style={{ flex:1, color:C.muted, fontSize:"0.78rem" }}>{c.label}</span>
+                <span style={{ color:C.text, fontWeight:700, fontSize:"0.8rem" }}>{c.value}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card>
+          <SectionTitle>Compliance Breaches</SectionTitle>
+          <div style={{ display:"flex", flexDirection:"column", gap:"0.6rem" }}>
+            {breaches.map(b=>(
+              <div key={b.title} style={{ background:C.surface, borderRadius:8, padding:"0.65rem 0.85rem", border:`1px solid ${C.border}` }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"0.3rem" }}>
+                  <span style={{ color:C.text, fontWeight:700, fontSize:"0.82rem" }}>● {b.title}</span>
+                  <Badge label={b.status} color={breachColor(b.status)}/>
+                </div>
+                <div style={{ color:C.muted, fontSize:"0.75rem", lineHeight:1.5, marginBottom:"0.3rem" }}>{b.desc}</div>
+                <div style={{ display:"flex", justifyContent:"space-between" }}>
+                  <span style={{ color:C.muted, fontSize:"0.7rem" }}>{b.date}</span>
+                  <span style={{ color:C.muted, fontSize:"0.7rem" }}>{b.owner}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      {/* Register */}
       <Card>
+        <SectionTitle>Fraud, Ethics & Compliance Register</SectionTitle>
         <Table
-          headers={["ID","Category","Description","Amount","Source","Reported","Status"]}
-          rows={STATIC_FRAUD.map(f=>[
-            <span style={{ color:C.red, fontWeight:700 }}>{f.id}</span>,
-            f.category,f.description,
-            f.amount>0?`R${f.amount.toLocaleString()}`:"—",
-            f.source,f.reported,
+          headers={["Case ID","Category","Description","Amount","Severity","Source","Reported","Status"]}
+          rows={cases.map(f=>[
+            <span style={{ color:typeColor(f.category), fontWeight:700 }}>{f.id}</span>,
+            f.category,
+            <span style={{ maxWidth:240, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={f.description}>{f.description}</span>,
+            Number(f.amount)>0?<span style={{ color:C.red, fontWeight:700 }}>R{Number(f.amount).toLocaleString()}</span>:<span style={{ color:C.muted }}>—</span>,
+            <Badge label={Number(f.amount)>1e6?"High":Number(f.amount)>1e5?"Medium":"Low"} color={Number(f.amount)>1e6?"red":Number(f.amount)>1e5?"amber":"green"}/>,
+            <span style={{ color:C.muted, fontSize:"0.78rem" }}>{f.source||"—"}</span>,
+            <span style={{ color:C.muted, fontSize:"0.78rem" }}>{f.reported||"—"}</span>,
             <StatusBadge status={f.status}/>,
           ])}
         />
@@ -1646,43 +1855,136 @@ function APPAlignment() {
 
 // ─── MODULE: PREDICTIVE INTEL ─────────────────────────────────────────────────
 function PredictiveIntel() {
-  const data=[
-    { month:"Jul 26", exposure:13.2, uifw:18.5, treatment:68 },
-    { month:"Aug 26", exposure:12.8, uifw:17.1, treatment:72 },
-    { month:"Sep 26", exposure:12.1, uifw:15.8, treatment:78 },
-    { month:"Oct 26", exposure:11.5, uifw:14.2, treatment:83 },
-    { month:"Nov 26", exposure:10.9, uifw:12.5, treatment:88 },
-    { month:"Dec 26", exposure:10.2, uifw:11.0, treatment:92 },
+  // Historical + forecast with confidence band (lower/upper for forecast zone)
+  const data = [
+    { month:"Jan", actual:38.5, forecast:null, lo:null, hi:null },
+    { month:"Feb", actual:39.2, forecast:null, lo:null, hi:null },
+    { month:"Mar", actual:40.1, forecast:null, lo:null, hi:null },
+    { month:"Apr", actual:40.8, forecast:null, lo:null, hi:null },
+    { month:"May", actual:41.5, forecast:null, lo:null, hi:null },
+    { month:"Jun", actual:42.0, forecast:42.0, lo:42.0, hi:42.0 },
+    { month:"Jul", actual:null, forecast:42.6, lo:41.5, hi:43.7 },
+    { month:"Aug", actual:null, forecast:43.1, lo:41.6, hi:44.6 },
+    { month:"Sep", actual:null, forecast:43.5, lo:41.5, hi:45.5 },
+    { month:"Oct", actual:null, forecast:44.0, lo:41.6, hi:46.4 },
+    { month:"Nov", actual:null, forecast:44.6, lo:41.8, hi:47.4 },
+    { month:"Dec", actual:null, forecast:45.2, lo:41.9, hi:48.5 },
   ];
+
+  const kpis = [
+    { label:"Predicted KRI Breaches", value:3,    sub:"-2 from previous", color:C.green,  delta:-2, good:true,  spark:[5,5,4,4,3,3] },
+    { label:"Predicted Overdue Actions", value:5, sub:"-3 from previous", color:C.green,  delta:-3, good:true,  spark:[9,8,7,6,6,5] },
+    { label:"Predicted Risk Exposure", value:43.5, sub:"+1.5 from previous", color:C.amber, delta:1.5, good:false, spark:[40,41,41,42,42,43.5] },
+    { label:"Opportunity Realisation %", value:68, sub:"+5 from previous", color:C.green, delta:5, good:true, spark:[58,60,62,64,66,68] },
+  ];
+
+  const modelConfidence = [
+    { label:"Risk Exposure Forecast", value:92 },
+    { label:"KRI Breach Prediction",  value:85 },
+    { label:"Treatment Delay Forecast", value:78 },
+    { label:"Opportunity Realisation", value:72 },
+  ];
+
+  const velocityAlerts = [
+    { title:"Cybersecurity Maturity", note:"Projected to reach Red threshold by March", color:C.red },
+    { title:"BCP Test Success", note:"Expected improvement to 75% next quarter", color:C.amber },
+    { title:"Employee Engagement", note:"Steady upward trend projected", color:C.green },
+  ];
+
+  const recommendations = [
+    "Accelerate cybersecurity framework deployment by 4 weeks",
+    "Prioritise BCP testing for Grant Disbursement and IT Service Management",
+    "Increase monitoring frequency for KRI-005 (Cyber Maturity) to weekly",
+    "Fast-track Municipal Finance Skills Academy for Q2 benefit realisation",
+    "Escalate SETA consolidation risk to ARC for strategic response planning",
+  ];
+
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
-      <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Predictive Intelligence</h1>
+      <div>
+        <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Predictive Risk Intelligence</h1>
+        <p style={{ color:C.muted, fontSize:"0.82rem", margin:"2px 0 0" }}>AI-powered forecasting based on historical trend analysis</p>
+      </div>
+
+      {/* KPI strip */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"0.85rem" }}>
+        {kpis.map(k=>(
+          <KPICardPro key={k.label} label={k.label} value={k.value} sub={k.sub} color={k.color} delta={k.delta} deltaGood={k.good} spark={k.spark}/>
+        ))}
+      </div>
+
+      {/* Forecast with confidence band */}
       <Card>
-        <SectionTitle>6-Month Risk Exposure Forecast</SectionTitle>
-        <ResponsiveContainer width="100%" height={220}>
-          <LineChart data={data}>
+        <SectionTitle>Future Risk Exposure Forecast</SectionTitle>
+        <div style={{ display:"flex", gap:"1.25rem", marginBottom:"0.5rem" }}>
+          <span style={{ color:C.red, fontSize:"0.72rem" }}>━ Historical</span>
+          <span style={{ color:C.purple, fontSize:"0.72rem" }}>┅ AI Forecast</span>
+          <span style={{ color:C.muted, fontSize:"0.72rem" }}>▒ Confidence Band</span>
+        </div>
+        <ResponsiveContainer width="100%" height={260}>
+          <ComposedChart data={data}>
+            <defs>
+              <linearGradient id="confBand" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={C.purple} stopOpacity={0.25}/>
+                <stop offset="100%" stopColor={C.purple} stopOpacity={0.04}/>
+              </linearGradient>
+            </defs>
             <CartesianGrid strokeDasharray="3 3" stroke={C.border}/>
             <XAxis dataKey="month" stroke={C.muted} tick={{ fill:C.muted, fontSize:11 }}/>
-            <YAxis stroke={C.muted} tick={{ fill:C.muted, fontSize:11 }}/>
+            <YAxis stroke={C.muted} tick={{ fill:C.muted, fontSize:11 }} domain={[36,50]}/>
             <Tooltip contentStyle={{ background:C.card, border:`1px solid ${C.border}`, color:C.text, fontSize:"0.78rem" }}/>
-            <Legend wrapperStyle={{ fontSize:"0.75rem", color:C.muted }}/>
-            <Line type="monotone" dataKey="exposure"  stroke={C.red}   strokeWidth={2} name="Risk Exposure" dot={{ r:4 }}/>
-            <Line type="monotone" dataKey="treatment" stroke={C.green} strokeWidth={2} name="Treatment %"   dot={{ r:4 }}/>
-          </LineChart>
+            <Area type="monotone" dataKey="hi" stroke="none" fill="url(#confBand)" name="Upper bound"/>
+            <Area type="monotone" dataKey="lo" stroke="none" fill={C.card} fillOpacity={1} name="Lower bound"/>
+            <Line type="monotone" dataKey="actual"   stroke={C.red}    strokeWidth={2.5} dot={{ r:3 }} name="Historical" connectNulls/>
+            <Line type="monotone" dataKey="forecast" stroke={C.purple} strokeWidth={2.5} strokeDasharray="6 4" dot={{ r:3 }} name="AI Forecast" connectNulls/>
+          </ComposedChart>
         </ResponsiveContainer>
+        <div style={{ textAlign:"right", marginTop:"0.25rem" }}>
+          <span style={{ background:"rgba(163,113,247,0.12)", border:`1px solid ${C.purple}`, borderRadius:6, padding:"3px 10px", color:C.purple, fontSize:"0.72rem", fontWeight:600 }}>FORECAST ZONE — AI Generated Predictions</span>
+        </div>
       </Card>
-      <Card>
-        <SectionTitle>UIFW Trend Projection (R million)</SectionTitle>
-        <ResponsiveContainer width="100%" height={180}>
-          <BarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke={C.border}/>
-            <XAxis dataKey="month" stroke={C.muted} tick={{ fill:C.muted, fontSize:11 }}/>
-            <YAxis stroke={C.muted} tick={{ fill:C.muted, fontSize:11 }}/>
-            <Tooltip contentStyle={{ background:C.card, border:`1px solid ${C.border}`, color:C.text, fontSize:"0.78rem" }}/>
-            <Bar dataKey="uifw" fill={C.amber} name="UIFW (Rm)" radius={[4,4,0,0]}/>
-          </BarChart>
-        </ResponsiveContainer>
-      </Card>
+
+      {/* Velocity alerts + model confidence + recommendations */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
+        <Card>
+          <SectionTitle>⚡ Risk Velocity Alerts</SectionTitle>
+          <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
+            {velocityAlerts.map(a=>(
+              <div key={a.title} style={{ background:C.surface, borderRadius:8, padding:"0.65rem 0.85rem", borderLeft:`3px solid ${a.color}` }}>
+                <div style={{ color:C.text, fontWeight:700, fontSize:"0.83rem" }}>{a.title}</div>
+                <div style={{ color:a.color, fontSize:"0.76rem", marginTop:2 }}>{a.note}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card>
+          <SectionTitle>🎯 Model Confidence</SectionTitle>
+          <div style={{ display:"flex", flexDirection:"column", gap:"0.9rem", marginTop:"0.25rem" }}>
+            {modelConfidence.map(m=>(
+              <div key={m.label}>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
+                  <span style={{ color:C.text, fontSize:"0.8rem" }}>{m.label}</span>
+                  <span style={{ color:C.cyan, fontSize:"0.8rem", fontWeight:700 }}>{m.value}%</span>
+                </div>
+                <ProgressBar value={m.value} color={C.cyan}/>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card>
+          <SectionTitle>🧠 Recommended Actions</SectionTitle>
+          <div style={{ display:"flex", flexDirection:"column", gap:"0.6rem" }}>
+            {recommendations.map((rec,i)=>(
+              <div key={i} style={{ display:"flex", gap:"0.6rem", alignItems:"flex-start" }}>
+                <div style={{ width:20, height:20, borderRadius:"50%", background:"rgba(163,113,247,0.15)", color:C.purple, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"0.68rem", fontWeight:700, flexShrink:0 }}>{i+1}</div>
+                <span style={{ color:C.text, fontSize:"0.8rem", lineHeight:1.5 }}>{rec}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }
