@@ -11,11 +11,27 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-const dataPath   = path.join(__dirname, "data", "dashboardData.json");
+// Persistent-disk storage: the live data file lives on the Render disk mounted
+// at /data so it survives redeploys. The repo's data/dashboardData.json is used
+// only as the first-run seed.
+const DISK_DIR  = process.env.DATA_DIR || "/data";
+const dataPath  = path.join(DISK_DIR, "dashboardData.json");
+const seedPath  = path.join(__dirname, "data", "dashboardData.json");
 const uploadsDir = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
 
-function readData()      { return JSON.parse(fs.readFileSync(dataPath, "utf8")); }
+// On first run the disk is empty — seed it once from the file committed in the repo.
+try {
+  if (!fs.existsSync(DISK_DIR)) fs.mkdirSync(DISK_DIR, { recursive: true });
+  if (!fs.existsSync(dataPath) && fs.existsSync(seedPath)) {
+    fs.copyFileSync(seedPath, dataPath);
+    console.log("Seeded persistent data file from repo on first run.");
+  }
+} catch (e) {
+  console.error("Persistent-disk init failed, falling back to repo path:", e.message);
+}
+
+function readData()      { return JSON.parse(fs.readFileSync(fs.existsSync(dataPath) ? dataPath : seedPath, "utf8")); }
 function writeData(data) { fs.writeFileSync(dataPath, JSON.stringify(data, null, 2)); }
 
 // ── Multer ───────────────────────────────────────────────────────────────────
