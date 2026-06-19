@@ -6858,6 +6858,8 @@ const MODULES = {
   policy:    PolicyModule,
   declarations:DeclarationsModule,
   projects:  ProjectsModule,
+  internalaudit: InternalAuditModule,
+  auditlog:      AuditLog,
   admin:AdminTab,
 };
 
