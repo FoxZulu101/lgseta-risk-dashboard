@@ -445,7 +445,7 @@ const REPORT_CONFIGS = {
     title:    "EXCOM Risk Report",
     subtitle: "Executive Committee — Quarterly GRC Update",
     audience: "Executive Committee",
-    sections: ["summary","toprisks","treatments","uifw"],
+    sections: ["summary","toprisks","oprisks","treatments","uifw"],
   },
   arc: {
     title:    "ARC Risk Report",
