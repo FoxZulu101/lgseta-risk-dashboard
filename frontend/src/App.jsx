@@ -1089,16 +1089,27 @@ function Opportunities() {
       <Card>
         <SectionTitle>Opportunity Register</SectionTitle>
         <Table
-          headers={["ID","Opportunity","Category","Score","Owner","Est. Value","Status"]}
-          rows={opps.map(o=>[
-            <span style={{ color:C.cyan, fontWeight:700 }}>{o.id}</span>,
-            <span style={{ fontWeight:600 }}>{o.name}</span>,
-            <span style={{ color:C.muted, fontSize:"0.78rem" }}>{o.category||"Strategic"}</span>,
-            <span style={{ color:(o.score>=16?C.green:o.score>=11?C.amber:C.red), fontWeight:800 }}>{o.score}</span>,
-            o.owner||"—",
-            <span style={{ color:C.green, fontWeight:700 }}>R{(parseValue(o)/1e6).toFixed(1)}M</span>,
-            <StatusBadge status={o.status}/>,
-          ])}
+          headers={["Opportunity","Category","Impact","Probability","Score","Appetite","Strategy","Est. Value","Realised","Status"]}
+          rows={opps.map(o=>{
+            // Derive impact/probability from score if not explicitly set
+            const impact = o.impact || Math.min(5, Math.max(1, Math.round((Number(o.score)||0)/5)));
+            const prob   = o.probability || Math.min(5, Math.max(1, Math.round((Number(o.score)||0)/impact)||3));
+            const appetite = o.appetite || (o.score>=18?"Pursue":o.score>=14?"Enhance":o.score>=10?"Pursue":"Exploit");
+            const realised = o.realised!=null ? o.realised : (o.status==="Active"?parseValue(o)*0.25:0);
+            const appColor = appetite==="Pursue"?"green":appetite==="Enhance"?"amber":"blue";
+            return [
+              <span style={{ fontWeight:700, color:C.text }}>{o.name}</span>,
+              <span style={{ color:C.muted, fontSize:"0.78rem" }}>{o.category||"Strategic"}</span>,
+              <span style={{ color:C.text, fontWeight:700 }}>{impact}</span>,
+              <span style={{ color:C.text, fontWeight:700 }}>{prob}</span>,
+              <span style={{ color:(o.score>=16?C.green:o.score>=11?C.amber:C.red), fontWeight:800 }}>{o.score}</span>,
+              <Badge label={appetite} color={appColor}/>,
+              <span style={{ color:C.muted, fontSize:"0.78rem", maxWidth:180, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={o.strategy||o.benefit}>{o.strategy||o.benefit||"—"}</span>,
+              <span style={{ color:C.green, fontWeight:700 }}>R{(parseValue(o)/1e6).toFixed(1)}M</span>,
+              <span style={{ color:realised>0?C.green:C.muted, fontWeight:realised>0?700:400 }}>R{(realised/1e6).toFixed(1)}M</span>,
+              <StatusBadge status={o.status}/>,
+            ];
+          })}
         />
       </Card>
     </div>
@@ -1206,6 +1217,57 @@ function EmergingRisks() {
             );
           })}
         </div>
+      </Card>
+
+      {/* SWOT Analysis */}
+      <Card>
+        <SectionTitle>SWOT Analysis — Strategic Position</SectionTitle>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.85rem" }}>
+          {[
+            { key:"Strengths",     color:C.green,  bg:"rgba(63,185,80,0.07)",  items:["Established SETA mandate and levy income base","Strong governance and ARC oversight","Skilled internal audit and risk functions","Digital GRC platform enabling real-time monitoring"] },
+            { key:"Weaknesses",    color:C.red,    bg:"rgba(248,81,73,0.07)",  items:["Cybersecurity maturity below target","Dependency on single ICT service provider","UIFW exposure above tolerance","Slow discretionary grant disbursement rate"] },
+            { key:"Opportunities", color:C.blue,   bg:"rgba(88,166,255,0.07)", items:["Digital skills grant expansion (R15M potential)","Inter-SETA collaboration and shared services","Green skills programme funding stream","AI-enhanced M&E and reporting efficiency"] },
+            { key:"Threats",       color:C.amber,  bg:"rgba(227,179,65,0.07)", items:["Regulatory overhaul of SETA landscape","Ransomware and cyber-attack escalation","Geopolitical and economic funding pressures","Climate risk to operational continuity"] },
+          ].map(q=>(
+            <div key={q.key} style={{ background:q.bg, border:`1px solid ${q.color}`, borderRadius:9, padding:"0.85rem 1rem" }}>
+              <div style={{ color:q.color, fontWeight:700, fontSize:"0.9rem", marginBottom:"0.5rem" }}>{q.key}</div>
+              <ul style={{ margin:0, paddingLeft:"1.1rem", display:"flex", flexDirection:"column", gap:"0.3rem" }}>
+                {q.items.map((it,i)=>(
+                  <li key={i} style={{ color:C.text, fontSize:"0.78rem", lineHeight:1.5 }}>{it}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Emerging Risk Register */}
+      <Card>
+        <SectionTitle>Emerging Risk Register</SectionTitle>
+        <Table
+          headers={["Risk ID","Risk Name","Category","Criticality","Status","Velocity","Potential Impact","Date Identified"]}
+          rows={risks.map(r=>{
+            const score=(Number(r.likelihood)||0)*(Number(r.impact)||0);
+            const crit = score>=16?"High":score>=9?"Medium":"Low";
+            const velocity = r.velocity || (score>=16?"Fast":score>=9?"Medium":"Slow");
+            const velColor = velocity==="Fast"?C.red:velocity==="Medium"?C.amber:C.green;
+            const statusLabel = r.action==="Escalate"?"Escalated":r.action==="Mitigate"?"Mitigating":r.action==="Watch"?"Watching":"New";
+            const statusColor = statusLabel==="Escalated"?"red":statusLabel==="New"?"purple":"amber";
+            return [
+              <span style={{ color:C.amber, fontWeight:700, fontSize:"0.75rem" }}>{r.id}</span>,
+              <span style={{ fontWeight:700, color:C.text }}>{r.name}</span>,
+              <span style={{ display:"inline-flex", alignItems:"center", gap:5 }}>
+                <span style={{ width:8, height:8, borderRadius:"50%", background:catColor[catMap[r.category]||r.category]||C.blue, display:"inline-block" }}/>
+                <span style={{ color:C.muted, fontSize:"0.78rem" }}>{r.category}</span>
+              </span>,
+              <Badge label={crit} color={crit==="High"?"red":crit==="Medium"?"amber":"green"}/>,
+              <Badge label={statusLabel} color={statusColor}/>,
+              <span style={{ color:velColor, fontWeight:700, fontSize:"0.78rem" }}>{velocity}</span>,
+              <span style={{ color:C.muted, fontSize:"0.78rem", maxWidth:200, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={r.potentialImpact||r.description}>{r.potentialImpact||r.description||`Potential disruption to ${r.category.toLowerCase()} objectives`}</span>,
+              <span style={{ color:C.muted, fontSize:"0.78rem" }}>{r.dateIdentified||r.reviewDate||"2026-01-15"}</span>,
+            ];
+          })}
+        />
       </Card>
     </div>
   );
@@ -1369,29 +1431,39 @@ function CombinedAssurance() {
     fetch(`${API}/api/dashboard`).then(r=>r.json()).then(d=>{ if(d.combinedAssurance?.map?.length) setData(d.combinedAssurance.map); }).catch(()=>{});
   },[]);
 
-  // Provider effectiveness (demo, mirrors reference). coverage% + findings + effectiveness.
+  // Providers grouped by line of defence (demo, mirrors reference).
   const providers = [
-    { name:"Business Management",          coverage:75, effectiveness:"Partial",   findings:12 },
-    { name:"Enterprise Risk Management",   coverage:85, effectiveness:"Effective",  findings:5  },
-    { name:"Compliance",                   coverage:90, effectiveness:"Effective",  findings:3  },
-    { name:"Internal Audit",               coverage:92, effectiveness:"Effective",  findings:4  },
-    { name:"Fraud Risk Management",        coverage:80, effectiveness:"Partial",    findings:6  },
-    { name:"Business Continuity Mgmt",     coverage:60, effectiveness:"Partial",    findings:8  },
-    { name:"ICT Security",                 coverage:70, effectiveness:"Partial",    findings:7  },
-    { name:"Facilities & Security",        coverage:85, effectiveness:"Effective",  findings:2  },
-    { name:"Legal Services",               coverage:95, effectiveness:"Effective",  findings:1  },
-    { name:"AGSA (External)",              coverage:100,effectiveness:"Effective",  findings:2  },
-    { name:"Audit & Risk Committee",       coverage:95, effectiveness:"Effective",  findings:1  },
-    { name:"Administrator / Board",        coverage:90, effectiveness:"Effective",  findings:0  },
+    { name:"Business Management",          line:"1st Line",     coverage:75, effectiveness:"Partial",   findings:12 },
+    { name:"Enterprise Risk Management",   line:"2nd Line",     coverage:85, effectiveness:"Effective",  findings:5  },
+    { name:"Compliance",                   line:"2nd Line",     coverage:90, effectiveness:"Effective",  findings:3  },
+    { name:"Fraud Risk Management",        line:"2nd Line",     coverage:80, effectiveness:"Partial",    findings:6  },
+    { name:"Business Continuity Management",line:"2nd Line",    coverage:60, effectiveness:"Partial",    findings:8  },
+    { name:"ICT Security",                 line:"2nd Line",     coverage:70, effectiveness:"Partial",    findings:7  },
+    { name:"Facilities & Security",        line:"2nd Line",     coverage:85, effectiveness:"Effective",  findings:2  },
+    { name:"Legal Services",               line:"2nd Line",     coverage:95, effectiveness:"Effective",  findings:1  },
+    { name:"Monitoring & Evaluation",      line:"2nd Line",     coverage:65, effectiveness:"Partial",    findings:4  },
+    { name:"Internal Audit",               line:"3rd Line",     coverage:92, effectiveness:"Effective",  findings:4  },
+    { name:"AGSA",                         line:"Independent",  coverage:100,effectiveness:"Effective",  findings:2  },
+    { name:"Risk Management Committee",    line:"Independent",  coverage:88, effectiveness:"Effective",  findings:3  },
+    { name:"Audit & Risk Committee",       line:"Independent",  coverage:95, effectiveness:"Effective",  findings:1  },
+    { name:"Administrator / Board",        line:"Independent",  coverage:90, effectiveness:"Effective",  findings:0  },
   ];
-  const avgCoverage = Math.round(providers.reduce((s,p)=>s+p.coverage,0)/providers.length);
-  const effectiveCount = providers.filter(p=>p.effectiveness==="Effective").length;
+  const avgCoverage   = Math.round(providers.reduce((s,p)=>s+p.coverage,0)/providers.length);
+  const assuranceGaps = providers.filter(p=>p.coverage<80).length;
+  const overlaps      = 3; // duplicate coverage areas (demo)
   const totalFindings = providers.reduce((s,p)=>s+p.findings,0);
+
+  const LINES = [
+    { key:"1st Line",    icon:"🛡", color:C.blue },
+    { key:"2nd Line",    icon:"🔵", color:C.purple },
+    { key:"3rd Line",    icon:"🟡", color:C.amber },
+    { key:"Independent", icon:"👁", color:C.green },
+  ];
+  const effBadge = e => e==="Effective"?"green":e==="Partial"?"amber":"red";
 
   // Coverage heatmap: risks × assurance lines, percentage coverage
   const riskRows = ["SR-001 Financial","SR-002 Continuity","SR-005 Cyber","SR-006 Compliance","SR-007 Fraud","OP-002 SCM"];
   const lines = ["AGSA","1st Line","ERM","Compliance","Fraud","BCM","3rd Line"];
-  // demo coverage matrix
   const cov = {
     "SR-001 Financial":{AGSA:92,"1st Line":100,ERM:75,Compliance:90,Fraud:85,BCM:95,"3rd Line":60},
     "SR-002 Continuity":{AGSA:85,"1st Line":88,ERM:100,Compliance:70,Fraud:80,BCM:70,"3rd Line":75},
@@ -1401,9 +1473,6 @@ function CombinedAssurance() {
     "OP-002 SCM":{AGSA:80,"1st Line":78,ERM:82,Compliance:88,Fraud:90,BCM:72,"3rd Line":70},
   };
   const covColor = v => v>=90?"#1a7d3f":v>=75?"#2d5a3d":v>=60?"#5a4a2d":"#5a2d2d";
-  const covText  = v => v>=90?C.green:v>=75?C.green:v>=60?C.amber:C.red;
-
-  const effBadge = e => e==="Effective"?"green":e==="Partial"?"amber":"red";
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
@@ -1411,31 +1480,45 @@ function CombinedAssurance() {
 
       {/* KPI strip */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"0.85rem" }}>
-        <KPICardPro label="Assurance Providers" value={providers.length}      sub="across 3 lines of defence" color={C.blue}/>
-        <KPICardPro label="Avg Coverage"        value={`${avgCoverage}%`}      sub="weighted across providers" color={C.purple} spark={[78,80,82,83,84,avgCoverage]}/>
-        <KPICardPro label="Effective Providers" value={`${effectiveCount}/${providers.length}`} sub="rated effective"  color={C.green}/>
-        <KPICardPro label="Total Findings"      value={totalFindings}          sub="raised across providers"   color={C.amber}/>
+        <Card style={{ borderTop:`3px solid ${C.green}` }}>
+          <div style={{ color:C.muted, fontSize:"0.72rem", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.06em" }}>Overall Coverage</div>
+          <div style={{ color:C.green, fontSize:"1.8rem", fontWeight:800, margin:"4px 0 8px" }}>{avgCoverage}%</div>
+          <ProgressBar value={avgCoverage} color={C.green}/>
+        </Card>
+        <KPICardPro label="Assurance Gaps"     value={assuranceGaps} sub="providers below 80% coverage" color={C.red}/>
+        <KPICardPro label="Assurance Overlaps" value={overlaps}      sub="duplicate coverage areas"     color={C.amber}/>
+        <KPICardPro label="Total Findings"     value={totalFindings} sub="across all assurance lines"   color={C.purple}/>
       </div>
 
-      {/* Provider effectiveness cards */}
-      <Card>
-        <SectionTitle>Assurance Provider Effectiveness</SectionTitle>
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(230px,1fr))", gap:"0.85rem" }}>
-          {providers.map(p=>(
-            <div key={p.name} style={{ background:C.surface, border:`1px solid ${p.effectiveness==="Effective"?C.green:C.amber}`, borderRadius:9, padding:"0.85rem 1rem" }}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"0.5rem", gap:6 }}>
-                <span style={{ color:C.text, fontWeight:700, fontSize:"0.82rem", lineHeight:1.2 }}>{p.name}</span>
-                <Badge label={p.effectiveness} color={effBadge(p.effectiveness)}/>
+      {/* Provider cards grouped by line of defence */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1.4fr 1fr 1fr", gap:"1rem", alignItems:"start" }}>
+        {LINES.map(L=>{
+          const group = providers.filter(p=>p.line===L.key);
+          return (
+            <Card key={L.key}>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"0.85rem" }}>
+                <span style={{ color:C.text, fontWeight:700, fontSize:"0.95rem" }}>{L.icon} {L.key}</span>
+                <span style={{ color:C.muted, fontSize:"0.72rem" }}>{group.length} provider{group.length!==1?"s":""}</span>
               </div>
-              <ProgressBar value={p.coverage} color={p.effectiveness==="Effective"?C.green:C.amber}/>
-              <div style={{ display:"flex", justifyContent:"space-between", marginTop:"0.4rem" }}>
-                <span style={{ color:C.muted, fontSize:"0.75rem" }}>{p.coverage}% coverage</span>
-                <span style={{ color:p.findings>5?C.red:C.muted, fontSize:"0.75rem", fontWeight:p.findings>5?700:400 }}>{p.findings} findings</span>
+              <div style={{ display:"flex", flexDirection:"column", gap:"0.7rem" }}>
+                {group.map(p=>(
+                  <div key={p.name} style={{ background:C.surface, border:`1px solid ${p.effectiveness==="Effective"?C.green:C.amber}`, borderRadius:9, padding:"0.75rem 0.9rem" }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:6, marginBottom:"0.5rem" }}>
+                      <span style={{ color:C.text, fontWeight:700, fontSize:"0.8rem", lineHeight:1.25 }}>{p.name}</span>
+                      <Badge label={p.effectiveness} color={effBadge(p.effectiveness)}/>
+                    </div>
+                    <ProgressBar value={p.coverage} color={p.effectiveness==="Effective"?C.green:C.purple}/>
+                    <div style={{ display:"flex", justifyContent:"space-between", marginTop:"0.4rem" }}>
+                      <span style={{ color:C.muted, fontSize:"0.73rem" }}>{p.coverage}% coverage</span>
+                      <span style={{ color:p.findings>5?C.red:C.muted, fontSize:"0.73rem", fontWeight:p.findings>5?700:400 }}>{p.findings} findings</span>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-          ))}
-        </div>
-      </Card>
+            </Card>
+          );
+        })}
+      </div>
 
       {/* Coverage heatmap matrix */}
       <Card>
@@ -1751,24 +1834,131 @@ function FraudEthics() {
 
 // ─── MODULE: DEPARTMENTAL RISKS ───────────────────────────────────────────────
 function DepartmentalRisks() {
+  const [depts] = useState(STATIC_DEPTS);
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState(null);
+  const filtered = depts.filter(d=>d.name.toLowerCase().includes(search.toLowerCase()));
+  const sel = selected || filtered[0] || depts[0];
+
+  const totalRisks = depts.reduce((s,d)=>s+d.risks,0);
+  const totalCritical = depts.reduce((s,d)=>s+d.critical,0);
+  const totalUifw = depts.reduce((s,d)=>s+d.uifw,0);
+  const avgTreatment = Math.round(depts.reduce((s,d)=>s+d.treatment,0)/depts.length);
+  const tColor = v => v>=80?C.green:v>=60?C.amber:C.red;
+
+  // Mini risk-composition trend for the selected dept (simulated treatment progress)
+  const trendData = (()=>{
+    if (!sel) return [];
+    const end = sel.treatment;
+    const start = Math.max(20, end-30);
+    const months = ["Aug","Sep","Oct","Nov","Dec","Jan"];
+    return months.map((m,i)=>({ m, v:Math.round(start + (end-start)*(i/(months.length-1))) }));
+  })();
+
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
-      <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Departmental Risk Summary</h1>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))", gap:"1rem" }}>
-        {STATIC_DEPTS.map(d=>(
-          <Card key={d.name}>
-            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:"0.5rem" }}>
-              <span style={{ color:C.text, fontWeight:700 }}>{d.name}</span>
-              {d.uifw>0&&<Badge label={`UIFW R${(d.uifw/1e6).toFixed(1)}M`} color="red"/>}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:"0.5rem" }}>
+        <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Departmental Risk Summary</h1>
+        <input placeholder="Search departments…" value={search} onChange={e=>setSearch(e.target.value)} style={{ ...inputSt, width:220 }}/>
+      </div>
+
+      {/* KPI strip */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"0.85rem" }}>
+        <KPICardPro label="Total Risks"      value={totalRisks}    sub={`across ${depts.length} departments`} color={C.blue}/>
+        <KPICardPro label="Critical Risks"   value={totalCritical} sub="require attention"        color={C.red}/>
+        <KPICardPro label="Avg Treatment"    value={`${avgTreatment}%`} sub="completion rate"      color={tColor(avgTreatment)} spark={[55,60,64,68,70,avgTreatment]}/>
+        <KPICardPro label="UIFW Exposure"    value={`R${(totalUifw/1e6).toFixed(1)}M`} sub="across departments" color={C.amber}/>
+      </div>
+
+      {/* Master-detail split */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 380px", gap:"1.25rem", alignItems:"start" }}>
+        {/* Master table */}
+        <Card style={{ padding:0, overflow:"hidden" }}>
+          <div style={{ overflowX:"auto" }}>
+            <table style={{ width:"100%", borderCollapse:"collapse", fontSize:"0.83rem" }}>
+              <thead>
+                <tr>{["Department","Risks","Critical","Treatment","UIFW","Status"].map((h,i)=>
+                  <th key={i} style={{ color:C.muted, fontWeight:600, padding:"0.6rem 0.75rem", textAlign:"left", borderBottom:`1px solid ${C.border}`, whiteSpace:"nowrap" }}>{h}</th>)}</tr>
+              </thead>
+              <tbody>
+                {filtered.map(d=>{
+                  const isSel = sel && d.name===sel.name;
+                  return (
+                    <tr key={d.name} onClick={()=>setSelected(d)}
+                      style={{ borderBottom:`1px solid ${C.border}`, cursor:"pointer",
+                        background:isSel?"rgba(88,166,255,0.12)":"transparent",
+                        borderLeft:`3px solid ${isSel?C.blue:"transparent"}` }}
+                      onMouseEnter={e=>{ if(!isSel) e.currentTarget.style.background=C.surface; }}
+                      onMouseLeave={e=>{ if(!isSel) e.currentTarget.style.background="transparent"; }}>
+                      <td style={{ padding:"0.6rem 0.75rem", color:C.text, fontWeight:600 }}>{d.name}</td>
+                      <td style={{ padding:"0.6rem 0.75rem", color:C.blue, fontWeight:700 }}>{d.risks}</td>
+                      <td style={{ padding:"0.6rem 0.75rem", color:C.red, fontWeight:700 }}>{d.critical}</td>
+                      <td style={{ padding:"0.6rem 0.75rem", minWidth:120 }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                          <div style={{ flex:1 }}><ProgressBar value={d.treatment} color={tColor(d.treatment)}/></div>
+                          <span style={{ color:tColor(d.treatment), fontSize:"0.75rem", fontWeight:700 }}>{d.treatment}%</span>
+                        </div>
+                      </td>
+                      <td style={{ padding:"0.6rem 0.75rem", color:d.uifw>0?C.amber:C.muted, fontWeight:d.uifw>0?700:400 }}>{d.uifw>0?`R${(d.uifw/1e6).toFixed(1)}M`:"—"}</td>
+                      <td style={{ padding:"0.6rem 0.75rem" }}><Badge label={d.treatment>=80?"On Track":d.treatment>=60?"Monitor":"At Risk"} color={d.treatment>=80?"green":d.treatment>=60?"amber":"red"}/></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {filtered.length===0 && <p style={{ color:C.muted, textAlign:"center", padding:"2rem" }}>No departments match your search.</p>}
+        </Card>
+
+        {/* Detail panel */}
+        {sel && (
+          <Card style={{ position:"sticky", top:0 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:"0.6rem", marginBottom:"0.75rem" }}>
+              <div style={{ width:40, height:40, borderRadius:"50%", background:C.surface, display:"flex", alignItems:"center", justifyContent:"center", color:C.blue, fontWeight:700 }}>
+                {sel.name.slice(0,2).toUpperCase()}
+              </div>
+              <div>
+                <h3 style={{ color:C.text, fontSize:"1.05rem", fontWeight:700, margin:0 }}>{sel.name}</h3>
+                <Badge label={sel.treatment>=80?"On Track":sel.treatment>=60?"Monitor":"At Risk"} color={sel.treatment>=80?"green":sel.treatment>=60?"amber":"red"}/>
+              </div>
             </div>
-            <div style={{ display:"flex", gap:"1.25rem", marginBottom:"0.75rem" }}>
-              <div><div style={{ color:C.muted, fontSize:"0.7rem" }}>Risks</div><div style={{ color:C.blue, fontWeight:800 }}>{d.risks}</div></div>
-              <div><div style={{ color:C.muted, fontSize:"0.7rem" }}>Critical</div><div style={{ color:C.red, fontWeight:800 }}>{d.critical}</div></div>
-              <div><div style={{ color:C.muted, fontSize:"0.7rem" }}>Treatment</div><div style={{ color:C.green, fontWeight:800 }}>{d.treatment}%</div></div>
+
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"0.5rem", marginBottom:"1rem" }}>
+              {[["Total Risks",sel.risks,C.blue],["Critical",sel.critical,C.red],["Treatment",`${sel.treatment}%`,tColor(sel.treatment)]].map(([l,v,c])=>(
+                <div key={l} style={{ background:C.surface, borderRadius:7, padding:"0.5rem", textAlign:"center" }}>
+                  <div style={{ color:c, fontSize:"1.3rem", fontWeight:800 }}>{v}</div>
+                  <div style={{ color:C.muted, fontSize:"0.62rem" }}>{l}</div>
+                </div>
+              ))}
             </div>
-            <ProgressBar value={d.treatment} color={d.treatment>=80?C.green:d.treatment>=60?C.amber:C.red}/>
+
+            {sel.uifw>0 && (
+              <div style={{ background:"rgba(248,81,73,0.08)", border:`1px solid ${C.red}`, borderRadius:8, padding:"0.6rem 0.85rem", marginBottom:"1rem" }}>
+                <div style={{ color:C.muted, fontSize:"0.65rem", textTransform:"uppercase", fontWeight:700 }}>UIFW Exposure</div>
+                <div style={{ color:C.red, fontSize:"1.2rem", fontWeight:800 }}>R{(sel.uifw/1e6).toFixed(1)}M</div>
+              </div>
+            )}
+
+            <SectionTitle>Treatment Progress</SectionTitle>
+            <ResponsiveContainer width="100%" height={140}>
+              <LineChart data={trendData}>
+                <CartesianGrid strokeDasharray="3 3" stroke={C.border}/>
+                <XAxis dataKey="m" stroke={C.muted} tick={{ fill:C.muted, fontSize:10 }}/>
+                <YAxis stroke={C.muted} tick={{ fill:C.muted, fontSize:10 }} width={26} domain={[0,100]}/>
+                <Tooltip contentStyle={{ background:C.card, border:`1px solid ${C.border}`, color:C.text, fontSize:"0.78rem" }}/>
+                <Line type="monotone" dataKey="v" stroke={tColor(sel.treatment)} strokeWidth={2} dot={{ r:3 }} name="Treatment %"/>
+              </LineChart>
+            </ResponsiveContainer>
+
+            <div style={{ marginTop:"0.75rem" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                <span style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700 }}>Critical Risk Ratio</span>
+                <span style={{ color:C.text, fontSize:"0.78rem", fontWeight:700 }}>{Math.round((sel.critical/Math.max(sel.risks,1))*100)}%</span>
+              </div>
+              <ProgressBar value={sel.critical} max={sel.risks} color={C.red}/>
+            </div>
           </Card>
-        ))}
+        )}
       </div>
     </div>
   );
@@ -1803,25 +1993,121 @@ function UIFWExpenditure() {
 
 // ─── MODULE: THIRD-PARTY RISK ─────────────────────────────────────────────────
 function ThirdPartyRisk() {
+  const [vendors] = useState(STATIC_THIRD);
+
+  const total = vendors.length;
+  const highRisk = vendors.filter(v=>v.risk==="High").length;
+  const avgScore = Math.round(vendors.reduce((s,v)=>s+(Number(v.score)||0),0)/vendors.length);
+  const underReview = vendors.filter(v=>v.status==="Review").length;
+  const scoreColor = s => s>=80?C.green:s>=65?C.amber:C.red;
+  const riskColor  = r => r==="High"?C.red:r==="Medium"?C.amber:C.green;
+
+  // Risk-tier distribution
+  const tiers = ["High","Medium","Low"];
+  const tierCounts = tiers.map(t=>({ tier:t, count:vendors.filter(v=>v.risk===t).length, color:riskColor(t) }));
+  const tierMax = Math.max(1, ...tierCounts.map(t=>t.count));
+
+  // Contract expiry awareness: flag contracts within ~90 days of a reference date
+  const soonExpiry = vendors.filter(v=>{
+    if (!v.contract || v.contract==="Ongoing") return false;
+    const d = new Date(v.contract); const now = new Date("2026-06-19");
+    const days = (d-now)/(1000*60*60*24);
+    return days>=0 && days<=120;
+  });
+
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
       <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Third-Party Risk Register</h1>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))", gap:"1rem" }}>
-        {STATIC_THIRD.map(tp=>(
-          <Card key={tp.id} style={{ borderLeft:`3px solid ${tp.risk==="High"?C.red:tp.risk==="Medium"?C.amber:C.green}` }}>
-            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:"0.4rem" }}>
-              <span style={{ color:C.text, fontWeight:700 }}>{tp.name}</span>
-              <StatusBadge status={tp.status}/>
-            </div>
-            <div style={{ color:C.muted, fontSize:"0.78rem", marginBottom:"0.5rem" }}>{tp.type}</div>
-            <div style={{ display:"flex", gap:"1rem" }}>
-              <div><div style={{ color:C.muted, fontSize:"0.7rem" }}>Risk</div><Badge label={tp.risk} color={tp.risk==="High"?"red":tp.risk==="Medium"?"amber":"green"}/></div>
-              <div><div style={{ color:C.muted, fontSize:"0.7rem" }}>Score</div><div style={{ color:tp.score>=80?C.green:tp.score>=65?C.amber:C.red, fontWeight:800 }}>{tp.score}</div></div>
-              <div><div style={{ color:C.muted, fontSize:"0.7rem" }}>Contract</div><div style={{ color:C.text, fontSize:"0.82rem" }}>{tp.contract}</div></div>
-            </div>
-          </Card>
-        ))}
+
+      {/* KPI strip */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"0.85rem" }}>
+        <KPICardPro label="Total Vendors"    value={total}      sub="under management"        color={C.blue}/>
+        <KPICardPro label="High Risk"        value={highRisk}   sub="require close monitoring" color={C.red}/>
+        <KPICardPro label="Avg Risk Score"   value={avgScore}   sub="out of 100"               color={scoreColor(avgScore)} spark={[70,72,74,73,75,avgScore]}/>
+        <KPICardPro label="Under Review"     value={underReview} sub="contract/risk review"    color={C.amber}/>
       </div>
+
+      {/* Risk distribution + contract expiry */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
+        <Card>
+          <SectionTitle>Risk Tier Distribution</SectionTitle>
+          <div style={{ display:"flex", flexDirection:"column", gap:"0.85rem", marginTop:"0.5rem" }}>
+            {tierCounts.map(t=>(
+              <div key={t.tier} style={{ display:"flex", alignItems:"center", gap:"0.75rem" }}>
+                <div style={{ width:60, color:C.muted, fontSize:"0.8rem", fontWeight:600 }}>{t.tier}</div>
+                <div style={{ flex:1, background:C.border, borderRadius:6, height:22, overflow:"hidden" }}>
+                  <div style={{ width:`${(t.count/tierMax)*100}%`, height:"100%", background:t.color, borderRadius:6,
+                    display:"flex", alignItems:"center", justifyContent:"flex-end", paddingRight:8, transition:"width 0.5s" }}>
+                    <span style={{ color:"#fff", fontSize:"0.72rem", fontWeight:700 }}>{t.count}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop:"1.25rem" }}>
+            <SectionTitle>Vendor Score Ranking</SectionTitle>
+            <div style={{ display:"flex", flexDirection:"column", gap:"0.55rem" }}>
+              {[...vendors].sort((a,b)=>b.score-a.score).map(v=>(
+                <div key={v.id} style={{ display:"flex", alignItems:"center", gap:"0.6rem" }}>
+                  <div style={{ width:110, color:C.text, fontSize:"0.78rem", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={v.name}>{v.name}</div>
+                  <div style={{ flex:1 }}><ProgressBar value={v.score} color={scoreColor(v.score)}/></div>
+                  <span style={{ color:scoreColor(v.score), fontSize:"0.78rem", fontWeight:700, minWidth:24, textAlign:"right" }}>{v.score}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
+
+        <Card>
+          <SectionTitle>⚠ Contract Renewals — Next 120 Days</SectionTitle>
+          {soonExpiry.length>0 ? (
+            <div style={{ display:"flex", flexDirection:"column", gap:"0.6rem" }}>
+              {soonExpiry.map(v=>(
+                <div key={v.id} style={{ background:C.surface, borderRadius:8, padding:"0.65rem 0.85rem", borderLeft:`3px solid ${riskColor(v.risk)}` }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                    <span style={{ color:C.text, fontWeight:700, fontSize:"0.85rem" }}>{v.name}</span>
+                    <Badge label={v.risk} color={v.risk==="High"?"red":v.risk==="Medium"?"amber":"green"}/>
+                  </div>
+                  <div style={{ display:"flex", justifyContent:"space-between", marginTop:"0.3rem" }}>
+                    <span style={{ color:C.muted, fontSize:"0.75rem" }}>{v.type}</span>
+                    <span style={{ color:C.amber, fontSize:"0.78rem", fontWeight:700 }}>Expires {v.contract}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p style={{ color:C.muted, fontSize:"0.82rem" }}>No contracts expiring within the next 120 days.</p>
+          )}
+          <div style={{ marginTop:"1rem", padding:"0.85rem", background:C.surface, borderRadius:8 }}>
+            <div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700, marginBottom:6 }}>Portfolio Health</div>
+            <div style={{ display:"flex", gap:"1.25rem" }}>
+              <div><div style={{ color:C.green, fontSize:"1.4rem", fontWeight:800 }}>{vendors.filter(v=>v.score>=80).length}</div><div style={{ color:C.muted, fontSize:"0.68rem" }}>Strong (80+)</div></div>
+              <div><div style={{ color:C.amber, fontSize:"1.4rem", fontWeight:800 }}>{vendors.filter(v=>v.score>=65&&v.score<80).length}</div><div style={{ color:C.muted, fontSize:"0.68rem" }}>Adequate</div></div>
+              <div><div style={{ color:C.red, fontSize:"1.4rem", fontWeight:800 }}>{vendors.filter(v=>v.score<65).length}</div><div style={{ color:C.muted, fontSize:"0.68rem" }}>Weak (&lt;65)</div></div>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Detailed register */}
+      <Card>
+        <SectionTitle>Third-Party Register</SectionTitle>
+        <Table
+          headers={["ID","Vendor","Type","Risk Tier","Score","Contract Expiry","Status"]}
+          rows={vendors.map(v=>[
+            <span style={{ color:C.blue, fontWeight:700 }}>{v.id}</span>,
+            <span style={{ fontWeight:700, color:C.text }}>{v.name}</span>,
+            <span style={{ color:C.muted, fontSize:"0.78rem" }}>{v.type}</span>,
+            <Badge label={v.risk} color={v.risk==="High"?"red":v.risk==="Medium"?"amber":"green"}/>,
+            <div style={{ display:"flex", alignItems:"center", gap:6, minWidth:90 }}>
+              <div style={{ flex:1 }}><ProgressBar value={v.score} color={scoreColor(v.score)}/></div>
+              <span style={{ color:scoreColor(v.score), fontWeight:700, fontSize:"0.78rem" }}>{v.score}</span>
+            </div>,
+            <span style={{ color:soonExpiry.includes(v)?C.amber:C.text, fontWeight:soonExpiry.includes(v)?700:400, fontSize:"0.82rem" }}>{v.contract}</span>,
+            <StatusBadge status={v.status}/>,
+          ])}
+        />
+      </Card>
     </div>
   );
 }
