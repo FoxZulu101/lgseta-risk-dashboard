@@ -505,6 +505,14 @@ function divider() {
   });
 }
 
+// -- Analysis & Implications (data-driven narrative) --
+function analysis(text) {
+  return [
+    new Paragraph({ spacing:{ before:120, after:60 }, shading:{ type:"clear", fill:"F1F5F9" }, children:[ new TextRun({ text:"Analysis & Implications", font:"Arial", size:18, bold:true, color:NAVY }) ] }),
+    new Paragraph({ spacing:{ after:160 }, shading:{ type:"clear", fill:"F8FAFC" }, children:[ new TextRun({ text:text, font:"Arial", size:18, color:"1F2937" }) ] }),
+  ];
+}
+
 function pageBreak() {
   return new Paragraph({ children:[new PageBreak()] });
 }
@@ -581,6 +589,7 @@ function buildExecutiveSummary(data) {
     para(`• ${kriBrech} of ${kris.length} Key Risk Indicators are breaching their tolerance thresholds.`, { after:80 }),
     para(`• Treatment action completion rate stands at ${Math.round(actComp/Math.max(actions.length,1)*100)}% with ${actions.length-actComp} actions still outstanding.`, { after:80 }),
     para(`• UIFW exposure for the period amounts to ${fmtM(uifw)} and requires urgent resolution.`, { after:80 }),
+    ...analysis('Overall risk posture remains elevated. Of '+risks.length+' registered risks, '+outside+' ('+Math.round(outside/Math.max(risks.length,1)*100)+'%) sit outside tolerance, concentrated in information security, supply chain and financial sustainability. '+kriBrech+' of '+kris.length+' Key Risk Indicators are breaching threshold, signalling several exposures are still trending adversely. Treatment delivery at '+Math.round(actComp/Math.max(actions.length,1)*100)+'% indicates active management, but '+(actions.length-actComp)+' outstanding actions and UIFW of '+fmtM(uifw)+' mean the control environment cannot yet be regarded as fully effective. Management should prioritise outside-tolerance risks, overdue actions, and UIFW resolution before the next cycle.'),
     divider(),
   ];
 }
@@ -608,6 +617,7 @@ function buildTopRisks(data) {
     }),
     new Paragraph({ spacing:{before:160,after:0}, children:[] }),
     divider(),
+    ...analysis('The top of the register is dominated by strategic and cyber exposures, with the highest current ratings attaching to information security and procurement integrity. Where current ratings remain at or above residual targets, existing controls are not yet bringing exposure within appetite, warranting stronger treatment or a formal risk-acceptance decision. Risks marked Outside Tolerance should be the focus of escalation this period.'),
   ];
 }
 
@@ -642,6 +652,7 @@ function buildOperationalRisks(data) {
     ]}),
     new Paragraph({ spacing:{before:160,after:0}, children:[] }),
     divider(),
+    ...analysis('Operational risk is distributed across '+portfolios+' portfolio(s), with '+critical+' rated Critical and '+improving+' improving. '+(critical>0?'Critical items concentrate operational exposure and should each be tied to a treatment action with an owner and deadline. ':'No risks are currently critical, indicating operational exposure is largely within manageable bounds. ')+(improving>0?'The improving trend suggests treatment is taking effect; sustaining it requires continued unit-level monitoring.':'The absence of an improving trend warrants review of treatment adequacy.')),
   ];
 }
 
@@ -680,6 +691,7 @@ function buildTreatmentActions(data) {
     }),
     new Paragraph({ spacing:{before:160,after:0}, children:[] }),
     divider(),
+    ...analysis('Treatment completion stands at '+Math.round(complete/Math.max(actions.length,1)*100)+'% ('+complete+' of '+actions.length+'), with '+inProg+' in progress and '+overdue+' overdue. '+(overdue>0?'The '+overdue+' overdue action(s) are the most immediate concern, leaving associated risks exposed beyond planned timelines, and should be escalated to owners. ':'No actions are overdue, indicating treatment is broadly on schedule. ')+'Sustained completion above 80% would give reasonable assurance that responses are delivered as planned.'),
   ];
 }
 
@@ -717,6 +729,7 @@ function buildUIFW(data) {
     }),
     new Paragraph({ spacing:{before:160,after:0}, children:[] }),
     divider(),
+    ...analysis('Total UIFW exposure stands at '+fmtM(total)+', of which '+fmtM(irreg)+' is irregular (predominantly procurement-related) and '+fmtM(fruit)+' fruitless and wasteful. '+(open>0?open+' case(s) remain open and require resolution, condonement or recovery; unresolved UIFW directly affects the audit outcome and PFMA compliance. ':'All cases are resolved, supporting a cleaner audit position. ')+'Management should prioritise consequence management and stronger SCM controls to prevent recurrence.'),
   ];
 }
 
