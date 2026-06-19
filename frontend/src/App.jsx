@@ -485,6 +485,90 @@ function StrategicRisksAdmin() {
   );
 }
 
+// ─── REUSABLE CHART HELPERS (SVG) ─────────────────────────────────────────────
+// Gauge ring — semicircular progress gauge used for compliance/readiness scores.
+function GaugeRing({ value=0, max=100, label, sublabel, color, size=120 }) {
+  const pct = Math.max(0, Math.min(100, (Number(value)/Number(max||100))*100));
+  const r = size/2 - 10;
+  const cx = size/2, cy = size/2;
+  const circ = Math.PI * r;               // semicircle length
+  const dash = (pct/100) * circ;
+  const ringColor = color || (pct>=80?C.green:pct>=60?C.amber:C.red);
+  return (
+    <div style={{ display:"flex", flexDirection:"column", alignItems:"center" }}>
+      <svg width={size} height={size/2 + 18} style={{ overflow:"visible" }}>
+        <path d={`M ${cx-r} ${cy} A ${r} ${r} 0 0 1 ${cx+r} ${cy}`} fill="none" stroke={C.border} strokeWidth="9" strokeLinecap="round"/>
+        <path d={`M ${cx-r} ${cy} A ${r} ${r} 0 0 1 ${cx+r} ${cy}`} fill="none" stroke={ringColor} strokeWidth="9" strokeLinecap="round"
+          strokeDasharray={`${dash} ${circ}`} style={{ transition:"stroke-dasharray 0.6s ease" }}/>
+        <text x={cx} y={cy-4} textAnchor="middle" fill={ringColor} fontSize={size*0.2} fontWeight="800">{Math.round(pct)}%</text>
+      </svg>
+      {label && <div style={{ color:C.text, fontSize:"0.78rem", fontWeight:600, marginTop:2, textAlign:"center" }}>{label}</div>}
+      {sublabel && <div style={{ color:C.muted, fontSize:"0.7rem", textAlign:"center" }}>{sublabel}</div>}
+    </div>
+  );
+}
+
+// Donut chart — full circle with optional center text. segments = [{label,value,color}]
+function DonutChart({ segments=[], size=180, thickness=22, centerValue, centerLabel }) {
+  const total = segments.reduce((s,x)=>s+(Number(x.value)||0),0) || 1;
+  const r = size/2 - thickness/2 - 2;
+  const cx = size/2, cy = size/2;
+  const circ = 2*Math.PI*r;
+  let offset = 0;
+  return (
+    <div style={{ display:"flex", flexDirection:"column", alignItems:"center" }}>
+      <svg width={size} height={size}>
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke={C.border} strokeWidth={thickness}/>
+        {segments.map((seg,i)=>{
+          const frac = (Number(seg.value)||0)/total;
+          const len  = frac*circ;
+          const el = (
+            <circle key={i} cx={cx} cy={cy} r={r} fill="none" stroke={seg.color} strokeWidth={thickness}
+              strokeDasharray={`${len} ${circ-len}`} strokeDashoffset={-offset}
+              transform={`rotate(-90 ${cx} ${cy})`} style={{ transition:"stroke-dasharray 0.6s ease" }}/>
+          );
+          offset += len;
+          return el;
+        })}
+        {centerValue!=null && <text x={cx} y={cy-2} textAnchor="middle" fill={C.text} fontSize={size*0.18} fontWeight="800">{centerValue}</text>}
+        {centerLabel && <text x={cx} y={cy+size*0.13} textAnchor="middle" fill={C.muted} fontSize={size*0.07}>{centerLabel}</text>}
+      </svg>
+    </div>
+  );
+}
+
+// Enhanced KPI card — value + delta indicator + optional sparkline trend.
+function KPICardPro({ label, value, sub, color=C.blue, delta, deltaGood, spark }) {
+  const deltaColor = delta==null ? C.muted : (deltaGood ? C.green : C.red);
+  const arrow = delta==null ? "" : (Number(delta)>=0 ? "↑" : "↓");
+  return (
+    <Card style={{ borderTop:`3px solid ${color}` }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+        <div style={{ color:C.muted, fontSize:"0.72rem", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.06em" }}>{label}</div>
+        {spark && spark.length>1 && <Sparkline data={spark} color={color} width={56} height={20}/>}
+      </div>
+      <div style={{ color, fontSize:"1.8rem", fontWeight:800, lineHeight:1.1, marginTop:4 }}>{value}</div>
+      <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:3 }}>
+        {delta!=null && <span style={{ color:deltaColor, fontSize:"0.74rem", fontWeight:700 }}>{arrow} {Math.abs(Number(delta))}</span>}
+        {sub && <span style={{ color:C.muted, fontSize:"0.76rem" }}>{sub}</span>}
+      </div>
+    </Card>
+  );
+}
+
+// Horizontal stacked bar (owner accountability etc). segments = [{value,color}]
+function StackedBar({ segments=[], max, height=14 }) {
+  const total = segments.reduce((s,x)=>s+(Number(x.value)||0),0);
+  const denom = max || total || 1;
+  return (
+    <div style={{ display:"flex", width:"100%", height, borderRadius:4, overflow:"hidden", background:C.border }}>
+      {segments.map((s,i)=>(
+        <div key={i} title={s.label} style={{ width:`${((Number(s.value)||0)/denom)*100}%`, background:s.color, height:"100%" }}/>
+      ))}
+    </div>
+  );
+}
+
 // ─── MODULE: EXECUTIVE OVERVIEW ───────────────────────────────────────────────
 function ExecutiveOverview() {
   const [risks, setRisks] = useState(STATIC_RISKS);
@@ -493,7 +577,11 @@ function ExecutiveOverview() {
   },[]);
 
   const outside = risks.filter(r=>(r.currentStatus||r.status||"").includes("Outside")).length;
+  const within  = risks.filter(r=>(r.currentStatus||r.status||"").includes("Within")).length;
   const totalUifw = STATIC_UIFW.reduce((s,u)=>s+u.amount,0);
+  const avgResidual = risks.length ? (risks.reduce((s,r)=>s+(Number(r.residualRating||r.residual)||0),0)/risks.length) : 0;
+  // Overall risk posture: % of risks within tolerance
+  const posturePct = risks.length ? Math.round((within/risks.length)*100) : 0;
   const heatColor = s => s>=15?C.red:s>=10?"#e36209":s>=6?C.amber:s>=3?C.green:"#1a3d2b";
 
   return (
@@ -509,23 +597,44 @@ function ExecutiveOverview() {
           <span style={{ color:C.muted, fontSize:"0.78rem", alignSelf:"center" }}>Next Review: 2026-09-30</span>
         </div>
       </div>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(170px,1fr))", gap:"0.85rem" }}>
-        <KPICard label="Total Risks"          value={risks.length}  sub="+4 Emerging"                color={C.blue}   />
-        <KPICard label="Outside Tolerance"    value={outside}       sub="Immediate action required"  color={C.red}    />
-        <KPICard label="Treatment Completion" value="72%"           sub="89 of 124 actions"          color={C.green}  />
-        <KPICard label="Overall Risk Exposure"value="12.4"          sub="↓ 1.2 from last period"    color={C.amber}  />
-        <KPICard label="Material Findings"    value="3"             sub="From assurance reviews"     color={C.purple} />
+
+      {/* Enhanced KPI strip with sparklines + deltas */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))", gap:"0.85rem" }}>
+        <KPICardPro label="Total Risks"           value={risks.length} sub="+4 emerging"              color={C.blue}   delta={2}    deltaGood={false} spark={[8,9,9,10,10,risks.length]} />
+        <KPICardPro label="Outside Tolerance"     value={outside}      sub="Immediate action"         color={C.red}    delta={-1}   deltaGood={true}  spark={[9,8,8,7,7,outside]} />
+        <KPICardPro label="Treatment Completion"  value="72%"          sub="89 of 124 actions"        color={C.green}  delta={11}   deltaGood={true}  spark={[55,58,62,66,69,72]} />
+        <KPICardPro label="Overall Risk Exposure" value={avgResidual.toFixed(1)} sub="avg residual"    color={C.amber}  delta={-1.2} deltaGood={true}  spark={[13.6,13.2,12.8,12.1,11.8,avgResidual]} />
+        <KPICardPro label="Material Findings"      value="3"            sub="from assurance reviews"   color={C.purple} delta={0}    deltaGood={true}  spark={[5,4,4,3,3,3]} />
       </div>
-      <Card style={{ borderLeft:`4px solid ${C.red}` }}>
-        <div style={{ display:"flex", alignItems:"center", gap:"0.75rem" }}>
-          <span style={{ fontSize:"1.5rem" }}>⚠</span>
-          <div>
-            <div style={{ color:C.red, fontSize:"1.6rem", fontWeight:800 }}>R{(totalUifw/1e6).toFixed(1)}M</div>
-            <div style={{ color:C.text, fontWeight:600 }}>UIFW Exposure</div>
-            <div style={{ color:C.muted, fontSize:"0.8rem" }}>14 open cases across {new Set(STATIC_UIFW.map(u=>u.department)).size} departments</div>
+
+      {/* Posture gauge + UIFW exposure */}
+      <div style={{ display:"grid", gridTemplateColumns:"260px 1fr", gap:"1rem" }}>
+        <Card>
+          <SectionTitle>Risk Posture</SectionTitle>
+          <div style={{ display:"flex", justifyContent:"center", paddingTop:8 }}>
+            <GaugeRing value={posturePct} max={100} label="Within Tolerance"
+              sublabel={`${within} of ${risks.length} risks`}
+              color={posturePct>=70?C.green:posturePct>=50?C.amber:C.red} size={150}/>
           </div>
-        </div>
-      </Card>
+        </Card>
+        <Card style={{ borderLeft:`4px solid ${C.red}`, display:"flex", alignItems:"center" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:"1.5rem", flexWrap:"wrap" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:"0.75rem" }}>
+              <span style={{ fontSize:"1.5rem" }}>⚠</span>
+              <div>
+                <div style={{ color:C.red, fontSize:"1.6rem", fontWeight:800 }}>R{(totalUifw/1e6).toFixed(1)}M</div>
+                <div style={{ color:C.text, fontWeight:600 }}>UIFW Exposure</div>
+                <div style={{ color:C.muted, fontSize:"0.8rem" }}>14 open cases across {new Set(STATIC_UIFW.map(u=>u.department)).size} departments</div>
+              </div>
+            </div>
+            <div style={{ display:"flex", gap:"1.5rem", marginLeft:"auto" }}>
+              <div><div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700 }}>Irregular</div><div style={{ color:C.amber, fontSize:"1.2rem", fontWeight:800 }}>R{(STATIC_UIFW.filter(u=>u.type==="Irregular").reduce((s,u)=>s+u.amount,0)/1e6).toFixed(1)}M</div></div>
+              <div><div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700 }}>Fruitless</div><div style={{ color:C.amber, fontSize:"1.2rem", fontWeight:800 }}>R{(STATIC_UIFW.filter(u=>u.type!=="Irregular").reduce((s,u)=>s+u.amount,0)/1e6).toFixed(1)}M</div></div>
+            </div>
+          </div>
+        </Card>
+      </div>
+
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
         <Card>
           <SectionTitle>Risk Heatmap — Inherent Risk Matrix</SectionTitle>
@@ -553,7 +662,7 @@ function ExecutiveOverview() {
             <PieChart>
               <Pie data={[
                 { name:"Outside Tolerance", value:outside },
-                { name:"Within Tolerance",  value:risks.filter(r=>(r.currentStatus||r.status||"").includes("Within")).length },
+                { name:"Within Tolerance",  value:within },
                 { name:"Emerging",          value:4 },
               ]} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={3} dataKey="value">
                 {[C.red,C.amber,C.blue].map((c,i)=><Cell key={i} fill={c}/>)}
@@ -621,11 +730,23 @@ function RiskAppetite() {
 function StrategicRisks() {
   const [risks, setRisks] = useState(STATIC_RISKS);
   const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState(null);
   useEffect(()=>{
     fetch(`${API}/api/risks`).then(r=>r.json()).then(d=>{ if(Array.isArray(d)&&d.length) setRisks(d); }).catch(()=>{});
   },[]);
   const filtered = risks.filter(r=>(r.title||r.name||"").toLowerCase().includes(search.toLowerCase())||(r.id||"").toLowerCase().includes(search.toLowerCase()));
   const sc = v=>Number(v)>=15?C.red:Number(v)>=10?"#e36209":Number(v)>=6?C.amber:C.green;
+  const sel = selected || filtered[0] || risks[0];
+
+  // Build a simulated treatment-progress trend for the selected risk (toward target)
+  const trendData = (()=>{
+    if (!sel) return [];
+    const start = Number(sel.inherentRating||sel.inherent)||20;
+    const end   = Number(sel.residualRating||sel.residual)||12;
+    const months = ["Aug","Sep","Oct","Nov","Dec","Jan"];
+    return months.map((m,i)=>({ m, v:+(start + (end-start)*(i/(months.length-1))).toFixed(1) }));
+  })();
+
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:"0.5rem" }}>
@@ -634,25 +755,103 @@ function StrategicRisks() {
           style={{ ...inputSt, width:220 }}/>
       </div>
       <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"0.85rem" }}>
-        <KPICard label="Total Risks"        value={risks.length} color={C.blue}/>
-        <KPICard label="Outside Tolerance"  value={risks.filter(r=>(r.currentStatus||r.status||"").includes("Outside")).length} color={C.red}/>
-        <KPICard label="Avg Residual Score" value={(risks.reduce((s,r)=>s+(Number(r.residualRating||r.residual)||0),0)/risks.length).toFixed(1)} color={C.amber}/>
+        <KPICardPro label="Total Risks"        value={risks.length} color={C.blue} spark={[8,9,9,10,10,risks.length]}/>
+        <KPICardPro label="Outside Tolerance"  value={risks.filter(r=>(r.currentStatus||r.status||"").includes("Outside")).length} color={C.red} delta={-1} deltaGood={true}/>
+        <KPICardPro label="Avg Residual Score" value={(risks.reduce((s,r)=>s+(Number(r.residualRating||r.residual)||0),0)/risks.length).toFixed(1)} color={C.amber} delta={-0.8} deltaGood={true}/>
       </div>
-      <Card>
-        <Table
-          headers={["ID","Risk Title","Inherent","Residual","Appetite","Owner","Response","Status"]}
-          rows={filtered.map(r=>[
-            <span style={{ color:C.blue, fontWeight:700 }}>{r.id}</span>,
-            r.title||r.name||"—",
-            <span style={{ color:sc(r.inherentRating||r.inherent), fontWeight:700 }}>{r.inherentRating||r.inherent||"—"}</span>,
-            <span style={{ color:sc(r.residualRating||r.residual), fontWeight:700 }}>{r.residualRating||r.residual||"—"}</span>,
-            r.appetite||"—",
-            r.owner||"—",
-            r.response||r.treatment||"—",
-            <StatusBadge status={r.currentStatus||r.status}/>,
-          ])}
-        />
-      </Card>
+
+      {/* Master-detail split */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 380px", gap:"1.25rem", alignItems:"start" }}>
+        {/* Master table */}
+        <Card style={{ padding:0, overflow:"hidden" }}>
+          <div style={{ overflowX:"auto" }}>
+            <table style={{ width:"100%", borderCollapse:"collapse", fontSize:"0.83rem" }}>
+              <thead>
+                <tr>{["Risk ID","Risk Name","Inherent","Residual","Current","Target","Appetite","Trend"].map((h,i)=>
+                  <th key={i} style={{ color:C.muted, fontWeight:600, padding:"0.6rem 0.75rem", textAlign:"left", borderBottom:`1px solid ${C.border}`, whiteSpace:"nowrap" }}>{h}</th>)}</tr>
+              </thead>
+              <tbody>
+                {filtered.map(r=>{
+                  const isSel = sel && r.id===sel.id;
+                  const trend = (r.trend||"").toLowerCase();
+                  const tIcon = trend==="improving"?"↗":trend==="declining"?"↘":"—";
+                  const tColor = trend==="improving"?C.green:trend==="declining"?C.red:C.muted;
+                  return (
+                    <tr key={r.id} onClick={()=>setSelected(r)}
+                      style={{ borderBottom:`1px solid ${C.border}`, cursor:"pointer",
+                        background:isSel?"rgba(88,166,255,0.12)":"transparent",
+                        borderLeft:`3px solid ${isSel?C.blue:"transparent"}` }}
+                      onMouseEnter={e=>{ if(!isSel) e.currentTarget.style.background=C.surface; }}
+                      onMouseLeave={e=>{ if(!isSel) e.currentTarget.style.background="transparent"; }}>
+                      <td style={{ padding:"0.55rem 0.75rem", color:C.muted, fontWeight:700, whiteSpace:"nowrap" }}>{r.id}</td>
+                      <td style={{ padding:"0.55rem 0.75rem", color:C.text, maxWidth:200, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={r.title||r.name}>{r.title||r.name||"—"}</td>
+                      <td style={{ padding:"0.55rem 0.75rem", color:sc(r.inherentRating||r.inherent), fontWeight:700 }}>{r.inherentRating||r.inherent||"—"}</td>
+                      <td style={{ padding:"0.55rem 0.75rem", color:sc(r.residualRating||r.residual), fontWeight:700 }}>{r.residualRating||r.residual||"—"}</td>
+                      <td style={{ padding:"0.55rem 0.75rem", color:sc(r.currentRating||r.residualRating||r.residual), fontWeight:700 }}>{r.currentRating||r.residualRating||r.residual||"—"}</td>
+                      <td style={{ padding:"0.55rem 0.75rem", color:C.green, fontWeight:700 }}>{r.targetRating||"—"}</td>
+                      <td style={{ padding:"0.55rem 0.75rem" }}><StatusBadge status={r.currentStatus||r.status}/></td>
+                      <td style={{ padding:"0.55rem 0.75rem", color:tColor, fontWeight:700 }}>{tIcon}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {filtered.length===0 && <p style={{ color:C.muted, textAlign:"center", padding:"2rem" }}>No risks match your search.</p>}
+        </Card>
+
+        {/* Detail panel */}
+        {sel && (
+          <Card style={{ position:"sticky", top:0 }}>
+            <div style={{ color:C.muted, fontSize:"0.75rem", fontWeight:700 }}>{sel.id}</div>
+            <h3 style={{ color:C.text, fontSize:"1.05rem", fontWeight:700, margin:"0.2rem 0 0.5rem" }}>{sel.title||sel.name}</h3>
+            <p style={{ color:C.muted, fontSize:"0.82rem", lineHeight:1.6, margin:"0 0 1rem" }}>{sel.description||sel.cause||"Strategic risk under active management and monitoring."}</p>
+
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"0.5rem", marginBottom:"1rem" }}>
+              {[["Inherent",sel.inherentRating||sel.inherent,sc(sel.inherentRating||sel.inherent)],
+                ["Residual",sel.residualRating||sel.residual,sc(sel.residualRating||sel.residual)],
+                ["Current",sel.currentRating||sel.residualRating||sel.residual,sc(sel.currentRating||sel.residualRating||sel.residual)],
+                ["Target",sel.targetRating||"—",C.green]].map(([l,v,c])=>(
+                <div key={l} style={{ background:C.surface, borderRadius:7, padding:"0.5rem", textAlign:"center" }}>
+                  <div style={{ color:c, fontSize:"1.3rem", fontWeight:800 }}>{v||"—"}</div>
+                  <div style={{ color:C.muted, fontSize:"0.65rem" }}>{l}</div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display:"flex", alignItems:"center", gap:"0.6rem", marginBottom:"1rem" }}>
+              <div style={{ width:36, height:36, borderRadius:"50%", background:C.surface, display:"flex", alignItems:"center", justifyContent:"center", color:C.blue, fontWeight:700, fontSize:"0.78rem" }}>
+                {(sel.owner||"NA").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()}
+              </div>
+              <div>
+                <div style={{ color:C.text, fontSize:"0.85rem", fontWeight:600 }}>{sel.owner||"—"}</div>
+                <div style={{ display:"flex", gap:6, marginTop:2 }}>
+                  <StatusBadge status={sel.currentStatus||sel.status}/>
+                  {sel.trend && <Badge label={sel.trend} color={(sel.trend||"").toLowerCase()==="improving"?"green":(sel.trend||"").toLowerCase()==="declining"?"red":"amber"}/>}
+                </div>
+              </div>
+            </div>
+
+            <SectionTitle>Treatment Progress</SectionTitle>
+            <ResponsiveContainer width="100%" height={150}>
+              <LineChart data={trendData}>
+                <CartesianGrid strokeDasharray="3 3" stroke={C.border}/>
+                <XAxis dataKey="m" stroke={C.muted} tick={{ fill:C.muted, fontSize:10 }}/>
+                <YAxis stroke={C.muted} tick={{ fill:C.muted, fontSize:10 }} width={24}/>
+                <Tooltip contentStyle={{ background:C.card, border:`1px solid ${C.border}`, color:C.text, fontSize:"0.78rem" }}/>
+                <Line type="monotone" dataKey="v" stroke={C.green} strokeWidth={2} dot={{ r:3 }} name="Residual score"/>
+              </LineChart>
+            </ResponsiveContainer>
+
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.5rem", marginTop:"0.75rem" }}>
+              <div><div style={{ color:C.muted, fontSize:"0.65rem", textTransform:"uppercase", fontWeight:700 }}>Appetite</div><div style={{ color:C.text, fontSize:"0.85rem" }}>{sel.appetite||"—"}</div></div>
+              <div><div style={{ color:C.muted, fontSize:"0.65rem", textTransform:"uppercase", fontWeight:700 }}>Response</div><div style={{ color:C.text, fontSize:"0.85rem" }}>{sel.response||sel.treatment||"—"}</div></div>
+              <div><div style={{ color:C.muted, fontSize:"0.65rem", textTransform:"uppercase", fontWeight:700 }}>Department</div><div style={{ color:C.text, fontSize:"0.85rem" }}>{sel.department||"—"}</div></div>
+              <div><div style={{ color:C.muted, fontSize:"0.65rem", textTransform:"uppercase", fontWeight:700 }}>Review Date</div><div style={{ color:C.text, fontSize:"0.85rem" }}>{sel.reviewDate||"—"}</div></div>
+            </div>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }
@@ -749,23 +948,139 @@ function EmergingRisks() {
 function TreatmentActions() {
   const [actions, setActions] = useState(STATIC_TREATMENTS);
   useEffect(()=>{ fetch(`${API}/api/treatments`).then(r=>r.json()).then(d=>{ if(Array.isArray(d)&&d.length) setActions(d); }).catch(()=>{}); },[]);
+
+  const done    = actions.filter(a=>a.status==="Complete").length;
+  const prog    = actions.filter(a=>["In Progress","Near Complete"].includes(a.status)).length;
+  const notStarted = actions.filter(a=>a.status==="Not Started").length;
+  const overdue = actions.filter(a=>a.status!=="Complete" && a.dueDate && new Date(a.dueDate)<new Date()).length;
+  const total   = actions.length;
+  const completionPct = total ? Math.round((done/total)*100) : 0;
+
+  // Owner accountability: group actions by owner, split done vs outstanding
+  const owners = (()=>{
+    const map = {};
+    actions.forEach(a=>{
+      const o = a.owner || "Unassigned";
+      if (!map[o]) map[o] = { owner:o, done:0, open:0 };
+      if (a.status==="Complete") map[o].done++; else map[o].open++;
+    });
+    return Object.values(map).sort((a,b)=>(b.done+b.open)-(a.done+a.open));
+  })();
+  const ownerMax = Math.max(1, ...owners.map(o=>o.done+o.open));
+  const initials = name => name.split(/[\s.]+/).filter(Boolean).map(w=>w[0]).join("").slice(0,2).toUpperCase();
+
+  const trend = [
+    { m:"Aug", v:68 },{ m:"Sep", v:72 },{ m:"Oct", v:76 },
+    { m:"Nov", v:80 },{ m:"Dec", v:85 },{ m:"Jan", v:completionPct },
+  ];
+
+  const overdueActions = actions.filter(a=>a.status!=="Complete" && a.dueDate && new Date(a.dueDate)<new Date());
+
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
       <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Treatment Action Tracker</h1>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"0.85rem" }}>
-        {[["Total",actions.length,C.blue],["Complete",actions.filter(a=>a.status==="Complete").length,C.green],
-          ["In Progress",actions.filter(a=>a.status==="In Progress").length,C.amber],
-          ["Not Started",actions.filter(a=>a.status==="Not Started").length,C.red]].map(([l,v,c])=>(
-          <KPICard key={l} label={l} value={v} color={c}/>
-        ))}
+
+      {/* KPI strip */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:"0.85rem" }}>
+        <KPICardPro label="Total Actions" value={total}      sub="this period"      color={C.blue}  delta={6}  deltaGood={true}/>
+        <KPICardPro label="Completed"     value={done}       sub={`${completionPct}% rate`} color={C.green} delta={11} deltaGood={true} spark={[55,58,62,66,69,completionPct]}/>
+        <KPICardPro label="In Progress"   value={prog}       sub="being executed"   color={C.amber}/>
+        <KPICardPro label="Not Started"   value={notStarted} sub="awaiting kickoff" color={C.muted}/>
+        <KPICardPro label="Overdue"       value={overdue}    sub="needs escalation" color={C.red}   delta={-3} deltaGood={true}/>
       </div>
+
+      {/* Donut + owner bars + trend */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
+        <Card>
+          <SectionTitle>Overall Treatment Completion</SectionTitle>
+          <div style={{ display:"flex", justifyContent:"center", padding:"0.5rem 0" }}>
+            <DonutChart
+              segments={[
+                { label:"Done", value:done, color:C.green },
+                { label:"In Progress", value:prog, color:C.blue },
+                { label:"Not Started", value:notStarted, color:C.muted },
+                { label:"Overdue", value:overdue, color:C.red },
+              ]}
+              size={170} thickness={20}
+              centerValue={`${completionPct}%`} centerLabel="Completion"/>
+          </div>
+          <div style={{ display:"flex", justifyContent:"space-around", marginTop:"0.5rem", flexWrap:"wrap", gap:"0.5rem" }}>
+            {[["Done",done,C.green],["Active",prog,C.blue],["Pending",notStarted,C.muted],["Overdue",overdue,C.red]].map(([l,v,c])=>(
+              <div key={l} style={{ textAlign:"center" }}>
+                <div style={{ color:c, fontWeight:800, fontSize:"1.1rem" }}>{v}</div>
+                <div style={{ color:C.muted, fontSize:"0.7rem" }}>{l}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card>
+          <SectionTitle>Owner Accountability</SectionTitle>
+          <div style={{ display:"flex", flexDirection:"column", gap:"0.6rem", marginTop:"0.25rem" }}>
+            {owners.map(o=>(
+              <div key={o.owner} style={{ display:"flex", alignItems:"center", gap:"0.6rem" }}>
+                <div style={{ width:30, height:30, borderRadius:"50%", background:C.surface, color:C.blue, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"0.68rem", fontWeight:700, flexShrink:0 }} title={o.owner}>{initials(o.owner)}</div>
+                <div style={{ flex:1 }}>
+                  <StackedBar max={ownerMax} segments={[{ label:"Done", value:o.done, color:C.green },{ label:"Open", value:o.open, color:C.red }]}/>
+                </div>
+                <div style={{ color:C.muted, fontSize:"0.72rem", minWidth:34, textAlign:"right" }}>{o.done}/{o.done+o.open}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display:"flex", gap:"1rem", marginTop:"0.75rem" }}>
+            <span style={{ color:C.green, fontSize:"0.7rem" }}>■ Completed</span>
+            <span style={{ color:C.red, fontSize:"0.7rem" }}>■ Outstanding</span>
+          </div>
+        </Card>
+
+        <Card>
+          <SectionTitle>Treatment Action Trend</SectionTitle>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={trend}>
+              <CartesianGrid strokeDasharray="3 3" stroke={C.border}/>
+              <XAxis dataKey="m" stroke={C.muted} tick={{ fill:C.muted, fontSize:11 }}/>
+              <YAxis stroke={C.muted} tick={{ fill:C.muted, fontSize:11 }} domain={[0,100]}/>
+              <Tooltip contentStyle={{ background:C.card, border:`1px solid ${C.border}`, color:C.text, fontSize:"0.78rem" }}/>
+              <Bar dataKey="v" fill={C.green} name="Completion %" radius={[4,4,0,0]}/>
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+      </div>
+
+      {/* Overdue tracker (highlighted) */}
+      {overdueActions.length>0 && (
+        <Card style={{ borderLeft:`4px solid ${C.red}` }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:"0.75rem" }}>
+            <span style={{ fontSize:"1.1rem" }}>⚠</span>
+            <h3 style={{ color:C.text, fontSize:"0.95rem", fontWeight:700, margin:0 }}>Overdue Action Tracker</h3>
+          </div>
+          <Table
+            headers={["Action ID","Description","Risk","Owner","Due Date","Priority","Progress"]}
+            rows={overdueActions.map(a=>[
+              <span style={{ color:C.red, fontWeight:700 }}>{a.id}</span>,
+              <span style={{ maxWidth:260, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={a.action}>{a.action}</span>,
+              <span style={{ color:C.muted, fontSize:"0.78rem" }}>{a.riskId||a.risk||"—"}</span>,
+              <span style={{ display:"inline-flex", width:26, height:26, borderRadius:"50%", background:C.surface, color:C.blue, alignItems:"center", justifyContent:"center", fontSize:"0.64rem", fontWeight:700 }} title={a.owner}>{initials(a.owner||"NA")}</span>,
+              <span style={{ color:C.red, fontWeight:700 }}>{a.dueDate||a.due||"—"}</span>,
+              <Badge label={a.priority||"High"} color={a.priority==="Critical"?"red":a.priority==="Low"?"green":"amber"}/>,
+              <div style={{ minWidth:110 }}>
+                <div style={{ color:C.muted, fontSize:"0.7rem", marginBottom:3 }}>{a.progress}%</div>
+                <ProgressBar value={Number(a.progress)||0} color={C.red}/>
+              </div>,
+            ])}
+          />
+        </Card>
+      )}
+
+      {/* Full register */}
       <Card>
+        <SectionTitle>All Treatment Actions</SectionTitle>
         <Table
           headers={["ID","Risk","Action","Owner","Due Date","Progress","Status"]}
           rows={actions.map(a=>[
             <span style={{ color:C.blue, fontWeight:700 }}>{a.id}</span>,
             a.riskId||a.risk||"—",
-            a.action,
+            <span style={{ maxWidth:240, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={a.action}>{a.action}</span>,
             a.owner||"—",
             a.dueDate||a.due||"—",
             <div style={{ minWidth:120 }}>
