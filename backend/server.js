@@ -1259,6 +1259,85 @@ app.post("/api/reports/:type", async (req, res) => {
 });
 
 app.listen(PORT, () => console.log(`LGSETA GRC Backend running on port ${PORT}`));
+// ═══════════════════════════════════════════════════════════════════════════════
+// OPERATIONAL RISKS  —  GET / POST / PUT / DELETE
+// ───────────────────────────────────────────────────────────────────────────────
+// Matches your existing server.js conventions: readData()/writeData(),
+// { message, ... } responses, data.<collection> stored in dashboardData.json.
+//
+// WHERE TO PASTE: anywhere among your other route blocks — e.g. directly BELOW
+// the Strategic Risks block (after line ~84) or just ABOVE the final
+//   app.listen(PORT, ...)
+// line (line ~1261). Do NOT delete anything; this is additive.
+//
+// No new data file needed — operational risks live under the "operationalRisks"
+// key inside your existing data/dashboardData.json.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+app.get("/api/oprisks", (req, res) => {
+  try { res.json(readData().operationalRisks || []); }
+  catch (e) { res.status(500).json({ message:"Failed to load operational risks", error:e.message }); }
+});
+
+app.get("/api/oprisks/:id", (req, res) => {
+  try {
+    const risk = (readData().operationalRisks || []).find(r => r.id === req.params.id);
+    if (!risk) return res.status(404).json({ message:"Operational risk not found" });
+    res.json(risk);
+  } catch (e) { res.status(500).json({ message:"Failed to load operational risk", error:e.message }); }
+});
+
+app.post("/api/oprisks", (req, res) => {
+  try {
+    const data = readData();
+    if (!data.operationalRisks) data.operationalRisks = [];
+    if (!req.body.id)   return res.status(400).json({ message:"id is required" });
+    if (!req.body.name) return res.status(400).json({ message:"name is required" });
+    if (data.operationalRisks.some(r => r.id === req.body.id)) {
+      return res.status(409).json({ message:`Operational risk ${req.body.id} already exists` });
+    }
+    const newRisk = {
+      ...req.body,
+      inherent: Number(req.body.inherent) || 0,
+      residual: Number(req.body.residual) || 0,
+      current:  Number(req.body.current)  || 0,
+      target:   Number(req.body.target)   || 0,
+      createdAt: new Date().toISOString(),
+    };
+    data.operationalRisks.push(newRisk);
+    writeData(data);
+    res.json({ message:"Operational risk added", risk:newRisk });
+  } catch (e) { res.status(500).json({ message:"Failed to add operational risk", error:e.message }); }
+});
+
+app.put("/api/oprisks/:id", (req, res) => {
+  try {
+    const data = readData();
+    const idx  = (data.operationalRisks||[]).findIndex(r => r.id === req.params.id);
+    if (idx === -1) return res.status(404).json({ message:"Operational risk not found" });
+    data.operationalRisks[idx] = {
+      ...data.operationalRisks[idx],
+      ...req.body,
+      id: req.params.id,
+      inherent: Number(req.body.inherent) || 0,
+      residual: Number(req.body.residual) || 0,
+      current:  Number(req.body.current)  || 0,
+      target:   Number(req.body.target)   || 0,
+      updatedAt: new Date().toISOString(),
+    };
+    writeData(data);
+    res.json({ message:"Operational risk updated", risk:data.operationalRisks[idx] });
+  } catch (e) { res.status(500).json({ message:"Failed to update operational risk", error:e.message }); }
+});
+
+app.delete("/api/oprisks/:id", (req, res) => {
+  try {
+    const data = readData();
+    data.operationalRisks = (data.operationalRisks||[]).filter(r => r.id !== req.params.id);
+    writeData(data);
+    res.json({ message:"Operational risk deleted" });
+  } catch (e) { res.status(500).json({ message:"Failed to delete operational risk", error:e.message }); }
+});
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // QUARTERLY REPORT GENERATOR

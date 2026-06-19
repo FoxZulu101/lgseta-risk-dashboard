@@ -1915,10 +1915,14 @@ function FraudEthics() {
 
 // ─── MODULE: DEPARTMENTAL RISKS ───────────────────────────────────────────────
 function DepartmentalRisks() {
-  const [oprisks] = useState(STATIC_OPRISKS);
+  const [oprisks, setOprisks] = useState(STATIC_OPRISKS);
   const [portfolioFilter, setPortfolioFilter] = useState("All");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
+
+  useEffect(()=>{
+    fetch(`${API}/api/oprisks`).then(r=>r.json()).then(d=>{ if(Array.isArray(d)&&d.length) setOprisks(d); }).catch(()=>{});
+  },[]);
 
   const sc = v => Number(v)>=15?C.red:Number(v)>=10?"#e36209":Number(v)>=6?C.amber:C.green;
 
@@ -3549,6 +3553,169 @@ function DepartmentalRisksAdmin() {
   );
 }
 
+// ─── OPERATIONAL RISK ADMIN ───────────────────────────────────────────────────
+const EMPTY_OPRISK = {
+  id:"", portfolio:"CFO Office", unit:"", name:"",
+  inherent:"", residual:"", current:"", target:"",
+  appetite:"Medium", trend:"Stable", owner:"", description:"",
+};
+
+function OperationalRiskForm({ initial={}, onSave, onCancel, saving }) {
+  const [f, setF] = useState({ ...EMPTY_OPRISK, ...initial });
+  const set = k => v => setF(p=>{
+    const next = { ...p, [k]:v };
+    // When portfolio changes, reset unit to that portfolio's first unit
+    if (k==="portfolio") {
+      const port = STATIC_PORTFOLIOS.find(x=>x.name===v);
+      next.unit = port ? port.units[0] : "";
+    }
+    return next;
+  });
+  const units = (STATIC_PORTFOLIOS.find(x=>x.name===f.portfolio)?.units) || [];
+  return (
+    <div style={{ background:C.surface, border:`1px solid ${C.blue}`, borderRadius:10, padding:"1.5rem", marginBottom:"1.5rem" }}>
+      <h3 style={{ color:C.blue, fontWeight:700, margin:"0 0 1.25rem" }}>{initial.id ? `Edit — ${initial.id}` : "Add Operational Risk"}</h3>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
+        <FInput  label="Risk ID" value={f.id} onChange={set("id")} required placeholder="OR-021" />
+        <FSelect label="Portfolio" value={f.portfolio} onChange={set("portfolio")} options={STATIC_PORTFOLIOS.map(p=>p.name)} />
+        <FSelect label="Unit" value={f.unit} onChange={set("unit")} options={units.length?units:["—"]} />
+      </div>
+      <FInput label="Risk Name" value={f.name} onChange={set("name")} required placeholder="e.g. Irregular procurement / non-compliant bids" />
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:"1rem" }}>
+        <FInput label="Inherent (1-25)" value={f.inherent} onChange={set("inherent")} type="number" placeholder="20" />
+        <FInput label="Residual (1-25)" value={f.residual} onChange={set("residual")} type="number" placeholder="15" />
+        <FInput label="Current (1-25)"  value={f.current}  onChange={set("current")}  type="number" placeholder="15" />
+        <FInput label="Target (1-25)"   value={f.target}   onChange={set("target")}   type="number" placeholder="8" />
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
+        <FSelect label="Appetite" value={f.appetite} onChange={set("appetite")} options={["Zero","Low","Medium","High"]} />
+        <FSelect label="Trend"    value={f.trend}    onChange={set("trend")}    options={["Improving","Stable","Declining"]} />
+        <FInput  label="Owner"    value={f.owner}    onChange={set("owner")}    placeholder="e.g. SCM Manager" />
+      </div>
+      <FTextarea label="Description" value={f.description} onChange={set("description")} rows={2} placeholder="Describe the operational risk…" />
+      <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.5rem" }}>
+        <button onClick={()=>onSave(f)} disabled={saving}
+          style={{ padding:"0.65rem 1.75rem", background:C.blue, color:"#fff", border:"none", borderRadius:8, fontWeight:700, fontSize:"0.9rem", cursor:"pointer", opacity:saving?0.6:1 }}>
+          {saving?"Saving…":initial.id?"Update Risk":"Add Risk"}
+        </button>
+        <button onClick={onCancel} style={{ padding:"0.65rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, fontWeight:600, fontSize:"0.9rem", cursor:"pointer" }}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+function OperationalRiskAdmin() {
+  const [risks, setRisks]       = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [saving, setSaving]     = useState(false);
+  const [toast, setToast]       = useState(null);
+  const [mode, setMode]         = useState(null);
+  const [confirmDel, setConfirmDel] = useState(null);
+
+  function showToast(msg, type="ok") { setToast({ msg, type }); setTimeout(()=>setToast(null), 3500); }
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API}/api/oprisks`);
+      const d = await res.json();
+      setRisks(Array.isArray(d) && d.length ? d : STATIC_OPRISKS);
+    } catch { setRisks(STATIC_OPRISKS); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(()=>{ load(); }, [load]);
+
+  async function handleSave(f) {
+    if (!f.id)   { showToast("Risk ID is required.", "err"); return; }
+    if (!f.name) { showToast("Risk Name is required.", "err"); return; }
+    setSaving(true);
+    const isEdit = !!mode?.id;
+    const body = {
+      ...f,
+      inherent:Number(f.inherent)||0, residual:Number(f.residual)||0,
+      current:Number(f.current)||0,   target:Number(f.target)||0,
+    };
+    try {
+      const res = await fetch(`${API}/api/oprisks${isEdit?`/${encodeURIComponent(f.id)}`:""}`, {
+        method: isEdit ? "PUT" : "POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      await logAudit({ module:"Operational Risks", action:isEdit?"Edit":"Add", recordId:f.id,
+        description:`${isEdit?"Updated":"Added"} operational risk ${f.id} — ${f.name} (${f.portfolio}/${f.unit})`, after:body });
+      showToast(isEdit ? `✅ ${f.id} updated.` : `✅ ${f.id} added.`);
+      setMode(null); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  async function handleDelete(id) {
+    setSaving(true);
+    try {
+      const res = await fetch(`${API}/api/oprisks/${encodeURIComponent(id)}`, { method:"DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+      await logAudit({ module:"Operational Risks", action:"Delete", recordId:id, description:`Deleted operational risk ${id}` });
+      showToast(`🗑 ${id} deleted.`); setConfirmDel(null); load();
+    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
+    finally { setSaving(false); }
+  }
+
+  const sc = v => Number(v)>=15?C.red:Number(v)>=10?"#e36209":Number(v)>=6?C.amber:C.green;
+
+  return (
+    <div>
+      {toast && <div style={{ position:"fixed", top:16, right:16, zIndex:1000, padding:"0.75rem 1.25rem", borderRadius:8, background:toast.type==="ok"?"rgba(63,185,80,0.15)":"rgba(248,81,73,0.15)", border:`1px solid ${toast.type==="ok"?C.green:C.red}`, color:toast.type==="ok"?C.green:C.red, fontWeight:600, fontSize:"0.88rem" }}>{toast.msg}</div>}
+      {confirmDel && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", zIndex:999, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div style={{ background:C.card, border:`1px solid ${C.red}`, borderRadius:12, padding:"2rem", maxWidth:400, width:"90%" }}>
+            <h3 style={{ color:C.red, margin:"0 0 0.75rem" }}>Delete Operational Risk</h3>
+            <p style={{ color:C.text, marginBottom:"1.5rem" }}>Delete <strong>{confirmDel}</strong>?</p>
+            <div style={{ display:"flex", gap:"0.75rem" }}>
+              <button onClick={()=>handleDelete(confirmDel)} disabled={saving} style={{ padding:"0.6rem 1.5rem", background:C.red, color:"#fff", border:"none", borderRadius:7, fontWeight:700, cursor:"pointer" }}>{saving?"Deleting…":"Yes, Delete"}</button>
+              <button onClick={()=>setConfirmDel(null)} style={{ padding:"0.6rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:7, cursor:"pointer" }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.25rem", flexWrap:"wrap", gap:"0.75rem" }}>
+        <div>
+          <h3 style={{ color:C.text, margin:"0 0 0.2rem", fontWeight:700 }}>Operational Risks — Edit Mode</h3>
+          <p style={{ color:C.muted, fontSize:"0.82rem", margin:0 }}>{risks.length} operational risks across {STATIC_PORTFOLIOS.length} portfolios</p>
+        </div>
+        <div style={{ display:"flex", gap:"0.75rem" }}>
+          <button onClick={()=>setMode("add")} disabled={!!mode} style={{ padding:"0.6rem 1.25rem", background:C.blue, color:"#fff", border:"none", borderRadius:8, fontWeight:700, fontSize:"0.88rem", cursor:"pointer", opacity:mode?0.5:1 }}>+ Add Operational Risk</button>
+          <button onClick={load} style={{ padding:"0.6rem 0.9rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer", fontSize:"0.88rem" }}>↻ Refresh</button>
+        </div>
+      </div>
+      {mode==="add"         && <OperationalRiskForm onSave={handleSave} onCancel={()=>setMode(null)} saving={saving} />}
+      {mode && mode!=="add" && <OperationalRiskForm initial={mode} onSave={handleSave} onCancel={()=>setMode(null)} saving={saving} />}
+      {loading ? <div style={{ textAlign:"center", padding:"3rem", color:C.muted }}>Loading…</div> : (
+        <Card>
+          <Table
+            headers={["Risk ID","Name","Portfolio / Unit","Inh.","Res.","Cur.","Tgt.","Trend","Actions"]}
+            rows={risks.map(r=>[
+              <span style={{ color:C.blue, fontWeight:700 }}>{r.id}</span>,
+              <span style={{ color:C.text, maxWidth:220, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={r.name}>{r.name}</span>,
+              <span style={{ color:C.muted, fontSize:"0.76rem" }}>{r.portfolio} / {r.unit}</span>,
+              <span style={{ color:sc(r.inherent), fontWeight:700 }}>{r.inherent}</span>,
+              <span style={{ color:sc(r.residual), fontWeight:700 }}>{r.residual}</span>,
+              <span style={{ color:sc(r.current), fontWeight:700 }}>{r.current}</span>,
+              <span style={{ color:C.green, fontWeight:700 }}>{r.target}</span>,
+              <span style={{ color:r.trend==="Improving"?C.green:r.trend==="Declining"?C.red:C.muted, fontSize:"0.78rem" }}>{r.trend}</span>,
+              <div style={{ display:"flex", gap:"0.5rem" }}>
+                <button onClick={()=>setMode({ ...r })} disabled={!!mode} style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.blue, border:`1px solid ${C.blue}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Edit</button>
+                <button onClick={()=>setConfirmDel(r.id)} disabled={!!mode} style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.red, border:`1px solid ${C.red}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Delete</button>
+              </div>,
+            ])}
+          />
+        </Card>
+      )}
+    </div>
+  );
+}
+
 // ─── THIRD-PARTY RISK ADMIN ───────────────────────────────────────────────────
 const EMPTY_TP = {
   id:"", name:"", type:"ICT", risk:"Medium", contract:"", score:"",
@@ -4304,6 +4471,7 @@ const MODULE_OPTIONS = [
   { value:"uifw",         label:"UIFW Expenditure",   component: UIFWAdmin },
   { value:"fraud",        label:"Fraud & Ethics",     component: FraudEthicsAdmin },
   { value:"departmental", label:"Departmental Risks", component: DepartmentalRisksAdmin },
+  { value:"oprisks",      label:"Operational Risks",  component: OperationalRiskAdmin },
   { value:"thirdparty",   label:"Third-Party Risk",   component: ThirdPartyRiskAdmin },
   { value:"opportunities",label:"Opportunities",      component: OpportunitiesAdmin },
   { value:"emerging",     label:"Emerging Risks",     component: EmergingRisksAdmin },
