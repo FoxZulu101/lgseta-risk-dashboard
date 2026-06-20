@@ -564,6 +564,117 @@ function coverPage(title, subtitle, data) {
 }
 
 // ── Section builders ──────────────────────────────────────────────────────────
+
+// Background / Introduction + Purpose (front matter, placed after cover)
+function buildIntroduction(data, config) {
+  const period = (data.reportingPeriod && data.reportingPeriod.current) || "the current quarter";
+  return [
+    heading1("Background & Introduction"),
+    para("The Local Government Sector Education and Training Authority (LGSETA) operates within a mandated governance, risk and compliance (GRC) framework aligned to the Public Finance Management Act (PFMA), the Skills Development Act, National Treasury regulations and King IV principles of corporate governance.", { after:120 }),
+    para("This report consolidates the organisation's enterprise risk position, control environment, assurance activities and project and contract performance for "+period+". It draws directly from the live GRC Intelligence Center, ensuring the figures presented reflect the most current data captured by risk owners and assurance providers across the organisation.", { after:120 }),
+    para("Risk ratings follow a standard 5×5 methodology, scoring each risk as the product of likelihood and impact on a scale of 1 to 25. Risks are then classified against the organisation's approved risk appetite and tolerance levels as either Within Tolerance or Outside Tolerance.", { after:160 }),
+
+    heading2("Purpose"),
+    para("The purpose of this report is to provide the "+(config.audience||"governance structure")+" with a clear, evidence-based view of the organisation's risk and control posture, to enable informed oversight and decision-making. Specifically, this report aims to:", { after:80 }),
+    para("• Present the most significant strategic, operational and compliance risks facing the organisation and their movement against tolerance;", { after:60 }),
+    para("• Report on the status of risk treatment actions, assurance coverage and outstanding management commitments;", { after:60 }),
+    para("• Highlight financial exposure arising from irregular, fruitless and wasteful expenditure (UIFW) and fraud or ethics matters;", { after:60 }),
+    para("• Provide oversight of project and contract performance, including schedule and cost efficiency; and", { after:60 }),
+    para("• Support the "+(config.audience||"governance structure")+" in discharging its oversight responsibilities and directing management attention to the areas of greatest exposure.", { after:160 }),
+    divider(),
+  ];
+}
+
+// 5×5 Risk Heatmap rendered as a shaded Word table, with written interpretation.
+function buildHeatmap(data) {
+  const risks = data.risks || [];
+  // Derive likelihood (rows) and impact (cols) 1..5 from rating where explicit fields absent.
+  const cellMap = {}; // key "L-I" -> [risk ids]
+  risks.forEach(r => {
+    const rating = Number(r.currentRating||r.inherentRating||r.residualRating||0);
+    let L = Number(r.likelihood)||0, I = Number(r.impact)||0;
+    if (!L || !I) {
+      // Factor the rating into a plausible LxI pair (closest factors to a square)
+      const target = Math.min(25, Math.max(1, rating||1));
+      let best = [1, target];
+      for (let l=1; l<=5; l++){ const i = Math.round(target/l); if (i>=1 && i<=5 && Math.abs(l-i)<Math.abs(best[0]-best[1])) best=[l,i]; }
+      L = Math.min(5,Math.max(1,best[0])); I = Math.min(5,Math.max(1,best[1]));
+    }
+    L = Math.min(5,Math.max(1,L)); I = Math.min(5,Math.max(1,I));
+    const key = `${L}-${I}`;
+    (cellMap[key] = cellMap[key] || []).push(r.id||"?");
+  });
+
+  // Colour by L*I score band
+  const bandColor = s => s>=20?RED : s>=12?AMBER : s>=6?"EAB308" : GREEN; // deep red / amber / yellow / green
+  const impactLabels = ["1 Insignificant","2 Minor","3 Moderate","4 Major","5 Severe"];
+  const likeLabels   = ["5 Almost Certain","4 Likely","3 Possible","2 Unlikely","1 Rare"];
+  const W = [1600,1480,1480,1480,1480,1480];
+
+  // Build rows from likelihood 5 (top) down to 1 (bottom)
+  const rows = [
+    new TableRow({ tableHeader:true, children:[
+      cell("Likelihood ↓ / Impact →", { fill:NAVY, bold:true, color:WHITE, width:W[0], size:15, align:AlignmentType.CENTER }),
+      ...impactLabels.map((l,i)=>cell(l, { fill:NAVY, bold:true, color:WHITE, width:W[i+1], size:15, align:AlignmentType.CENTER })),
+    ]}),
+  ];
+  for (let L=5; L>=1; L--){
+    rows.push(new TableRow({ children:[
+      cell(likeLabels[5-L], { fill:NAVY, bold:true, color:WHITE, width:W[0], size:15 }),
+      ...[1,2,3,4,5].map((I,idx)=>{
+        const score = L*I;
+        const ids = cellMap[`${L}-${I}`]||[];
+        const txt = ids.length ? ids.join(", ") : String(score);
+        return cell(txt, { fill:bandColor(score), bold:true, color:WHITE, width:W[idx+1], size:ids.length?15:16, align:AlignmentType.CENTER });
+      }),
+    ]}));
+  }
+
+  // Interpretation figures
+  const outside = risks.filter(r=>(r.currentStatus||"").includes("Outside")).length;
+  const extreme = risks.filter(r=>Number(r.currentRating||r.inherentRating||0)>=20).length;
+  const high    = risks.filter(r=>{ const v=Number(r.currentRating||r.inherentRating||0); return v>=12 && v<20; }).length;
+  const low     = risks.filter(r=>Number(r.currentRating||r.inherentRating||0)<6).length;
+
+  return [
+    heading1("Enterprise Risk Heatmap"),
+    para("The heatmap below plots each registered risk by likelihood and impact on the organisation's standard 5×5 scale. Cells are shaded by severity, and each cell shows the IDs of the risks that fall within it.", { after:120 }),
+    new Table({ width:{ size:9000, type:WidthType.DXA }, columnWidths:W, rows }),
+    new Paragraph({ spacing:{before:120,after:60}, children:[] }),
+    para("Legend:  Red = Extreme (20–25)   Amber = High (12–19)   Yellow = Moderate (6–11)   Green = Low (1–5)", { size:16, color:GREY, after:120 }),
+    ...analysis(
+      `The risk profile shows ${extreme} risk(s) in the Extreme band and ${high} in the High band, against ${low} in the Low band. ` +
+      `${outside} risk(s) currently sit Outside Tolerance. ` +
+      (extreme>0
+        ? `The Extreme-band risks represent the organisation's most material exposures and demand immediate executive attention, with each requiring an active treatment plan, a named owner and a committed resolution date. `
+        : `No risks currently fall in the Extreme band, indicating the most severe exposures are being contained. `) +
+      `The concentration of risks toward the upper-right of the matrix is the key signal for the ${"governance structure"}: where high-likelihood, high-impact risks cluster, control investment and assurance effort should be prioritised. Movement of risks toward the lower-left over successive quarters is the primary measure of treatment effectiveness.`
+    ),
+    divider(),
+  ];
+}
+
+// Overall conclusion at the end of the report.
+function buildConclusion(data) {
+  const risks   = data.risks || [];
+  const actions = data.treatmentActions || [];
+  const outside = risks.filter(r=>(r.currentStatus||"").includes("Outside")).length;
+  const complete= actions.filter(a=>a.status==="Complete").length;
+  const compPct = Math.round(complete/Math.max(actions.length,1)*100);
+  const uifw    = (data.uifwExpenditure && data.uifwExpenditure.summary && data.uifwExpenditure.summary.grandTotal) || 0;
+
+  return [
+    heading1("Conclusion & Way Forward"),
+    para(`The organisation's risk and control environment is being actively managed, but the overall posture remains elevated. ${outside} risk(s) sit outside tolerance and treatment delivery stands at ${compPct}%, with UIFW exposure of ${fmtM(uifw)} still to be resolved.`, { after:120 }),
+    para("Sustained improvement in the risk profile will depend on three priorities over the period ahead:", { after:80 }),
+    para("• Resolving outside-tolerance risks through fully resourced treatment plans with accountable owners and firm deadlines;", { after:60 }),
+    para("• Clearing overdue treatment actions and lifting completion above the 80% threshold that supports reasonable assurance; and", { after:60 }),
+    para("• Strengthening preventative controls in supply chain management and consequence management to reduce recurring UIFW and fraud exposure.", { after:120 }),
+    para("Management will continue to report progress against these priorities each quarter, and the assurance providers will track the closure of findings and the effectiveness of controls to provide independent confirmation that residual risk is being brought within the organisation's approved appetite.", { after:160 }),
+    para("Prepared by the BJMAPEX Risk Management Unit on behalf of LGSETA. This report is confidential and intended solely for the governance structure to which it is addressed.", { size:16, color:GREY, italic:true }),
+  ];
+}
+
 function buildExecutiveSummary(data) {
   const risks    = data.risks || [];
   const kris     = data.kris  || [];
@@ -763,6 +874,13 @@ function buildFraud(data) {
       ],
     }),
     new Paragraph({ spacing:{before:160,after:0}, children:[] }),
+    ...analysis(
+      `${cases.length} fraud or ethics matter(s) are on record, of which ${open} remain open, with total financial impact of ${fmtM(total)}. ` +
+      (open>0
+        ? `Open cases require timely investigation and consequence management; unresolved matters undermine the control environment and erode stakeholder confidence. `
+        : `All recorded matters have been resolved, which supports a sound ethical control position. `) +
+      `Sustained fraud prevention depends on active whistle-blowing channels, prompt investigation, and visible consequence management to deter recurrence.`
+    ),
     divider(),
   ];
 }
@@ -799,6 +917,13 @@ function buildBCM(data) {
       ],
     }) : para("No BCM incidents recorded for this period.", { color:GREY }),
     new Paragraph({ spacing:{before:160,after:0}, children:[] }),
+    ...analysis(
+      `Business impact analysis is ${pct(overview.biaComplete||0)} complete and ${overview.plansTested||0} of ${overview.plansTotal||0} continuity plans have been tested, with ${open} incident(s) currently open. ` +
+      ((overview.biaComplete||0)>=80
+        ? `Continuity preparedness is broadly mature, but readiness must be sustained through regular plan testing and post-incident learning. `
+        : `BIA completion below 80% leaves residual gaps in continuity preparedness that should be closed before the next cycle. `) +
+      `Untested plans and unresolved incidents are the principal resilience risks and warrant scheduled exercising against the organisation's recovery time objectives.`
+    ),
     divider(),
   ];
 }
@@ -832,6 +957,14 @@ function buildAPP(data) {
       ],
     }) : para("No APP items recorded for this period.", { color:GREY }),
     new Paragraph({ spacing:{before:160,after:0}, children:[] }),
+    ...analysis(
+      `Of ${items.length} performance indicator(s), ${onTrack} are on track or complete and ${behind} are behind target. ` +
+      (behind>0
+        ? `Indicators behind target place delivery of the Annual Performance Plan at risk and should be linked to corrective action with revised milestones. `
+        : `All indicators are tracking to plan, supporting achievement of the Annual Performance Plan for the period. `) +
+      `Performance against the APP is a direct measure of mandate delivery and feeds the organisation's accountability to the Executive Authority and Parliament.`
+    ),
+    divider(),
   ];
 }
 
@@ -892,8 +1025,35 @@ function buildCompliance(data) {
       ],
     }) : para("No upcoming or overdue compliance obligations.", { color:GREY }),
     new Paragraph({ spacing:{before:160,after:0}, children:[] }),
+    ...analysis(
+      `Across ${universe.length} legislative obligation(s), ${compliant} are compliant, ${partial} partially compliant and ${nonCompliant} non-compliant, with ${overdueItems.length} obligation(s) overdue. ` +
+      ((nonCompliant>0||overdueItems.length>0)
+        ? `Non-compliant and overdue obligations expose the organisation to regulatory sanction and adverse audit findings, and should be prioritised for remediation with clear accountability. `
+        : `The compliance position is sound, with no non-compliant or overdue obligations outstanding. `) +
+      `Maintaining compliance against the PFMA, Skills Development Act and King IV is foundational to a clean audit outcome and to the organisation's licence to operate.`
+    ),
     divider(),
   ];
+}
+
+function projectMetrics(p){
+  const budget = Number(p.budget)||0, spent = Number(p.spent)||0;
+  const mTotal = Number(p.milestonesTotal)||0, mDone = Number(p.milestonesComplete)||0;
+  const milestonePct = mTotal>0 ? Math.round((mDone/mTotal)*100) : 0;
+  const spentPct     = budget>0 ? Math.round((spent/budget)*100) : 0;
+  const start = new Date(p.startDate), end = new Date(p.endDate), now = new Date();
+  const validDates = !isNaN(start) && !isNaN(end) && end>start;
+  const elapsedPct = validDates ? Math.min(100, Math.max(0, Math.round(((now-start)/(end-start))*100))) : 0;
+  const daysRemaining = !isNaN(end) ? Math.ceil((end-now)/(1000*60*60*24)) : 0;
+  const spi = elapsedPct>0 ? +(milestonePct/elapsedPct).toFixed(2) : (milestonePct>0?1.5:1);
+  const cpi = spentPct>0 ? +(milestonePct/spentPct).toFixed(2) : (milestonePct>0?1.5:1);
+  const isComplete = (p.status||"").toLowerCase().includes("complete");
+  const schedStatus = isComplete ? "On Schedule" : spi>=0.95 ? "On Schedule" : spi>=0.75 ? "Slight Delay" : "Delayed";
+  const costStatus  = cpi>=0.85 ? "On/Under Budget" : cpi>=0.7 ? "Over Budget" : "Significantly Over";
+  const health = Math.round((Math.min(1,spi)*100*0.4) + (Math.min(1,cpi)*100*0.35) + (milestonePct*0.25));
+  const healthBand = isComplete ? "Healthy" : health>=75 ? "Healthy" : health>=55 ? "At Risk" : "Critical";
+  return { budget, spent, milestonePct, spentPct, elapsedPct, daysRemaining,
+           spi, cpi, schedStatus, costStatus, health, healthBand };
 }
 
 function buildProjects(data) {
@@ -909,11 +1069,23 @@ function buildProjects(data) {
     c.status==="Expiring Soon" || c.renewalStatus==="Review Required" || c.renewalStatus==="Do Not Renew" || Number(c.slaCompliance)<80
   );
 
+  // Performance metrics
+  const metrics = projects.map(p=>({ p, m:projectMetrics(p) }));
+  const onSchedule = metrics.filter(x=>x.m.schedStatus==="On Schedule").length;
+  const delayed    = metrics.filter(x=>x.m.schedStatus==="Delayed").length;
+  const overBudget = metrics.filter(x=>x.m.cpi<0.85).length;
+  const avgCompletion = metrics.length ? Math.round(metrics.reduce((s,x)=>s+x.m.milestonePct,0)/metrics.length) : 0;
+  const critical   = metrics.filter(x=>x.m.healthBand==="Critical").length;
+
   const W1 = [800,2800,1300,1100,1100,900,1026];
   const W2 = [800,2600,2000,1100,900,1626];
+  const W3 = [800,2400,900,1500,900,1300,1226];   // performance table
+  const colHealth = b => b==="Healthy"?GREEN : b==="At Risk"?AMBER : RED;
+  const colSpi    = s => s>=0.95?GREEN : s>=0.75?AMBER : RED;
+  const colCpi    = c => c>=0.85?GREEN : c>=0.7?AMBER : RED;
 
   return [
-    heading1("9. Project & Contract Risk"),
+    heading1("9. Project & Contract Performance"),
     kpiTable([
       ["Active Projects",    String(activeProj),    "",                NAVY  ],
       ["High Risk Projects", String(highRiskProj),  "",                 highRiskProj>0?RED:GREEN ],
@@ -923,6 +1095,39 @@ function buildProjects(data) {
     ]),
     new Paragraph({ spacing:{before:160,after:160}, children:[] }),
 
+    heading2("Portfolio Efficiency Summary"),
+    kpiTable([
+      ["On Schedule",     String(onSchedule),       "SPI ≥ 0.95",      onSchedule>0?GREEN:GREY ],
+      ["Delayed",         String(delayed),           "SPI < 0.75",      delayed>0?RED:GREEN ],
+      ["Over Budget",     String(overBudget),        "CPI < 0.85",      overBudget>0?RED:GREEN ],
+      ["Avg Completion",  `${avgCompletion}%`,       "milestones",      BLUE ],
+      ["Critical Health", String(critical),          "",                critical>0?RED:GREEN ],
+    ]),
+    new Paragraph({ spacing:{before:160,after:160}, children:[] }),
+
+    heading2("Project Efficiency Metrics (SPI / CPI / Health)"),
+    projects.length>0 ? new Table({
+      width:{ size:9026, type:WidthType.DXA }, columnWidths:W3,
+      rows:[
+        headerRow(["ID","Project","SPI","Schedule","CPI","Cost Status","Health"], W3),
+        ...metrics.map(({p,m}) => new TableRow({ children:[
+          cell(p.id,           { width:W3[0], size:16, color:BLUE, bold:true }),
+          cell(p.name,          { width:W3[1], size:16 }),
+          cell(m.spi.toFixed(2),{ width:W3[2], size:16, align:AlignmentType.CENTER, bold:true, color:colSpi(m.spi) }),
+          cell(m.schedStatus,   { width:W3[3], size:16, color:colSpi(m.spi) }),
+          cell(m.cpi.toFixed(2),{ width:W3[4], size:16, align:AlignmentType.CENTER, bold:true, color:colCpi(m.cpi) }),
+          cell(m.costStatus,    { width:W3[5], size:16, color:colCpi(m.cpi) }),
+          cell(`${m.healthBand} (${m.health})`, { width:W3[6], size:16, bold:true, color:colHealth(m.healthBand) }),
+        ]})),
+      ],
+    }) : para("No projects recorded for this period.", { color:GREY }),
+    ...analysis(
+      `Of ${projects.length} project(s), ${onSchedule} are on schedule, ${delayed} delayed and ${overBudget} tracking over budget. ` +
+      `Average milestone completion is ${avgCompletion}%. ${critical} project(s) are in critical health and require management escalation. ` +
+      `SPI measures schedule efficiency (milestones delivered vs time elapsed); CPI measures cost efficiency (work delivered vs budget spent).`
+    ),
+
+    new Paragraph({ spacing:{before:160,after:0}, children:[] }),
     heading2("Project Portfolio"),
     projects.length>0 ? new Table({
       width:{ size:9026, type:WidthType.DXA }, columnWidths:W1,
@@ -1103,6 +1308,13 @@ function buildPolicy(data) {
       ],
     }) : para("No processes recorded.", { color:GREY }),
     new Paragraph({ spacing:{before:160,after:0}, children:[] }),
+    ...analysis(
+      `The policy and process library holds ${policies.length} policy(ies), of which ${published} are published, ${draft} in draft and ${underRev} under review, with ${overdueRev} item(s) overdue for review. ` +
+      (overdueRev>0
+        ? `Policies overdue for review may no longer reflect current legislation or operating practice and should be prioritised for refresh and re-approval. `
+        : `The library is current, with no published items overdue for review. `) +
+      `A maintained, approved and accessible policy framework underpins consistent decision-making and provides the control baseline against which assurance is performed.`
+    ),
     divider(),
   ];
 }
@@ -1200,6 +1412,15 @@ function buildInternalAudit(data) {
       ],
     }) : para("No follow-up items recorded.", { color:GREY }),
     new Paragraph({ spacing:{before:160,after:0}, children:[] }),
+    ...analysis(
+      `Internal audit has recorded ${totalFindings} finding(s), with ${openFindings} open (${criticalOpen} critical) and ${resolved} resolved; ${overdueFollowUp} follow-up item(s) are overdue and ${repeatFindings} are repeat finding(s). ` +
+      ((criticalOpen>0||overdueFollowUp>0)
+        ? `Critical open findings and overdue follow-ups indicate control weaknesses that remain unaddressed and should be escalated to the Audit & Risk Committee for tracking to closure. `
+        : `Findings are being closed in line with management commitments, supporting a positive assurance trajectory. `) +
+      (repeatFindings>0
+        ? `Repeat findings are of particular concern, as they signal that prior remediation has not held and root causes may not have been resolved.`
+        : `The absence of repeat findings suggests remediation is addressing root causes effectively.`)
+    ),
     divider(),
   ];
 }
@@ -1210,19 +1431,19 @@ const REPORT_CONFIGS = {
     title:    "EXCOM Risk Report",
     subtitle: "Executive Committee — Quarterly GRC Update",
     audience: "Executive Committee",
-    sections: ["summary","toprisks","oprisks","treatments","uifw"],
+    sections: ["intro","summary","heatmap","toprisks","oprisks","treatments","uifw","projects","conclusion"],
   },
   arc: {
     title:    "ARC Risk Report",
     subtitle: "Audit & Risk Committee — Quarterly GRC Report",
     audience: "Audit & Risk Committee",
-    sections: ["summary","toprisks","oprisks","treatments","uifw","fraud","bcm","compliance","projects","iam","policy","internalaudit"],
+    sections: ["intro","summary","heatmap","toprisks","oprisks","treatments","uifw","fraud","bcm","compliance","projects","iam","policy","internalaudit","conclusion"],
   },
   board: {
     title:    "Board GRC Report",
     subtitle: "Board of Directors — Quarterly GRC Overview",
     audience: "Board of Directors",
-    sections: ["summary","toprisks","oprisks","treatments","uifw","fraud","bcm","app","compliance","projects","iam","policy","internalaudit"],
+    sections: ["intro","summary","heatmap","toprisks","oprisks","treatments","uifw","fraud","bcm","app","compliance","projects","iam","policy","internalaudit","conclusion"],
   },
 };
 
@@ -1232,7 +1453,9 @@ async function generateReport(type, data) {
   if (!config) throw new Error(`Unknown report type: ${type}`);
 
   const sectionBuilders = {
+    intro:      (d)=>buildIntroduction(d, config),
     summary:    buildExecutiveSummary,
+    heatmap:    buildHeatmap,
     toprisks:   buildTopRisks,
     treatments: buildTreatmentActions,
     uifw:       buildUIFW,
@@ -1245,6 +1468,7 @@ async function generateReport(type, data) {
     policy:        buildPolicy,
     internalaudit: buildInternalAudit,
     oprisks:       buildOperationalRisks,
+    conclusion:    buildConclusion,
   };
 
   const children = [
