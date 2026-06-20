@@ -1084,8 +1084,11 @@ function Opportunities() {
   // Derive impact/probability from each opp (matching the register logic)
   const oppCell = {};
   opps.forEach(o=>{
-    const impact = o.impact || Math.min(5, Math.max(1, Math.round((Number(o.score)||0)/5)));
-    const prob   = o.probability || Math.min(5, Math.max(1, Math.round((Number(o.score)||0)/impact)||3));
+    const score = Number(o.score)||0;
+    let impact = Number(o.impact) || Math.min(5, Math.max(1, Math.round(score/5)));
+    impact = Math.min(5, Math.max(1, impact));
+    let prob = Number(o.probability) || Math.min(5, Math.max(1, Math.round(score/impact)||3));
+    prob = Math.min(5, Math.max(1, prob));
     const key = `${impactBand(impact)}|${probBand(prob)}`;
     (oppCell[key]=oppCell[key]||[]).push(o);
   });
@@ -1132,8 +1135,9 @@ function Opportunities() {
             cellW={108} cellH={62} rowLabelW={70}
             cell={(imp,prob)=>{
               const list = oppCell[`${imp}|${prob}`]||[];
-              const sc = repScore[imp][prob];
-              const label = list.length===0 ? null : (list.length===1 ? list[0].name.slice(0,24) : `${list.length} opportunities`);
+              const sc = (repScore[imp] && repScore[imp][prob]) || 0;
+              const firstName = list[0] && (list[0].name || list[0].title || "Opportunity");
+              const label = list.length===0 ? null : (list.length===1 ? String(firstName).slice(0,24) : `${list.length} opportunities`);
               return { value:list.length>0?list.length:sc, color:heatColor(sc), label };
             }}
           />
@@ -1186,13 +1190,16 @@ function Opportunities() {
           headers={["Opportunity","Category","Impact","Probability","Score","Appetite","Strategy","Est. Value","Realised","Status"]}
           rows={opps.map(o=>{
             // Derive impact/probability from score if not explicitly set
-            const impact = o.impact || Math.min(5, Math.max(1, Math.round((Number(o.score)||0)/5)));
-            const prob   = o.probability || Math.min(5, Math.max(1, Math.round((Number(o.score)||0)/impact)||3));
-            const appetite = o.appetite || (o.score>=18?"Pursue":o.score>=14?"Enhance":o.score>=10?"Pursue":"Exploit");
+            const score = Number(o.score)||0;
+            let impact = Number(o.impact) || Math.min(5, Math.max(1, Math.round(score/5)));
+            impact = Math.min(5, Math.max(1, impact));
+            let prob = Number(o.probability) || Math.min(5, Math.max(1, Math.round(score/impact)||3));
+            prob = Math.min(5, Math.max(1, prob));
+            const appetite = o.appetite || (score>=18?"Pursue":score>=14?"Enhance":score>=10?"Pursue":"Exploit");
             const realised = o.realised!=null ? o.realised : (o.status==="Active"?parseValue(o)*0.25:0);
             const appColor = appetite==="Pursue"?"green":appetite==="Enhance"?"amber":"blue";
             return [
-              <span style={{ fontWeight:700, color:C.text }}>{o.name}</span>,
+              <span style={{ fontWeight:700, color:C.text }}>{o.name||o.title||"—"}</span>,
               <span style={{ color:C.muted, fontSize:"0.78rem" }}>{o.category||"Strategic"}</span>,
               <span style={{ color:C.text, fontWeight:700 }}>{impact}</span>,
               <span style={{ color:C.text, fontWeight:700 }}>{prob}</span>,
