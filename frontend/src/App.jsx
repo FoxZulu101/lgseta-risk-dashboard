@@ -4627,8 +4627,8 @@ function ReportsTab() {
       audience: "Executive Committee",
       color:    C.blue,
       icon:     "🏛",
-      sections: ["Executive Summary & KPIs","Top 10 Strategic Risks","Operational Risk Register","Treatment Action Status","UIFW Exposure Summary"],
-      desc:     "High-level GRC overview for the Executive Committee. Focuses on key metrics, critical risks, and action status.",
+      sections: ["Executive Summary & KPIs","Top 10 Strategic Risks","Operational Risk Register","Treatment Action Status","UIFW Exposure Summary","Project & Contract Performance"],
+      desc:     "High-level GRC overview for the Executive Committee. Focuses on key metrics, critical risks, action status and project/contract performance.",
     },
     {
       type:     "arc",
@@ -4636,7 +4636,7 @@ function ReportsTab() {
       audience: "Audit & Risk Committee",
       color:    C.amber,
       icon:     "⚖",
-      sections: ["Executive Summary & KPIs","Top 10 Strategic Risks","Operational Risk Register","Treatment Action Status","UIFW Exposure","Fraud & Ethics Register","BCM Status","Compliance","Project & Contract Risk","Identity & Access Management","Policy & Process Manual","Internal Audit"],
+      sections: ["Executive Summary & KPIs","Top 10 Strategic Risks","Operational Risk Register","Treatment Action Status","UIFW Exposure","Fraud & Ethics Register","BCM Status","Compliance","Project & Contract Performance","Identity & Access Management","Policy & Process Manual","Internal Audit"],
       desc:     "Detailed GRC report for the Audit & Risk Committee. Includes fraud, BCM and full UIFW analysis.",
     },
     {
@@ -4645,7 +4645,7 @@ function ReportsTab() {
       audience: "Board of Directors",
       color:    C.purple,
       icon:     "🎯",
-      sections: ["Executive Summary & KPIs","Top 10 Strategic Risks","Operational Risk Register","Treatment Action Status","UIFW Exposure","Fraud & Ethics Register","BCM Status","APP Alignment","Compliance","Project & Contract Risk","Identity & Access Management","Policy & Process Manual","Internal Audit"],
+      sections: ["Executive Summary & KPIs","Top 10 Strategic Risks","Operational Risk Register","Treatment Action Status","UIFW Exposure","Fraud & Ethics Register","BCM Status","APP Alignment","Compliance","Project & Contract Performance","Identity & Access Management","Policy & Process Manual","Internal Audit"],
       desc:     "Full GRC overview for the Board. All sections included with APP performance alignment.",
     },
   ];
@@ -5273,11 +5273,57 @@ const STATIC_PROJECTS = {
   ],
 };
 
+// ─── PROJECTS & CONTRACTS — METRICS HELPERS ───────────────────────────────────
+// Compute schedule/cost performance + health for one project. Pure + defensive
+// so missing or malformed API fields can never crash the module.
+function projectMetrics(p){
+  const budget   = Number(p.budget)||0;
+  const spent    = Number(p.spent)||0;
+  const mTotal   = Number(p.milestonesTotal)||0;
+  const mDone    = Number(p.milestonesComplete)||0;
+  const milestonePct = mTotal>0 ? Math.round((mDone/mTotal)*100) : 0;
+  const spentPct     = budget>0 ? Math.round((spent/budget)*100) : 0;
+
+  // Timeline elapsed %
+  const start = new Date(p.startDate), end = new Date(p.endDate), now = new Date();
+  const validDates = !isNaN(start) && !isNaN(end) && end>start;
+  const elapsedPct = validDates
+    ? Math.min(100, Math.max(0, Math.round(((now-start)/(end-start))*100)))
+    : 0;
+  const daysRemaining = !isNaN(end) ? Math.ceil((end-now)/(1000*60*60*24)) : 0;
+
+  // SPI = work done % ÷ time elapsed %  (>=1 = ahead/on schedule)
+  const spi = elapsedPct>0 ? +(milestonePct/elapsedPct).toFixed(2) : (milestonePct>0?1.5:1);
+  // CPI = work done % ÷ budget spent %  (>=1 = under budget for work done)
+  const cpi = spentPct>0 ? +(milestonePct/spentPct).toFixed(2) : (milestonePct>0?1.5:1);
+
+  const isComplete = (p.status||"").toLowerCase().includes("complete");
+  const schedStatus = isComplete ? "On Schedule" : spi>=0.95 ? "On Schedule" : spi>=0.75 ? "Slight Delay" : "Delayed";
+  const costStatus  = cpi>=0.85 ? "On/Under Budget" : cpi>=0.7 ? "Over Budget" : "Significantly Over";
+
+  // Composite health 0-100: blend of schedule, cost and milestone progress
+  const spiScore  = Math.min(1, spi) * 100;
+  const cpiScore  = Math.min(1, cpi) * 100;
+  const health    = Math.round((spiScore*0.4) + (cpiScore*0.35) + (milestonePct*0.25));
+  const healthBand = isComplete ? "Healthy" : health>=75 ? "Healthy" : health>=55 ? "At Risk" : "Critical";
+
+  return { budget, spent, mTotal, mDone, milestonePct, spentPct, elapsedPct,
+           daysRemaining, spi, cpi, schedStatus, costStatus, health, healthBand, isComplete };
+}
+const healthColor = b => b==="Healthy"?C.green : b==="At Risk"?C.amber : C.red;
+const healthDot   = b => b==="Healthy"?"🟢" : b==="At Risk"?"🟡" : "🔴";
+const spiColor    = s => s>=0.95?C.green : s>=0.75?C.amber : C.red;
+const cpiColor    = c => c>=0.85?C.green : c>=0.7?C.amber : C.red;
+
 // ─── PROJECTS & CONTRACTS VIEW MODULE ─────────────────────────────────────────
 function ProjectsModule() {
-  const [sub, setSub]       = useState("projects");
-  const [search, setSearch] = useState("");
-  const [data, setData]     = useState(STATIC_PROJECTS);
+  const [sub, setSub]           = useState("portfolio");
+  const [search, setSearch]     = useState("");
+  const [data, setData]         = useState(STATIC_PROJECTS);
+  const [expanded, setExpanded] = useState(null);   // Performance tab drill-down
+  const [drill, setDrill]       = useState(null);   // Portfolio scorecard drill-down
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [riskFilter, setRiskFilter]     = useState("All");
 
   useEffect(()=>{
     fetch(`${API}/api/dashboard`).then(r=>r.json()).then(d=>{
@@ -5285,8 +5331,9 @@ function ProjectsModule() {
     }).catch(()=>{});
   },[]);
 
-  const projects = data.projects  || [];
+  const projects  = data.projects  || [];
   const contracts = data.contracts || [];
+  const metrics   = projects.map(p=>({ p, m:projectMetrics(p) }));
 
   const totalBudget   = projects.reduce((s,p)=>s+(Number(p.budget)||0),0);
   const totalSpent    = projects.reduce((s,p)=>s+(Number(p.spent)||0),0);
@@ -5306,14 +5353,39 @@ function ProjectsModule() {
 
   const filtered = arr => arr.filter(r=>JSON.stringify(r).toLowerCase().includes(search.toLowerCase()));
 
+  // Portfolio status breakdown
+  const STATUS_ORDER = [
+    ["In Progress", C.blue],["Planning", C.purple],["Complete", C.green],
+    ["On Hold", C.amber],["Cancelled", C.red],
+  ];
+  const statusCounts = STATUS_ORDER.map(([name,color])=>({
+    name, color, value: projects.filter(p=>(p.status||"")===name).length,
+  }));
+  const donutSegments = statusCounts.filter(s=>s.value>0);
+
+  // Performance efficiency summary
+  const onSchedule  = metrics.filter(x=>x.m.schedStatus==="On Schedule").length;
+  const slightDelay = metrics.filter(x=>x.m.schedStatus==="Slight Delay").length;
+  const delayed     = metrics.filter(x=>x.m.schedStatus==="Delayed").length;
+  const overBudget  = metrics.filter(x=>x.m.cpi<0.85).length;
+  const avgCompletion = metrics.length ? Math.round(metrics.reduce((s,x)=>s+x.m.milestonePct,0)/metrics.length) : 0;
+
+  const TABS = [
+    ["portfolio","📊 Portfolio Overview"],
+    ["performance","⚡ Performance & Efficiency"],
+    ["projects","📁 Project Register"],
+    ["contracts","📜 Contract Register"],
+  ];
+
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:"0.5rem" }}>
         <div>
-          <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Project & Contract Risk</h1>
-          <p style={{ color:C.muted, fontSize:"0.82rem", margin:"2px 0 0" }}>Project Portfolio · Contract & Commitment Register — Q2 2026/27</p>
+          <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Project & Contract Management</h1>
+          <p style={{ color:C.muted, fontSize:"0.82rem", margin:"2px 0 0" }}>Portfolio · Performance · Project & Contract Registers — Q2 2026/27</p>
         </div>
-        <input placeholder="Search projects & contracts…" value={search} onChange={e=>setSearch(e.target.value)} style={{ ...inputSt, width:240 }}/>
+        {(sub==="projects"||sub==="contracts") &&
+          <input placeholder="Search…" value={search} onChange={e=>setSearch(e.target.value)} style={{ ...inputSt, width:240 }}/>}
       </div>
 
       <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:"0.75rem" }}>
@@ -5332,8 +5404,8 @@ function ProjectsModule() {
         ))}
       </div>
 
-      <div style={{ display:"flex", borderBottom:`1px solid ${C.border}` }}>
-        {[["projects","📁 Project Portfolio"],["contracts","📜 Contract & Commitment Register"]].map(([id,label])=>(
+      <div style={{ display:"flex", borderBottom:`1px solid ${C.border}`, flexWrap:"wrap" }}>
+        {TABS.map(([id,label])=>(
           <button key={id} onClick={()=>setSub(id)}
             style={{ padding:"0.5rem 1.1rem", border:"none", background:"transparent", cursor:"pointer",
               fontSize:"0.82rem", fontWeight:600, color:sub===id?C.text:C.muted,
@@ -5343,39 +5415,214 @@ function ProjectsModule() {
         ))}
       </div>
 
+      {/* ═══ TAB 1 — PORTFOLIO OVERVIEW ═══ */}
+      {sub==="portfolio" && (
+        <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1.3fr", gap:"1rem" }}>
+            <Card>
+              <SectionTitle>Project Status Breakdown</SectionTitle>
+              <div style={{ display:"flex", gap:"1rem", alignItems:"center", flexWrap:"wrap" }}>
+                <DonutChart segments={donutSegments} size={170} thickness={24}
+                  centerValue={projects.length} centerLabel="projects"/>
+                <div style={{ display:"flex", flexDirection:"column", gap:"0.55rem", flex:1, minWidth:160 }}>
+                  {statusCounts.map(s=>(
+                    <div key={s.name}>
+                      <div style={{ display:"flex", justifyContent:"space-between", marginBottom:2 }}>
+                        <span style={{ color:C.text, fontSize:"0.78rem" }}>{s.name}</span>
+                        <span style={{ color:s.color, fontSize:"0.78rem", fontWeight:700 }}>{s.value}</span>
+                      </div>
+                      <ProgressBar value={projects.length?Math.round((s.value/projects.length)*100):0} color={s.color}/>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Card>
+
+            <Card>
+              <SectionTitle>Project Health Scorecard</SectionTitle>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))", gap:"0.6rem" }}>
+                {metrics.map(({p,m})=>(
+                  <button key={p.id} onClick={()=>setDrill(drill===p.id?null:p.id)}
+                    style={{ textAlign:"left", cursor:"pointer", background:drill===p.id?"rgba(88,166,255,0.10)":C.surface,
+                      border:`1px solid ${drill===p.id?C.blue:C.border}`, borderRadius:8, padding:"0.6rem 0.7rem" }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                      <span style={{ color:C.blue, fontSize:"0.72rem", fontWeight:700 }}>{p.id}</span>
+                      <span style={{ fontSize:"0.95rem" }}>{healthDot(m.healthBand)}</span>
+                    </div>
+                    <div style={{ color:C.text, fontSize:"0.72rem", fontWeight:600, margin:"3px 0", lineHeight:1.25,
+                      overflow:"hidden", textOverflow:"ellipsis", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{p.name}</div>
+                    <div style={{ color:healthColor(m.healthBand), fontSize:"0.7rem", fontWeight:700 }}>{m.healthBand} · {m.health}</div>
+                  </button>
+                ))}
+              </div>
+              {drill && (()=>{ const x=metrics.find(z=>z.p.id===drill); if(!x) return null; const {p,m}=x; return (
+                <div style={{ marginTop:"0.85rem", background:C.surface, border:`1px solid ${C.blue}`, borderRadius:8, padding:"0.85rem" }}>
+                  <div style={{ color:C.text, fontWeight:700, fontSize:"0.85rem", marginBottom:6 }}>{healthDot(m.healthBand)} {p.id} — {p.name}</div>
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"0.5rem" }}>
+                    {[["SPI",m.spi,spiColor(m.spi)],["CPI",m.cpi,cpiColor(m.cpi)],
+                      ["Milestones",`${m.milestonePct}%`,C.blue],["Budget Spent",`${m.spentPct}%`,m.spentPct>90?C.red:C.amber]].map(([l,v,c])=>(
+                      <div key={l} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:6, padding:"0.5rem" }}>
+                        <div style={{ color:C.muted, fontSize:"0.62rem", textTransform:"uppercase" }}>{l}</div>
+                        <div style={{ color:c, fontSize:"1.05rem", fontWeight:800 }}>{v}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ marginTop:8 }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", fontSize:"0.7rem", color:C.muted, marginBottom:2 }}>
+                      <span>Timeline {m.elapsedPct}% elapsed</span>
+                      <span style={{ color:m.daysRemaining<0?C.red:C.muted }}>{m.daysRemaining<0?`${Math.abs(m.daysRemaining)} days overdue`:`${m.daysRemaining} days remaining`}</span>
+                    </div>
+                    <ProgressBar value={m.elapsedPct} color={m.elapsedPct>m.milestonePct+15?C.red:C.green}/>
+                  </div>
+                </div>
+              ); })()}
+            </Card>
+          </div>
+
+          <Card>
+            <SectionTitle>Budget vs Spend by Project</SectionTitle>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={projects.map(p=>({ name:p.id, Budget:+(Number(p.budget)/1e6).toFixed(2), Spent:+(Number(p.spent)/1e6).toFixed(2) }))}>
+                <CartesianGrid strokeDasharray="3 3" stroke={C.border}/>
+                <XAxis dataKey="name" stroke={C.muted} tick={{ fill:C.muted, fontSize:11 }}/>
+                <YAxis stroke={C.muted} tick={{ fill:C.muted, fontSize:11 }} label={{ value:"R millions", angle:-90, position:"insideLeft", fill:C.muted, fontSize:11 }}/>
+                <Tooltip contentStyle={{ background:C.card, border:`1px solid ${C.border}`, color:C.text, fontSize:"0.78rem" }}/>
+                <Legend wrapperStyle={{ fontSize:"0.75rem" }}/>
+                <Bar dataKey="Budget" fill={C.blue}  radius={[3,3,0,0]}/>
+                <Bar dataKey="Spent"  fill={C.amber} radius={[3,3,0,0]}/>
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+
+          <Card>
+            <SectionTitle>Contract Performance Summary</SectionTitle>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"0.85rem" }}>
+              {[
+                ["Total Contracts", contracts.length, C.cyan],
+                ["Avg SLA Compliance", `${contracts.length?Math.round(contracts.reduce((s,c)=>s+(Number(c.slaCompliance)||0),0)/contracts.length):0}%`, C.green],
+                ["Total Contract Value", `R${(totalContractValue/1e6).toFixed(1)}M`, C.purple],
+              ].map(([l,v,c])=>(
+                <div key={l} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:"0.85rem", borderLeft:`3px solid ${c}` }}>
+                  <div style={{ color:C.muted, fontSize:"0.68rem", textTransform:"uppercase", fontWeight:700 }}>{l}</div>
+                  <div style={{ color:c, fontSize:"1.4rem", fontWeight:800 }}>{v}</div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* ═══ TAB 2 — PERFORMANCE & EFFICIENCY ═══ */}
+      {sub==="performance" && (
+        <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:"0.75rem" }}>
+            {[
+              ["On Schedule", onSchedule, C.green],
+              ["Slight Delay", slightDelay, C.amber],
+              ["Delayed", delayed, C.red],
+              ["Avg Completion", `${avgCompletion}%`, C.blue],
+              ["Over Budget", overBudget, overBudget>0?C.red:C.green],
+            ].map(([l,v,c])=>(
+              <div key={l} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8, padding:"0.75rem 1rem", borderTop:`3px solid ${c}` }}>
+                <div style={{ color:C.muted, fontSize:"0.64rem", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em" }}>{l}</div>
+                <div style={{ color:c, fontSize:"1.5rem", fontWeight:800 }}>{v}</div>
+              </div>
+            ))}
+          </div>
+
+          <Card>
+            <SectionTitle>Project Efficiency Metrics</SectionTitle>
+            <Table
+              headers={["ID","Project","SPI","Schedule","CPI","Cost","Milestone %","Budget Spent %","Days Remaining","Health"]}
+              rows={metrics.map(({p,m})=>[
+                <button onClick={()=>setExpanded(expanded===p.id?null:p.id)}
+                  style={{ background:"transparent", border:"none", color:C.blue, fontWeight:700, fontSize:"0.75rem", cursor:"pointer", padding:0 }}>{p.id}</button>,
+                <span style={{ color:C.text, fontSize:"0.78rem" }}>{p.name}</span>,
+                <span style={{ color:spiColor(m.spi), fontWeight:800 }}>{m.spi.toFixed(2)}</span>,
+                <span style={{ color:spiColor(m.spi), fontSize:"0.74rem", fontWeight:600 }}>{m.schedStatus}</span>,
+                <span style={{ color:cpiColor(m.cpi), fontWeight:800 }}>{m.cpi.toFixed(2)}</span>,
+                <span style={{ color:cpiColor(m.cpi), fontSize:"0.74rem", fontWeight:600 }}>{m.costStatus}</span>,
+                <div style={{ minWidth:80 }}><ProgressBar value={m.milestonePct} color={m.milestonePct>=80?C.green:m.milestonePct>=40?C.amber:C.red}/>
+                  <div style={{ fontSize:"0.68rem", color:C.muted, marginTop:1 }}>{m.milestonePct}%</div></div>,
+                <span style={{ color:m.spentPct>90?C.red:m.spentPct>70?C.amber:C.green, fontWeight:700 }}>{m.spentPct}%</span>,
+                <span style={{ color:m.daysRemaining<0?C.red:m.daysRemaining<30?C.amber:C.text, fontWeight:m.daysRemaining<30?700:400 }}>
+                  {m.daysRemaining<0?`${Math.abs(m.daysRemaining)} overdue`:m.daysRemaining}</span>,
+                <span style={{ color:healthColor(m.healthBand), fontWeight:800 }}>{healthDot(m.healthBand)} {m.health}</span>,
+              ])}
+            />
+            {expanded && (()=>{ const x=metrics.find(z=>z.p.id===expanded); if(!x) return null; const {p,m}=x; return (
+              <div style={{ marginTop:"0.85rem", background:C.surface, border:`1px solid ${C.blue}`, borderRadius:8, padding:"0.9rem" }}>
+                <div style={{ color:C.text, fontWeight:700, fontSize:"0.88rem", marginBottom:8 }}>{healthDot(m.healthBand)} {p.id} — {p.name}</div>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"0.55rem" }}>
+                  {[["SPI",m.spi.toFixed(2),spiColor(m.spi)],["CPI",m.cpi.toFixed(2),cpiColor(m.cpi)],
+                    ["Budget Spent",`${m.spentPct}%`,m.spentPct>90?C.red:C.amber],["Milestone %",`${m.milestonePct}%`,C.blue]].map(([l,v,c])=>(
+                    <div key={l} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:6, padding:"0.55rem" }}>
+                      <div style={{ color:C.muted, fontSize:"0.62rem", textTransform:"uppercase" }}>{l}</div>
+                      <div style={{ color:c, fontSize:"1.1rem", fontWeight:800 }}>{v}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop:10 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:"0.72rem", color:C.muted, marginBottom:3 }}>
+                    <span>Timeline — {m.elapsedPct}% elapsed vs {m.milestonePct}% delivered</span>
+                    <span style={{ color:m.daysRemaining<0?C.red:C.muted, fontWeight:600 }}>{m.daysRemaining<0?`${Math.abs(m.daysRemaining)} days overdue`:`${m.daysRemaining} days remaining`}</span>
+                  </div>
+                  <ProgressBar value={m.elapsedPct} color={m.elapsedPct>m.milestonePct+15?C.red:C.green}/>
+                </div>
+              </div>
+            ); })()}
+          </Card>
+        </div>
+      )}
+
+      {/* ═══ TAB 3 — PROJECT REGISTER ═══ */}
       {sub==="projects" && (
         <Card>
+          <div style={{ display:"flex", gap:"0.6rem", marginBottom:"0.75rem", flexWrap:"wrap" }}>
+            <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{ ...inputSt, width:"auto" }}>
+              {["All","In Progress","Planning","Complete","On Hold","Cancelled"].map(o=><option key={o} value={o}>{o==="All"?"All Statuses":o}</option>)}
+            </select>
+            <select value={riskFilter} onChange={e=>setRiskFilter(e.target.value)} style={{ ...inputSt, width:"auto" }}>
+              {["All","High","Medium","Low"].map(o=><option key={o} value={o}>{o==="All"?"All Risk Levels":o+" Risk"}</option>)}
+            </select>
+          </div>
           <Table
             headers={["ID","Project","Type","Manager","Budget","Spent","Progress","Risk","Status"]}
-            rows={filtered(projects).map(p=>{
-              const pct = Math.round((p.milestonesComplete/Math.max(p.milestonesTotal,1))*100);
-              const spentPct = Math.round((Number(p.spent)/Math.max(Number(p.budget),1))*100);
-              return [
-                <span style={{ color:C.blue, fontWeight:700, fontSize:"0.75rem" }}>{p.id}</span>,
-                <div><div style={{ color:C.text, fontWeight:600, fontSize:"0.82rem" }}>{p.name}</div>
-                  <div style={{ color:C.muted, fontSize:"0.7rem" }}>{p.department}</div></div>,
-                <Badge label={p.type} color={p.type==="Discretionary Grant"?"amber":"blue"}/>,
-                p.manager,
-                <span style={{ color:C.text, fontWeight:700 }}>R{(Number(p.budget)/1e6).toFixed(1)}M</span>,
-                <span style={{ color:spentPct>90?C.red:C.muted }}>R{(Number(p.spent)/1e6).toFixed(1)}M ({spentPct}%)</span>,
-                <div style={{ minWidth:90 }}>
-                  <div style={{ fontSize:"0.72rem", color:C.muted, marginBottom:2 }}>{p.milestonesComplete}/{p.milestonesTotal} milestones</div>
-                  <ProgressBar value={pct} color={pct>=80?C.green:pct>=40?C.amber:C.red}/>
-                </div>,
-                <Badge label={p.riskRating} color={p.riskRating==="High"?"red":p.riskRating==="Medium"?"amber":"green"}/>,
-                <span style={{ color:sc(p.status), fontWeight:700, fontSize:"0.8rem" }}>{p.status}</span>,
-              ];
-            })}
+            rows={filtered(projects)
+              .filter(p=>statusFilter==="All"||p.status===statusFilter)
+              .filter(p=>riskFilter==="All"||p.riskRating===riskFilter)
+              .map(p=>{
+                const pct = Math.round(((Number(p.milestonesComplete)||0)/Math.max(Number(p.milestonesTotal)||0,1))*100);
+                const spentPct = Math.round((Number(p.spent)/Math.max(Number(p.budget),1))*100);
+                return [
+                  <span style={{ color:C.blue, fontWeight:700, fontSize:"0.75rem" }}>{p.id}</span>,
+                  <div><div style={{ color:C.text, fontWeight:600, fontSize:"0.82rem" }}>{p.name}</div>
+                    <div style={{ color:C.muted, fontSize:"0.7rem" }}>{p.department}</div></div>,
+                  <Badge label={p.type} color={p.type==="Discretionary Grant"?"amber":"blue"}/>,
+                  p.manager,
+                  <span style={{ color:C.text, fontWeight:700 }}>R{(Number(p.budget)/1e6).toFixed(1)}M</span>,
+                  <span style={{ color:spentPct>90?C.red:C.muted }}>R{(Number(p.spent)/1e6).toFixed(1)}M ({spentPct}%)</span>,
+                  <div style={{ minWidth:90 }}>
+                    <div style={{ fontSize:"0.72rem", color:C.muted, marginBottom:2 }}>{p.milestonesComplete}/{p.milestonesTotal} milestones</div>
+                    <ProgressBar value={pct} color={pct>=80?C.green:pct>=40?C.amber:C.red}/>
+                  </div>,
+                  <Badge label={p.riskRating} color={p.riskRating==="High"?"red":p.riskRating==="Medium"?"amber":"green"}/>,
+                  <span style={{ color:sc(p.status), fontWeight:700, fontSize:"0.8rem" }}>{p.status}</span>,
+                ];
+              })}
           />
         </Card>
       )}
 
+      {/* ═══ TAB 4 — CONTRACT REGISTER ═══ */}
       {sub==="contracts" && (
         <Card>
           <Table
-            headers={["ID","Contract","Supplier","Value","End Date","SLA %","Risk","Renewal Status"]}
+            headers={["ID","Contract","Supplier","Value","End Date","SLA Compliance","Risk","Renewal Status"]}
             rows={filtered(contracts).map(c=>{
               const daysLeft = Math.ceil((new Date(c.endDate)-new Date())/(1000*60*60*24));
+              const expired  = !isNaN(daysLeft) && daysLeft<0;
+              const sla = Number(c.slaCompliance)||0;
               return [
                 <span style={{ color:C.cyan, fontWeight:700, fontSize:"0.75rem" }}>{c.id}</span>,
                 <div><div style={{ color:C.text, fontWeight:600, fontSize:"0.82rem" }}>{c.title}</div>
@@ -5383,10 +5630,15 @@ function ProjectsModule() {
                 c.supplier,
                 <span style={{ color:C.text, fontWeight:700 }}>R{(Number(c.value)/1e6).toFixed(1)}M</span>,
                 <div>
-                  <div style={{ color:daysLeft<90?C.amber:C.text, fontWeight:daysLeft<90?700:400 }}>{c.endDate}</div>
-                  {daysLeft>0 && daysLeft<180 && <div style={{ color:daysLeft<90?C.red:C.amber, fontSize:"0.7rem" }}>{daysLeft} days left</div>}
+                  <div style={{ color:expired?C.red:daysLeft<90?C.amber:C.text, fontWeight:(expired||daysLeft<90)?700:400 }}>{c.endDate}</div>
+                  {expired
+                    ? <span style={{ background:C.red, color:"#fff", fontSize:"0.62rem", fontWeight:800, padding:"1px 6px", borderRadius:4 }}>EXPIRED</span>
+                    : daysLeft<180 && <div style={{ color:daysLeft<90?C.red:C.amber, fontSize:"0.7rem" }}>{daysLeft} days left</div>}
                 </div>,
-                <span style={{ color:Number(c.slaCompliance)>=90?C.green:Number(c.slaCompliance)>=75?C.amber:C.red, fontWeight:700 }}>{c.slaCompliance}%</span>,
+                <div style={{ minWidth:100 }}>
+                  <div style={{ fontSize:"0.72rem", color:sla>=90?C.green:sla>=75?C.amber:C.red, fontWeight:700, marginBottom:2 }}>{sla}%</div>
+                  <ProgressBar value={sla} color={sla>=90?C.green:sla>=75?C.amber:C.red}/>
+                </div>,
                 <Badge label={c.riskRating} color={c.riskRating==="High"?"red":c.riskRating==="Medium"?"amber":"green"}/>,
                 <span style={{ color:sc(c.renewalStatus), fontWeight:700, fontSize:"0.78rem" }}>{c.renewalStatus}</span>,
               ];
