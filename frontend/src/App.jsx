@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
-  AreaChart, Area, ComposedChart,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from "recharts";
 
@@ -92,40 +91,6 @@ const STATIC_DEPTS = [
   { name:"Legal",      risks:5,  critical:2, treatment:80, uifw:0        },
   { name:"IT",         risks:7,  critical:2, treatment:55, uifw:0        },
   { name:"ETQA",       risks:6,  critical:1, treatment:90, uifw:0        },
-];
-
-// Organisational portfolio → unit hierarchy
-const STATIC_PORTFOLIOS = [
-  { name:"CFO Office",           units:["SCM","Finance & Reporting"] },
-  { name:"Corporate Services",   units:["ICT","Communications & Marketing","Human Resources","Facilities/Fleet/Security"] },
-  { name:"COO Office",           units:["Project Management","Provincial Offices","ETQA"] },
-  { name:"CEO Office",           units:["Governance","Stakeholders & Partnerships","Legal & Compliance"] },
-  { name:"Strategy & Planning",  units:["Research & Innovation","Monitoring & Evaluation","SSP"] },
-  { name:"Internal Audit",       units:["Internal Audit"] },
-];
-
-// Operational risk register — tagged by portfolio + unit, with full rating profile
-const STATIC_OPRISKS = [
-  { id:"OR-001", portfolio:"CFO Office", unit:"SCM", name:"Irregular procurement / non-compliant bids", inherent:20, residual:15, current:15, target:8,  appetite:"Low",    trend:"Improving", owner:"SCM Manager", description:"Procurement processes deviating from PFMA/Treasury regulations leading to irregular expenditure." },
-  { id:"OR-002", portfolio:"CFO Office", unit:"SCM", name:"Supplier concentration & dependency", inherent:16, residual:12, current:12, target:8,  appetite:"Medium", trend:"Stable",    owner:"SCM Manager", description:"Over-reliance on a small pool of suppliers creating delivery and pricing risk." },
-  { id:"OR-003", portfolio:"CFO Office", unit:"Finance & Reporting", name:"Material misstatement in AFS", inherent:18, residual:10, current:10, target:6,  appetite:"Zero",   trend:"Improving", owner:"CFO", description:"Errors or omissions in annual financial statements affecting audit outcome." },
-  { id:"OR-004", portfolio:"CFO Office", unit:"Finance & Reporting", name:"Cash flow & levy income volatility", inherent:15, residual:11, current:12, target:8,  appetite:"Medium", trend:"Declining", owner:"CFO", description:"Fluctuations in levy income undermining budget execution." },
-  { id:"OR-005", portfolio:"Corporate Services", unit:"ICT", name:"Cybersecurity breach / ransomware", inherent:25, residual:18, current:18, target:10, appetite:"Low",    trend:"Declining", owner:"CIO", description:"External attack compromising systems, data integrity and availability." },
-  { id:"OR-006", portfolio:"Corporate Services", unit:"ICT", name:"Legacy systems & technical debt", inherent:16, residual:13, current:13, target:8,  appetite:"Medium", trend:"Stable",    owner:"CIO", description:"Ageing infrastructure increasing downtime and maintenance cost." },
-  { id:"OR-007", portfolio:"Corporate Services", unit:"Communications & Marketing", name:"Reputational damage / negative media", inherent:14, residual:10, current:10, target:6,  appetite:"Low",    trend:"Stable",    owner:"Comms Manager", description:"Adverse publicity eroding stakeholder confidence." },
-  { id:"OR-008", portfolio:"Corporate Services", unit:"Human Resources", name:"Critical skills vacancy & turnover", inherent:16, residual:12, current:13, target:8,  appetite:"Medium", trend:"Declining", owner:"HR Manager", description:"Inability to attract/retain scarce skills affecting delivery." },
-  { id:"OR-009", portfolio:"Corporate Services", unit:"Facilities/Fleet/Security", name:"Physical security & asset loss", inherent:12, residual:9,  current:9,  target:5,  appetite:"Low",    trend:"Improving", owner:"Facilities Manager", description:"Theft, damage or unauthorised access to premises and assets." },
-  { id:"OR-010", portfolio:"COO Office", unit:"Project Management", name:"Project delivery delays & overruns", inherent:18, residual:14, current:14, target:8,  appetite:"Medium", trend:"Stable",    owner:"PMO Lead", description:"Discretionary grant projects missing milestones and budgets." },
-  { id:"OR-011", portfolio:"COO Office", unit:"Provincial Offices", name:"Inconsistent service delivery across provinces", inherent:15, residual:11, current:11, target:7,  appetite:"Medium", trend:"Improving", owner:"COO", description:"Variability in provincial office performance and compliance." },
-  { id:"OR-012", portfolio:"COO Office", unit:"ETQA", name:"Accreditation & quality assurance lapses", inherent:16, residual:10, current:10, target:6,  appetite:"Low",    trend:"Improving", owner:"ETQA Manager", description:"Provider accreditation or learner certification quality failures." },
-  { id:"OR-013", portfolio:"CEO Office", unit:"Governance", name:"Governance / board oversight gaps", inherent:14, residual:9,  current:9,  target:5,  appetite:"Zero",   trend:"Stable",    owner:"Company Secretary", description:"Weak committee functioning or oversight undermining accountability." },
-  { id:"OR-014", portfolio:"CEO Office", unit:"Stakeholders & Partnerships", name:"Partnership / MOU non-delivery", inherent:13, residual:10, current:10, target:6,  appetite:"Medium", trend:"Stable",    owner:"Partnerships Lead", description:"Key partners failing to meet commitments under agreements." },
-  { id:"OR-015", portfolio:"CEO Office", unit:"Legal & Compliance", name:"Regulatory non-compliance / litigation", inherent:18, residual:12, current:12, target:7,  appetite:"Zero",   trend:"Improving", owner:"Legal Manager", description:"Breaches of statutory obligations exposing the entity to penalties or litigation." },
-  { id:"OR-016", portfolio:"Strategy & Planning", unit:"Research & Innovation", name:"Research outputs not informing strategy", inherent:11, residual:8,  current:8,  target:5,  appetite:"Medium", trend:"Stable",    owner:"Research Lead", description:"Insufficient uptake of research into planning decisions." },
-  { id:"OR-017", portfolio:"Strategy & Planning", unit:"Monitoring & Evaluation", name:"Poor data quality in M&E reporting", inherent:15, residual:11, current:11, target:7,  appetite:"Low",    trend:"Improving", owner:"M&E Manager", description:"Unreliable performance data undermining decision-making and audit." },
-  { id:"OR-018", portfolio:"Strategy & Planning", unit:"SSP", name:"Sector Skills Plan misalignment", inherent:13, residual:10, current:10, target:6,  appetite:"Medium", trend:"Stable",    owner:"SSP Lead", description:"SSP not reflecting actual sector skills demand." },
-  { id:"OR-019", portfolio:"Internal Audit", unit:"Internal Audit", name:"Inadequate audit coverage of key risks", inherent:14, residual:9,  current:9,  target:5,  appetite:"Low",    trend:"Improving", owner:"CAE", description:"Audit plan not covering highest-priority risk areas." },
-  { id:"OR-020", portfolio:"Internal Audit", unit:"Internal Audit", name:"Slow management action on findings", inherent:13, residual:11, current:11, target:6,  appetite:"Low",    trend:"Declining", owner:"CAE", description:"Audit findings not remediated within agreed timeframes." },
 ];
 
 const STATIC_THIRD = [
@@ -520,164 +485,6 @@ function StrategicRisksAdmin() {
   );
 }
 
-// ─── REUSABLE CHART HELPERS (SVG) ─────────────────────────────────────────────
-// Gauge ring — semicircular progress gauge used for compliance/readiness scores.
-function GaugeRing({ value=0, max=100, label, sublabel, color, size=120 }) {
-  const pct = Math.max(0, Math.min(100, (Number(value)/Number(max||100))*100));
-  const r = size/2 - 10;
-  const cx = size/2, cy = size/2;
-  const circ = Math.PI * r;               // semicircle length
-  const dash = (pct/100) * circ;
-  const ringColor = color || (pct>=80?C.green:pct>=60?C.amber:C.red);
-  return (
-    <div style={{ display:"flex", flexDirection:"column", alignItems:"center" }}>
-      <svg width={size} height={size/2 + 18} style={{ overflow:"visible" }}>
-        <path d={`M ${cx-r} ${cy} A ${r} ${r} 0 0 1 ${cx+r} ${cy}`} fill="none" stroke={C.border} strokeWidth="9" strokeLinecap="round"/>
-        <path d={`M ${cx-r} ${cy} A ${r} ${r} 0 0 1 ${cx+r} ${cy}`} fill="none" stroke={ringColor} strokeWidth="9" strokeLinecap="round"
-          strokeDasharray={`${dash} ${circ}`} style={{ transition:"stroke-dasharray 0.6s ease" }}/>
-        <text x={cx} y={cy-4} textAnchor="middle" fill={ringColor} fontSize={size*0.2} fontWeight="800">{Math.round(pct)}%</text>
-      </svg>
-      {label && <div style={{ color:C.text, fontSize:"0.78rem", fontWeight:600, marginTop:2, textAlign:"center" }}>{label}</div>}
-      {sublabel && <div style={{ color:C.muted, fontSize:"0.7rem", textAlign:"center" }}>{sublabel}</div>}
-    </div>
-  );
-}
-
-// Donut chart — full circle with optional center text. segments = [{label,value,color}]
-function DonutChart({ segments=[], size=180, thickness=22, centerValue, centerLabel }) {
-  const total = segments.reduce((s,x)=>s+(Number(x.value)||0),0) || 1;
-  const r = size/2 - thickness/2 - 2;
-  const cx = size/2, cy = size/2;
-  const circ = 2*Math.PI*r;
-  let offset = 0;
-  return (
-    <div style={{ display:"flex", flexDirection:"column", alignItems:"center" }}>
-      <svg width={size} height={size}>
-        <circle cx={cx} cy={cy} r={r} fill="none" stroke={C.border} strokeWidth={thickness}/>
-        {segments.map((seg,i)=>{
-          const frac = (Number(seg.value)||0)/total;
-          const len  = frac*circ;
-          const el = (
-            <circle key={i} cx={cx} cy={cy} r={r} fill="none" stroke={seg.color} strokeWidth={thickness}
-              strokeDasharray={`${len} ${circ-len}`} strokeDashoffset={-offset}
-              transform={`rotate(-90 ${cx} ${cy})`} style={{ transition:"stroke-dasharray 0.6s ease" }}/>
-          );
-          offset += len;
-          return el;
-        })}
-        {centerValue!=null && <text x={cx} y={cy-2} textAnchor="middle" fill={C.text} fontSize={size*0.18} fontWeight="800">{centerValue}</text>}
-        {centerLabel && <text x={cx} y={cy+size*0.13} textAnchor="middle" fill={C.muted} fontSize={size*0.07}>{centerLabel}</text>}
-      </svg>
-    </div>
-  );
-}
-
-// Enhanced KPI card — value + delta indicator + optional sparkline trend.
-function KPICardPro({ label, value, sub, color=C.blue, delta, deltaGood, spark }) {
-  const deltaColor = delta==null ? C.muted : (deltaGood ? C.green : C.red);
-  const arrow = delta==null ? "" : (Number(delta)>=0 ? "↑" : "↓");
-  return (
-    <Card style={{ borderTop:`3px solid ${color}` }}>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-        <div style={{ color:C.muted, fontSize:"0.72rem", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.06em" }}>{label}</div>
-        {spark && spark.length>1 && <Sparkline data={spark} color={color} width={56} height={20}/>}
-      </div>
-      <div style={{ color, fontSize:"1.8rem", fontWeight:800, lineHeight:1.1, marginTop:4 }}>{value}</div>
-      <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:3 }}>
-        {delta!=null && <span style={{ color:deltaColor, fontSize:"0.74rem", fontWeight:700 }}>{arrow} {Math.abs(Number(delta))}</span>}
-        {sub && <span style={{ color:C.muted, fontSize:"0.76rem" }}>{sub}</span>}
-      </div>
-    </Card>
-  );
-}
-
-// Horizontal stacked bar (owner accountability etc). segments = [{value,color}]
-function StackedBar({ segments=[], max, height=14 }) {
-  const total = segments.reduce((s,x)=>s+(Number(x.value)||0),0);
-  const denom = max || total || 1;
-  return (
-    <div style={{ display:"flex", width:"100%", height, borderRadius:4, overflow:"hidden", background:C.border }}>
-      {segments.map((s,i)=>(
-        <div key={i} title={s.label} style={{ width:`${((Number(s.value)||0)/denom)*100}%`, background:s.color, height:"100%" }}/>
-      ))}
-    </div>
-  );
-}
-
-// Radar / spider chart (PESTLE etc). axes=[{label,value,max}], optional second series.
-function RadarChart({ axes=[], series2=null, size=320, color=C.purple, color2=C.cyan }) {
-  const cx=size/2, cy=size/2, r=size/2-46;
-  const n=axes.length || 1;
-  const angle = i => (Math.PI*2*i/n) - Math.PI/2;
-  const maxVal = Math.max(1, ...axes.map(a=>a.max||100));
-  const pt = (i,val) => {
-    const rad = (Math.max(0,Math.min(val,maxVal))/maxVal)*r;
-    return [cx + rad*Math.cos(angle(i)), cy + rad*Math.sin(angle(i))];
-  };
-  const poly = vals => vals.map((v,i)=>pt(i,v).join(",")).join(" ");
-  const rings = [0.25,0.5,0.75,1];
-  return (
-    <svg width={size} height={size} style={{ maxWidth:"100%" }}>
-      {rings.map((f,ri)=>(
-        <polygon key={ri} points={axes.map((_,i)=>{
-          const x=cx+r*f*Math.cos(angle(i)), y=cy+r*f*Math.sin(angle(i)); return `${x},${y}`;
-        }).join(" ")} fill="none" stroke={C.border} strokeWidth="1"/>
-      ))}
-      {axes.map((a,i)=>{
-        const [ex,ey]=[cx+r*Math.cos(angle(i)), cy+r*Math.sin(angle(i))];
-        const [lx,ly]=[cx+(r+22)*Math.cos(angle(i)), cy+(r+22)*Math.sin(angle(i))];
-        return (
-          <g key={i}>
-            <line x1={cx} y1={cy} x2={ex} y2={ey} stroke={C.border} strokeWidth="1"/>
-            <text x={lx} y={ly} textAnchor="middle" dominantBaseline="middle" fill={C.muted} fontSize="11">{a.label}</text>
-          </g>
-        );
-      })}
-      {series2 && (
-        <polygon points={poly(series2)} fill="none" stroke={color2} strokeWidth="1.5" strokeDasharray="5,3" opacity="0.9"/>
-      )}
-      <polygon points={poly(axes.map(a=>a.value))} fill={color} fillOpacity="0.22" stroke={color} strokeWidth="2"/>
-      {axes.map((a,i)=>{ const [x,y]=pt(i,a.value); return <circle key={i} cx={x} cy={y} r="3.5" fill={color}/>; })}
-    </svg>
-  );
-}
-
-// Heat grid — a labelled matrix of cells. rows/cols are arrays of labels;
-// cell(r,c) returns {value,color,label?}. Used for opportunity & assurance heatmaps.
-function HeatGrid({ rows=[], cols=[], cell, cellW=120, cellH=58, rowLabelW=90, colLabel }) {
-  return (
-    <div style={{ overflowX:"auto" }}>
-      <table style={{ borderCollapse:"separate", borderSpacing:6 }}>
-        <thead>
-          <tr>
-            <th style={{ width:rowLabelW }}></th>
-            {cols.map((c,ci)=>(
-              <th key={ci} style={{ color:C.muted, fontSize:"0.72rem", fontWeight:600, textAlign:"center", paddingBottom:4, minWidth:cellW }}>{colLabel?colLabel(c):c}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((rw,ri)=>(
-            <tr key={ri}>
-              <td style={{ color:C.muted, fontSize:"0.72rem", fontWeight:600, textAlign:"right", paddingRight:8, whiteSpace:"nowrap" }}>{rw}</td>
-              {cols.map((cl,ci)=>{
-                const d = cell(rw,cl,ri,ci) || {};
-                return (
-                  <td key={ci} style={{ width:cellW, height:cellH, background:d.color||C.surface, borderRadius:6,
-                    textAlign:"center", verticalAlign:"middle", border:`1px solid ${C.border}` }}>
-                    <div style={{ color:"#fff", fontWeight:800, fontSize:"0.95rem" }}>{d.value}</div>
-                    {d.label && <div style={{ color:"rgba(255,255,255,0.85)", fontSize:"0.62rem", lineHeight:1.15, padding:"0 4px" }}>{d.label}</div>}
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
 // ─── MODULE: EXECUTIVE OVERVIEW ───────────────────────────────────────────────
 function ExecutiveOverview() {
   const [risks, setRisks] = useState(STATIC_RISKS);
@@ -686,11 +493,7 @@ function ExecutiveOverview() {
   },[]);
 
   const outside = risks.filter(r=>(r.currentStatus||r.status||"").includes("Outside")).length;
-  const within  = risks.filter(r=>(r.currentStatus||r.status||"").includes("Within")).length;
   const totalUifw = STATIC_UIFW.reduce((s,u)=>s+u.amount,0);
-  const avgResidual = risks.length ? (risks.reduce((s,r)=>s+(Number(r.residualRating||r.residual)||0),0)/risks.length) : 0;
-  // Overall risk posture: % of risks within tolerance
-  const posturePct = risks.length ? Math.round((within/risks.length)*100) : 0;
   const heatColor = s => s>=15?C.red:s>=10?"#e36209":s>=6?C.amber:s>=3?C.green:"#1a3d2b";
 
   return (
@@ -706,87 +509,37 @@ function ExecutiveOverview() {
           <span style={{ color:C.muted, fontSize:"0.78rem", alignSelf:"center" }}>Next Review: 2026-09-30</span>
         </div>
       </div>
-
-      {/* Enhanced KPI strip with sparklines + deltas */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))", gap:"0.85rem" }}>
-        <KPICardPro label="Total Risks"           value={risks.length} sub="+4 emerging"              color={C.blue}   delta={2}    deltaGood={false} spark={[8,9,9,10,10,risks.length]} />
-        <KPICardPro label="Outside Tolerance"     value={outside}      sub="Immediate action"         color={C.red}    delta={-1}   deltaGood={true}  spark={[9,8,8,7,7,outside]} />
-        <KPICardPro label="Treatment Completion"  value="72%"          sub="89 of 124 actions"        color={C.green}  delta={11}   deltaGood={true}  spark={[55,58,62,66,69,72]} />
-        <KPICardPro label="Overall Risk Exposure" value={avgResidual.toFixed(1)} sub="avg residual"    color={C.amber}  delta={-1.2} deltaGood={true}  spark={[13.6,13.2,12.8,12.1,11.8,avgResidual]} />
-        <KPICardPro label="Material Findings"      value="3"            sub="from assurance reviews"   color={C.purple} delta={0}    deltaGood={true}  spark={[5,4,4,3,3,3]} />
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(170px,1fr))", gap:"0.85rem" }}>
+        <KPICard label="Total Risks"          value={risks.length}  sub="+4 Emerging"                color={C.blue}   />
+        <KPICard label="Outside Tolerance"    value={outside}       sub="Immediate action required"  color={C.red}    />
+        <KPICard label="Treatment Completion" value="72%"           sub="89 of 124 actions"          color={C.green}  />
+        <KPICard label="Overall Risk Exposure"value="12.4"          sub="↓ 1.2 from last period"    color={C.amber}  />
+        <KPICard label="Material Findings"    value="3"             sub="From assurance reviews"     color={C.purple} />
       </div>
-
-      {/* Posture gauge + UIFW exposure */}
-      <div style={{ display:"grid", gridTemplateColumns:"260px 1fr", gap:"1rem" }}>
-        <Card>
-          <SectionTitle>Risk Posture</SectionTitle>
-          <div style={{ display:"flex", justifyContent:"center", paddingTop:8 }}>
-            <GaugeRing value={posturePct} max={100} label="Within Tolerance"
-              sublabel={`${within} of ${risks.length} risks`}
-              color={posturePct>=70?C.green:posturePct>=50?C.amber:C.red} size={150}/>
+      <Card style={{ borderLeft:`4px solid ${C.red}` }}>
+        <div style={{ display:"flex", alignItems:"center", gap:"0.75rem" }}>
+          <span style={{ fontSize:"1.5rem" }}>⚠</span>
+          <div>
+            <div style={{ color:C.red, fontSize:"1.6rem", fontWeight:800 }}>R{(totalUifw/1e6).toFixed(1)}M</div>
+            <div style={{ color:C.text, fontWeight:600 }}>UIFW Exposure</div>
+            <div style={{ color:C.muted, fontSize:"0.8rem" }}>14 open cases across {new Set(STATIC_UIFW.map(u=>u.department)).size} departments</div>
           </div>
-        </Card>
-        <Card style={{ borderLeft:`4px solid ${C.red}`, display:"flex", alignItems:"center" }}>
-          <div style={{ display:"flex", alignItems:"center", gap:"1.5rem", flexWrap:"wrap" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:"0.75rem" }}>
-              <span style={{ fontSize:"1.5rem" }}>⚠</span>
-              <div>
-                <div style={{ color:C.red, fontSize:"1.6rem", fontWeight:800 }}>R{(totalUifw/1e6).toFixed(1)}M</div>
-                <div style={{ color:C.text, fontWeight:600 }}>UIFW Exposure</div>
-                <div style={{ color:C.muted, fontSize:"0.8rem" }}>14 open cases across {new Set(STATIC_UIFW.map(u=>u.department)).size} departments</div>
-              </div>
-            </div>
-            <div style={{ display:"flex", gap:"1.5rem", marginLeft:"auto" }}>
-              <div><div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700 }}>Irregular</div><div style={{ color:C.amber, fontSize:"1.2rem", fontWeight:800 }}>R{(STATIC_UIFW.filter(u=>u.type==="Irregular").reduce((s,u)=>s+u.amount,0)/1e6).toFixed(1)}M</div></div>
-              <div><div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700 }}>Fruitless</div><div style={{ color:C.amber, fontSize:"1.2rem", fontWeight:800 }}>R{(STATIC_UIFW.filter(u=>u.type!=="Irregular").reduce((s,u)=>s+u.amount,0)/1e6).toFixed(1)}M</div></div>
-            </div>
-          </div>
-        </Card>
-      </div>
-
+        </div>
+      </Card>
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
         <Card>
           <SectionTitle>Risk Heatmap — Inherent Risk Matrix</SectionTitle>
-          {(()=>{
-            // Decompose each risk's inherent rating into impact(row) × likelihood(col) on a 5×5 grid.
-            const factor = score => {
-              const s = Math.max(1, Math.min(25, Number(score)||1));
-              let best=[1,1], bestDiff=99;
-              for (let imp=1; imp<=5; imp++) for (let lik=1; lik<=5; lik++){
-                const diff=Math.abs(imp*lik - s);
-                if (diff<bestDiff || (diff===bestDiff && imp>=best[0])) { bestDiff=diff; best=[imp,lik]; }
-              }
-              return best; // [impact, likelihood]
-            };
-            const cellRisks = {};
-            risks.forEach(r=>{
-              const [imp,lik]=factor(r.inherentRating||r.inherent);
-              const key=`${imp}-${lik}`;
-              (cellRisks[key]=cellRisks[key]||[]).push(r.id);
-            });
-            return (
-              <div style={{ display:"flex", gap:4 }}>
-                {[1,2,3,4,5].map(lik=>(
-                  <div key={lik} style={{ display:"flex", flexDirection:"column", gap:4 }}>
-                    {[5,4,3,2,1].map(imp=>{
-                      const score=imp*lik;
-                      const ids=cellRisks[`${imp}-${lik}`]||[];
-                      return (
-                        <div key={imp} title={ids.length?`Risk ${score}: ${ids.join(", ")}`:`Risk score ${score}`}
-                          style={{ width:50, height:40, background:heatColor(score), borderRadius:4, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", position:"relative" }}>
-                          <span style={{ color:"#fff", fontSize:"0.72rem", fontWeight:700 }}>{score}</span>
-                          {ids.length>0 && <span style={{ color:"#fff", fontSize:"0.54rem", fontWeight:600, lineHeight:1, maxWidth:46, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ids.length===1?ids[0]:`${ids.length} risks`}</span>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
+          <div style={{ display:"flex", gap:4 }}>
+            {[1,2,3,4,5].map(l=>(
+              <div key={l} style={{ display:"flex", flexDirection:"column", gap:4 }}>
+                {[5,4,3,2,1].map(i=>{
+                  const score=i*l;
+                  return <div key={i} style={{ width:44, height:36, background:heatColor(score), borderRadius:4, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                    <span style={{ color:"#fff", fontSize:"0.8rem", fontWeight:700 }}>{score}</span>
+                  </div>;
+                })}
               </div>
-            );
-          })()}
-          <div style={{ display:"flex", justifyContent:"space-between", marginTop:4 }}>
-            <span style={{ color:C.muted, fontSize:"0.6rem" }}>← Likelihood →</span>
-            <span style={{ color:C.muted, fontSize:"0.6rem" }}>Impact ↓</span>
+            ))}
           </div>
           <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.5rem", flexWrap:"wrap" }}>
             {[["≥15","Critical",C.red],[">9","High","#e36209"],[">5","Medium",C.amber],["≤5","Low",C.green]].map(([v,l,c])=>(
@@ -800,7 +553,7 @@ function ExecutiveOverview() {
             <PieChart>
               <Pie data={[
                 { name:"Outside Tolerance", value:outside },
-                { name:"Within Tolerance",  value:within },
+                { name:"Within Tolerance",  value:risks.filter(r=>(r.currentStatus||r.status||"").includes("Within")).length },
                 { name:"Emerging",          value:4 },
               ]} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={3} dataKey="value">
                 {[C.red,C.amber,C.blue].map((c,i)=><Cell key={i} fill={c}/>)}
@@ -868,23 +621,11 @@ function RiskAppetite() {
 function StrategicRisks() {
   const [risks, setRisks] = useState(STATIC_RISKS);
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState(null);
   useEffect(()=>{
     fetch(`${API}/api/risks`).then(r=>r.json()).then(d=>{ if(Array.isArray(d)&&d.length) setRisks(d); }).catch(()=>{});
   },[]);
   const filtered = risks.filter(r=>(r.title||r.name||"").toLowerCase().includes(search.toLowerCase())||(r.id||"").toLowerCase().includes(search.toLowerCase()));
   const sc = v=>Number(v)>=15?C.red:Number(v)>=10?"#e36209":Number(v)>=6?C.amber:C.green;
-  const sel = selected || filtered[0] || risks[0];
-
-  // Build a simulated treatment-progress trend for the selected risk (toward target)
-  const trendData = (()=>{
-    if (!sel) return [];
-    const start = Number(sel.inherentRating||sel.inherent)||20;
-    const end   = Number(sel.residualRating||sel.residual)||12;
-    const months = ["Aug","Sep","Oct","Nov","Dec","Jan"];
-    return months.map((m,i)=>({ m, v:+(start + (end-start)*(i/(months.length-1))).toFixed(1) }));
-  })();
-
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:"0.5rem" }}>
@@ -893,103 +634,25 @@ function StrategicRisks() {
           style={{ ...inputSt, width:220 }}/>
       </div>
       <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"0.85rem" }}>
-        <KPICardPro label="Total Risks"        value={risks.length} color={C.blue} spark={[8,9,9,10,10,risks.length]}/>
-        <KPICardPro label="Outside Tolerance"  value={risks.filter(r=>(r.currentStatus||r.status||"").includes("Outside")).length} color={C.red} delta={-1} deltaGood={true}/>
-        <KPICardPro label="Avg Residual Score" value={(risks.reduce((s,r)=>s+(Number(r.residualRating||r.residual)||0),0)/risks.length).toFixed(1)} color={C.amber} delta={-0.8} deltaGood={true}/>
+        <KPICard label="Total Risks"        value={risks.length} color={C.blue}/>
+        <KPICard label="Outside Tolerance"  value={risks.filter(r=>(r.currentStatus||r.status||"").includes("Outside")).length} color={C.red}/>
+        <KPICard label="Avg Residual Score" value={(risks.reduce((s,r)=>s+(Number(r.residualRating||r.residual)||0),0)/risks.length).toFixed(1)} color={C.amber}/>
       </div>
-
-      {/* Master-detail split */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 380px", gap:"1.25rem", alignItems:"start" }}>
-        {/* Master table */}
-        <Card style={{ padding:0, overflow:"hidden" }}>
-          <div style={{ overflowX:"auto" }}>
-            <table style={{ width:"100%", borderCollapse:"collapse", fontSize:"0.83rem" }}>
-              <thead>
-                <tr>{["Risk ID","Risk Name","Inherent","Residual","Current","Target","Appetite","Trend"].map((h,i)=>
-                  <th key={i} style={{ color:C.muted, fontWeight:600, padding:"0.6rem 0.75rem", textAlign:"left", borderBottom:`1px solid ${C.border}`, whiteSpace:"nowrap" }}>{h}</th>)}</tr>
-              </thead>
-              <tbody>
-                {filtered.map(r=>{
-                  const isSel = sel && r.id===sel.id;
-                  const trend = (r.trend||"").toLowerCase();
-                  const tIcon = trend==="improving"?"↗":trend==="declining"?"↘":"—";
-                  const tColor = trend==="improving"?C.green:trend==="declining"?C.red:C.muted;
-                  return (
-                    <tr key={r.id} onClick={()=>setSelected(r)}
-                      style={{ borderBottom:`1px solid ${C.border}`, cursor:"pointer",
-                        background:isSel?"rgba(88,166,255,0.12)":"transparent",
-                        borderLeft:`3px solid ${isSel?C.blue:"transparent"}` }}
-                      onMouseEnter={e=>{ if(!isSel) e.currentTarget.style.background=C.surface; }}
-                      onMouseLeave={e=>{ if(!isSel) e.currentTarget.style.background="transparent"; }}>
-                      <td style={{ padding:"0.55rem 0.75rem", color:C.muted, fontWeight:700, whiteSpace:"nowrap" }}>{r.id}</td>
-                      <td style={{ padding:"0.55rem 0.75rem", color:C.text, maxWidth:200, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={r.title||r.name}>{r.title||r.name||"—"}</td>
-                      <td style={{ padding:"0.55rem 0.75rem", color:sc(r.inherentRating||r.inherent), fontWeight:700 }}>{r.inherentRating||r.inherent||"—"}</td>
-                      <td style={{ padding:"0.55rem 0.75rem", color:sc(r.residualRating||r.residual), fontWeight:700 }}>{r.residualRating||r.residual||"—"}</td>
-                      <td style={{ padding:"0.55rem 0.75rem", color:sc(r.currentRating||r.residualRating||r.residual), fontWeight:700 }}>{r.currentRating||r.residualRating||r.residual||"—"}</td>
-                      <td style={{ padding:"0.55rem 0.75rem", color:C.green, fontWeight:700 }}>{r.targetRating||"—"}</td>
-                      <td style={{ padding:"0.55rem 0.75rem" }}><StatusBadge status={r.currentStatus||r.status}/></td>
-                      <td style={{ padding:"0.55rem 0.75rem", color:tColor, fontWeight:700 }}>{tIcon}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          {filtered.length===0 && <p style={{ color:C.muted, textAlign:"center", padding:"2rem" }}>No risks match your search.</p>}
-        </Card>
-
-        {/* Detail panel */}
-        {sel && (
-          <Card style={{ position:"sticky", top:0 }}>
-            <div style={{ color:C.muted, fontSize:"0.75rem", fontWeight:700 }}>{sel.id}</div>
-            <h3 style={{ color:C.text, fontSize:"1.05rem", fontWeight:700, margin:"0.2rem 0 0.5rem" }}>{sel.title||sel.name}</h3>
-            <p style={{ color:C.muted, fontSize:"0.82rem", lineHeight:1.6, margin:"0 0 1rem" }}>{sel.description||sel.cause||"Strategic risk under active management and monitoring."}</p>
-
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"0.5rem", marginBottom:"1rem" }}>
-              {[["Inherent",sel.inherentRating||sel.inherent,sc(sel.inherentRating||sel.inherent)],
-                ["Residual",sel.residualRating||sel.residual,sc(sel.residualRating||sel.residual)],
-                ["Current",sel.currentRating||sel.residualRating||sel.residual,sc(sel.currentRating||sel.residualRating||sel.residual)],
-                ["Target",sel.targetRating||"—",C.green]].map(([l,v,c])=>(
-                <div key={l} style={{ background:C.surface, borderRadius:7, padding:"0.5rem", textAlign:"center" }}>
-                  <div style={{ color:c, fontSize:"1.3rem", fontWeight:800 }}>{v||"—"}</div>
-                  <div style={{ color:C.muted, fontSize:"0.65rem" }}>{l}</div>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ display:"flex", alignItems:"center", gap:"0.6rem", marginBottom:"1rem" }}>
-              <div style={{ width:36, height:36, borderRadius:"50%", background:C.surface, display:"flex", alignItems:"center", justifyContent:"center", color:C.blue, fontWeight:700, fontSize:"0.78rem" }}>
-                {(sel.owner||"NA").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()}
-              </div>
-              <div>
-                <div style={{ color:C.text, fontSize:"0.85rem", fontWeight:600 }}>{sel.owner||"—"}</div>
-                <div style={{ display:"flex", gap:6, marginTop:2 }}>
-                  <StatusBadge status={sel.currentStatus||sel.status}/>
-                  {sel.trend && <Badge label={sel.trend} color={(sel.trend||"").toLowerCase()==="improving"?"green":(sel.trend||"").toLowerCase()==="declining"?"red":"amber"}/>}
-                </div>
-              </div>
-            </div>
-
-            <SectionTitle>Treatment Progress</SectionTitle>
-            <ResponsiveContainer width="100%" height={150}>
-              <LineChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" stroke={C.border}/>
-                <XAxis dataKey="m" stroke={C.muted} tick={{ fill:C.muted, fontSize:10 }}/>
-                <YAxis stroke={C.muted} tick={{ fill:C.muted, fontSize:10 }} width={24}/>
-                <Tooltip contentStyle={{ background:C.card, border:`1px solid ${C.border}`, color:C.text, fontSize:"0.78rem" }}/>
-                <Line type="monotone" dataKey="v" stroke={C.green} strokeWidth={2} dot={{ r:3 }} name="Residual score"/>
-              </LineChart>
-            </ResponsiveContainer>
-
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.5rem", marginTop:"0.75rem" }}>
-              <div><div style={{ color:C.muted, fontSize:"0.65rem", textTransform:"uppercase", fontWeight:700 }}>Appetite</div><div style={{ color:C.text, fontSize:"0.85rem" }}>{sel.appetite||"—"}</div></div>
-              <div><div style={{ color:C.muted, fontSize:"0.65rem", textTransform:"uppercase", fontWeight:700 }}>Response</div><div style={{ color:C.text, fontSize:"0.85rem" }}>{sel.response||sel.treatment||"—"}</div></div>
-              <div><div style={{ color:C.muted, fontSize:"0.65rem", textTransform:"uppercase", fontWeight:700 }}>Department</div><div style={{ color:C.text, fontSize:"0.85rem" }}>{sel.department||"—"}</div></div>
-              <div><div style={{ color:C.muted, fontSize:"0.65rem", textTransform:"uppercase", fontWeight:700 }}>Review Date</div><div style={{ color:C.text, fontSize:"0.85rem" }}>{sel.reviewDate||"—"}</div></div>
-            </div>
-          </Card>
-        )}
-      </div>
+      <Card>
+        <Table
+          headers={["ID","Risk Title","Inherent","Residual","Appetite","Owner","Response","Status"]}
+          rows={filtered.map(r=>[
+            <span style={{ color:C.blue, fontWeight:700 }}>{r.id}</span>,
+            r.title||r.name||"—",
+            <span style={{ color:sc(r.inherentRating||r.inherent), fontWeight:700 }}>{r.inherentRating||r.inherent||"—"}</span>,
+            <span style={{ color:sc(r.residualRating||r.residual), fontWeight:700 }}>{r.residualRating||r.residual||"—"}</span>,
+            r.appetite||"—",
+            r.owner||"—",
+            r.response||r.treatment||"—",
+            <StatusBadge status={r.currentStatus||r.status}/>,
+          ])}
+        />
+      </Card>
     </div>
   );
 }
@@ -1034,310 +697,50 @@ function KRIMonitoring() {
 
 // ─── MODULE: OPPORTUNITIES ────────────────────────────────────────────────────
 function Opportunities() {
-  const [opps, setOpps] = useState(STATIC_OPP);
-  useEffect(()=>{
-    fetch(`${API}/api/opportunities`).then(r=>r.json()).then(d=>{ if(Array.isArray(d)&&d.length) setOpps(d); }).catch(()=>{});
-  },[]);
-
-  // Parse R-values out of benefit strings for pipeline value (fallback to score*1M)
-  const parseValue = o => {
-    const m = (o.benefit||"").match(/R\s?([\d.]+)\s?M/i);
-    return m ? parseFloat(m[1])*1e6 : (Number(o.score)||0)*1e6;
-  };
-  const totalValue = opps.reduce((s,o)=>s+parseValue(o),0);
-  const realisedValue = opps.filter(o=>o.status==="Active").reduce((s,o)=>s+parseValue(o)*0.25,0);
-  const avgScore = opps.length ? (opps.reduce((s,o)=>s+(Number(o.score)||0),0)/opps.length).toFixed(1) : 0;
-  const categories = new Set(opps.map(o=>o.category||"Strategic")).size;
-
-  // Heatmap colour by score bucket
-  const heatColor = s => s>=21?"#1a7d3f":s>=16?C.green:s>=11?C.amber:s>=6?"#e36209":C.red;
-  // Impact(row) × probability(col) — place each opportunity into a real cell.
-  const impacts = ["Very High","High","Medium","Low"];   // impact 5,4,3,2..1
-  const probs   = ["Critical","Major","Moderate","Minor"]; // probability 5,4,3,2..1
-  const impactBand = imp => imp>=5?"Very High":imp>=4?"High":imp>=3?"Medium":"Low";
-  const probBand   = pr  => pr>=5?"Critical":pr>=4?"Major":pr>=3?"Moderate":"Minor";
-  // Derive impact/probability from each opp (matching the register logic)
-  const oppCell = {};
-  opps.forEach(o=>{
-    const impact = o.impact || Math.min(5, Math.max(1, Math.round((Number(o.score)||0)/5)));
-    const prob   = o.probability || Math.min(5, Math.max(1, Math.round((Number(o.score)||0)/impact)||3));
-    const key = `${impactBand(impact)}|${probBand(prob)}`;
-    (oppCell[key]=oppCell[key]||[]).push(o);
-  });
-  const repScore = { "Very High":{Critical:16,Major:12,Moderate:8,Minor:4},
-                     "High":{Critical:12,Major:9,Moderate:6,Minor:3},
-                     "Medium":{Critical:8,Major:6,Moderate:4,Minor:2},
-                     "Low":{Critical:4,Major:3,Moderate:2,Minor:1} };
-
-  // Pipeline funnel — staged counts
-  const n = opps.length;
-  const pipeline = [
-    { stage:"Identification", count:n,                    color:C.muted },
-    { stage:"Assessment",     count:Math.round(n*0.83),    color:C.blue  },
-    { stage:"Approval",       count:Math.round(n*0.67),    color:C.purple },
-    { stage:"Implementation", count:Math.round(n*0.5),     color:C.amber },
-    { stage:"Realisation",    count:opps.filter(o=>o.status==="Active").length, color:C.green },
-  ];
-
-  const benefitTrend = [
-    { m:"Jul", v:5 },{ m:"Aug", v:5 },{ m:"Sep", v:6 },
-    { m:"Oct", v:6 },{ m:"Nov", v:7 },{ m:"Dec", v:opps.filter(o=>o.status==="Active").length },
-  ];
-
-  const appetiteColor = a => a==="Pursue"?"green":a==="Enhance"?"amber":a==="Exploit"?"blue":"green";
-
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
       <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Strategic Opportunities Register</h1>
-
-      {/* KPI strip */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"0.85rem" }}>
-        <KPICardPro label="Total Opportunities"     value={opps.length}                  sub={`across ${categories} categories`} color={C.blue}   delta={2} deltaGood={true}/>
-        <KPICardPro label="Pipeline Value"          value={`R${(totalValue/1e6).toFixed(1)}M`} sub="estimated gross value"        color={C.purple}/>
-        <KPICardPro label="Realised Benefits"       value={`R${(realisedValue/1e6).toFixed(1)}M`} sub={`${Math.round((realisedValue/(totalValue||1))*100)}% of pipeline`} color={C.green} delta={0.8} deltaGood={true}/>
-        <KPICardPro label="Avg Opportunity Score"   value={avgScore}                      sub="out of 25 maximum"           color={C.amber} spark={[13,14,15,15,16,Number(avgScore)]}/>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))", gap:"1rem" }}>
+        {STATIC_OPP.map(o=>(
+          <Card key={o.id} style={{ borderLeft:`3px solid ${C.cyan}` }}>
+            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:"0.4rem" }}>
+              <span style={{ color:C.muted, fontSize:"0.72rem" }}>{o.id}</span>
+              <StatusBadge status={o.status}/>
+            </div>
+            <div style={{ color:C.text, fontWeight:700, marginBottom:"0.35rem" }}>{o.name}</div>
+            <div style={{ color:C.cyan, fontSize:"0.82rem", marginBottom:"0.4rem" }}>💡 {o.benefit}</div>
+            <div style={{ display:"flex", justifyContent:"space-between" }}>
+              <span style={{ color:C.muted, fontSize:"0.78rem" }}>Owner: {o.owner}</span>
+              <span style={{ color:C.amber, fontWeight:700 }}>Score: {o.score}</span>
+            </div>
+          </Card>
+        ))}
       </div>
-
-      {/* Heatmap + pipeline */}
-      <div style={{ display:"grid", gridTemplateColumns:"1.4fr 1fr", gap:"1rem" }}>
-        <Card>
-          <SectionTitle>Opportunity Heatmap — Impact × Probability</SectionTitle>
-          <HeatGrid
-            rows={impacts} cols={probs}
-            cellW={108} cellH={62} rowLabelW={70}
-            cell={(imp,prob)=>{
-              const list = oppCell[`${imp}|${prob}`]||[];
-              const sc = repScore[imp][prob];
-              const label = list.length===0 ? null : (list.length===1 ? list[0].name.slice(0,24) : `${list.length} opportunities`);
-              return { value:list.length>0?list.length:sc, color:heatColor(sc), label };
-            }}
-          />
-          <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.75rem", flexWrap:"wrap" }}>
-            {[["21-25","#1a7d3f"],["16-20",C.green],["11-15",C.amber],["6-10","#e36209"],["1-5",C.red]].map(([l,c])=>(
-              <span key={l} style={{ color:c, fontSize:"0.7rem" }}>● {l}</span>
-            ))}
-          </div>
-        </Card>
-
-        <Card>
-          <SectionTitle>Opportunity Pipeline</SectionTitle>
-          <div style={{ display:"flex", flexDirection:"column", gap:"0.9rem", marginTop:"0.25rem" }}>
-            {pipeline.map(p=>(
-              <div key={p.stage}>
-                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
-                  <span style={{ color:C.text, fontSize:"0.82rem", fontWeight:600 }}>{p.stage}</span>
-                  <span style={{ color:C.muted, fontSize:"0.78rem" }}>{p.count}/{n}</span>
-                </div>
-                <div style={{ background:C.border, borderRadius:6, height:18, position:"relative", overflow:"hidden" }}>
-                  <div style={{ width:`${(p.count/Math.max(n,1))*100}%`, height:"100%", background:p.color, borderRadius:6,
-                    display:"flex", alignItems:"center", justifyContent:"flex-end", paddingRight:6, transition:"width 0.5s" }}>
-                    <span style={{ color:"#fff", fontSize:"0.68rem", fontWeight:700 }}>{p.count}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-
-      {/* Benefit realisation trend */}
-      <Card>
-        <SectionTitle>Benefit Realisation Trend</SectionTitle>
-        <ResponsiveContainer width="100%" height={180}>
-          <BarChart data={benefitTrend}>
-            <CartesianGrid strokeDasharray="3 3" stroke={C.border}/>
-            <XAxis dataKey="m" stroke={C.muted} tick={{ fill:C.muted, fontSize:11 }}/>
-            <YAxis stroke={C.muted} tick={{ fill:C.muted, fontSize:11 }}/>
-            <Tooltip contentStyle={{ background:C.card, border:`1px solid ${C.border}`, color:C.text, fontSize:"0.78rem" }}/>
-            <Bar dataKey="v" fill={C.green} name="Active opportunities" radius={[4,4,0,0]}/>
-          </BarChart>
-        </ResponsiveContainer>
-      </Card>
-
-      {/* Register */}
-      <Card>
-        <SectionTitle>Opportunity Register</SectionTitle>
-        <Table
-          headers={["Opportunity","Category","Impact","Probability","Score","Appetite","Strategy","Est. Value","Realised","Status"]}
-          rows={opps.map(o=>{
-            // Derive impact/probability from score if not explicitly set
-            const impact = o.impact || Math.min(5, Math.max(1, Math.round((Number(o.score)||0)/5)));
-            const prob   = o.probability || Math.min(5, Math.max(1, Math.round((Number(o.score)||0)/impact)||3));
-            const appetite = o.appetite || (o.score>=18?"Pursue":o.score>=14?"Enhance":o.score>=10?"Pursue":"Exploit");
-            const realised = o.realised!=null ? o.realised : (o.status==="Active"?parseValue(o)*0.25:0);
-            const appColor = appetite==="Pursue"?"green":appetite==="Enhance"?"amber":"blue";
-            return [
-              <span style={{ fontWeight:700, color:C.text }}>{o.name}</span>,
-              <span style={{ color:C.muted, fontSize:"0.78rem" }}>{o.category||"Strategic"}</span>,
-              <span style={{ color:C.text, fontWeight:700 }}>{impact}</span>,
-              <span style={{ color:C.text, fontWeight:700 }}>{prob}</span>,
-              <span style={{ color:(o.score>=16?C.green:o.score>=11?C.amber:C.red), fontWeight:800 }}>{o.score}</span>,
-              <Badge label={appetite} color={appColor}/>,
-              <span style={{ color:C.muted, fontSize:"0.78rem", maxWidth:180, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={o.strategy||o.benefit}>{o.strategy||o.benefit||"—"}</span>,
-              <span style={{ color:C.green, fontWeight:700 }}>R{(parseValue(o)/1e6).toFixed(1)}M</span>,
-              <span style={{ color:realised>0?C.green:C.muted, fontWeight:realised>0?700:400 }}>R{(realised/1e6).toFixed(1)}M</span>,
-              <StatusBadge status={o.status}/>,
-            ];
-          })}
-        />
-      </Card>
     </div>
   );
 }
 
 // ─── MODULE: EMERGING RISKS ───────────────────────────────────────────────────
 function EmergingRisks() {
-  const [risks, setRisks] = useState(STATIC_EMERGING);
-  useEffect(()=>{
-    fetch(`${API}/api/dashboard`).then(r=>r.json()).then(d=>{ if(Array.isArray(d.emergingRisks)&&d.emergingRisks.length) setRisks(d.emergingRisks); }).catch(()=>{});
-  },[]);
-
-  const total = risks.length;
-  const highCrit = risks.filter(r=>(Number(r.likelihood)||0)*(Number(r.impact)||0)>=16).length;
-  const escalated = risks.filter(r=>r.action==="Escalate").length;
-  const newThisQ = Math.min(total, 4);
-
-  // PESTLE categories — map the module's categories onto a 7-axis PESTLE-style radar
-  const PESTLE = ["Political","Economic","Social","Technological","Legal","Environmental","Sectoral"];
-  const catMap = { Regulatory:"Legal", Technology:"Technological", Economic:"Economic", Environment:"Environmental", Political:"Political", Social:"Social" };
-  const axisScore = axis => {
-    const matching = risks.filter(r=>(catMap[r.category]||r.category)===axis);
-    if (!matching.length) return 20; // baseline
-    const avg = matching.reduce((s,r)=>s+(Number(r.likelihood)||0)*(Number(r.impact)||0),0)/matching.length;
-    return Math.min(100, (avg/25)*100);
-  };
-  const axes = PESTLE.map(a=>({ label:a, value:axisScore(a), max:100 }));
-  const prevSeries = axes.map(a=>Math.max(15, a.value*0.7)); // simulated previous period
-
-  // Category bar counts
-  const catCounts = PESTLE.map(a=>({
-    cat:a,
-    count:risks.filter(r=>(catMap[r.category]||r.category)===a).length,
-  }));
-  const catMax = Math.max(1, ...catCounts.map(c=>c.count));
-  const catColor = { Political:C.purple, Economic:C.amber, Social:C.blue, Technological:C.cyan, Legal:C.red, Environmental:C.green, Sectoral:"#d147a3" };
-
-  const actionColor = a => a==="Escalate"?"red":a==="Mitigate"?"amber":a==="Watch"?"amber":"blue";
-
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
       <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Emerging Risk Radar</h1>
-
-      {/* KPI strip */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"0.85rem" }}>
-        <KPICardPro label="Emerging Risks Identified" value={total}     sub="across PESTLE categories" color={C.blue}   delta={4} deltaGood={false}/>
-        <KPICardPro label="High Criticality"          value={highCrit}  sub="requires attention"       color={C.red}/>
-        <KPICardPro label="New This Quarter"          value={newThisQ}  sub="newly identified"         color={C.amber}  delta={2} deltaGood={false}/>
-        <KPICardPro label="Escalated to EXCO/ARC"     value={escalated} sub="under active escalation"  color={C.purple}/>
-      </div>
-
-      {/* Radar + category bars */}
-      <div style={{ display:"grid", gridTemplateColumns:"1.2fr 1fr", gap:"1rem" }}>
-        <Card>
-          <SectionTitle>Emerging Risk Radar — PESTLE Analysis</SectionTitle>
-          <div style={{ display:"flex", justifyContent:"center", paddingTop:8 }}>
-            <RadarChart axes={axes} series2={prevSeries} size={340} color={C.purple} color2={C.cyan}/>
-          </div>
-          <div style={{ display:"flex", gap:"1.25rem", justifyContent:"center", marginTop:"0.5rem" }}>
-            <span style={{ color:C.purple, fontSize:"0.72rem" }}>━ Current Period</span>
-            <span style={{ color:C.cyan, fontSize:"0.72rem" }}>┄ Previous Period</span>
-          </div>
-        </Card>
-
-        <Card>
-          <SectionTitle>Risks by PESTLE Category</SectionTitle>
-          <div style={{ display:"flex", flexDirection:"column", gap:"0.7rem", marginTop:"0.5rem" }}>
-            {catCounts.map(c=>(
-              <div key={c.cat} style={{ display:"flex", alignItems:"center", gap:"0.6rem" }}>
-                <div style={{ width:96, color:C.muted, fontSize:"0.75rem", textAlign:"right" }}>{c.cat}</div>
-                <div style={{ flex:1, background:C.border, borderRadius:5, height:16, overflow:"hidden" }}>
-                  <div style={{ width:`${(c.count/catMax)*100}%`, height:"100%", background:catColor[c.cat]||C.blue, borderRadius:5, transition:"width 0.5s" }}/>
-                </div>
-                <div style={{ color:C.text, fontSize:"0.78rem", fontWeight:700, minWidth:18, textAlign:"right" }}>{c.count}</div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-
-      {/* Horizon scanning */}
-      <Card>
-        <SectionTitle>Horizon Scanning — Latest Emerging Risks</SectionTitle>
-        <div style={{ display:"flex", flexDirection:"column", gap:"0.6rem" }}>
-          {risks.map(r=>{
-            const score=(Number(r.likelihood)||0)*(Number(r.impact)||0);
-            const crit = score>=16?"High":score>=9?"Medium":"Low";
-            return (
-              <div key={r.id} style={{ display:"flex", alignItems:"center", gap:"0.75rem", padding:"0.6rem 0.75rem",
-                background:C.surface, borderRadius:8, borderLeft:`3px solid ${catColor[catMap[r.category]||r.category]||C.blue}` }}>
-                <div style={{ width:8, height:8, borderRadius:"50%", background:catColor[catMap[r.category]||r.category]||C.blue, flexShrink:0 }}/>
-                <div style={{ flex:1 }}>
-                  <div style={{ color:C.text, fontWeight:600, fontSize:"0.85rem" }}>{r.name}</div>
-                  <div style={{ color:C.muted, fontSize:"0.72rem" }}>{r.category} · Horizon: {r.horizon}</div>
-                </div>
-                <Badge label={crit} color={crit==="High"?"red":crit==="Medium"?"amber":"green"}/>
-                <Badge label={r.action} color={actionColor(r.action)}/>
-                <div style={{ display:"flex", gap:"0.75rem", minWidth:120 }}>
-                  <div style={{ textAlign:"center" }}><div style={{ color:C.muted, fontSize:"0.62rem" }}>L</div><div style={{ color:C.amber, fontWeight:700, fontSize:"0.82rem" }}>{r.likelihood}</div></div>
-                  <div style={{ textAlign:"center" }}><div style={{ color:C.muted, fontSize:"0.62rem" }}>I</div><div style={{ color:C.red, fontWeight:700, fontSize:"0.82rem" }}>{r.impact}</div></div>
-                  <div style={{ textAlign:"center" }}><div style={{ color:C.muted, fontSize:"0.62rem" }}>Score</div><div style={{ color:score>=16?C.red:score>=9?C.amber:C.green, fontWeight:800, fontSize:"0.82rem" }}>{score}</div></div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </Card>
-
-      {/* SWOT Analysis */}
-      <Card>
-        <SectionTitle>SWOT Analysis — Strategic Position</SectionTitle>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.85rem" }}>
-          {[
-            { key:"Strengths",     color:C.green,  bg:"rgba(63,185,80,0.07)",  items:["Established SETA mandate and levy income base","Strong governance and ARC oversight","Skilled internal audit and risk functions","Digital GRC platform enabling real-time monitoring"] },
-            { key:"Weaknesses",    color:C.red,    bg:"rgba(248,81,73,0.07)",  items:["Cybersecurity maturity below target","Dependency on single ICT service provider","UIFW exposure above tolerance","Slow discretionary grant disbursement rate"] },
-            { key:"Opportunities", color:C.blue,   bg:"rgba(88,166,255,0.07)", items:["Digital skills grant expansion (R15M potential)","Inter-SETA collaboration and shared services","Green skills programme funding stream","AI-enhanced M&E and reporting efficiency"] },
-            { key:"Threats",       color:C.amber,  bg:"rgba(227,179,65,0.07)", items:["Regulatory overhaul of SETA landscape","Ransomware and cyber-attack escalation","Geopolitical and economic funding pressures","Climate risk to operational continuity"] },
-          ].map(q=>(
-            <div key={q.key} style={{ background:q.bg, border:`1px solid ${q.color}`, borderRadius:9, padding:"0.85rem 1rem" }}>
-              <div style={{ color:q.color, fontWeight:700, fontSize:"0.9rem", marginBottom:"0.5rem" }}>{q.key}</div>
-              <ul style={{ margin:0, paddingLeft:"1.1rem", display:"flex", flexDirection:"column", gap:"0.3rem" }}>
-                {q.items.map((it,i)=>(
-                  <li key={i} style={{ color:C.text, fontSize:"0.78rem", lineHeight:1.5 }}>{it}</li>
-                ))}
-              </ul>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))", gap:"1rem" }}>
+        {STATIC_EMERGING.map(r=>(
+          <Card key={r.id} style={{ borderLeft:`3px solid ${r.action==="Escalate"?C.red:r.action==="Mitigate"?C.amber:C.blue}` }}>
+            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:"0.4rem" }}>
+              <Badge label={r.category} color="blue"/>
+              <Badge label={r.action}   color={r.action==="Escalate"?"red":r.action==="Mitigate"?"amber":"blue"}/>
             </div>
-          ))}
-        </div>
-      </Card>
-
-      {/* Emerging Risk Register */}
-      <Card>
-        <SectionTitle>Emerging Risk Register</SectionTitle>
-        <Table
-          headers={["Risk ID","Risk Name","Category","Criticality","Status","Velocity","Potential Impact","Date Identified"]}
-          rows={risks.map(r=>{
-            const score=(Number(r.likelihood)||0)*(Number(r.impact)||0);
-            const crit = score>=16?"High":score>=9?"Medium":"Low";
-            const velocity = r.velocity || (score>=16?"Fast":score>=9?"Medium":"Slow");
-            const velColor = velocity==="Fast"?C.red:velocity==="Medium"?C.amber:C.green;
-            const statusLabel = r.action==="Escalate"?"Escalated":r.action==="Mitigate"?"Mitigating":r.action==="Watch"?"Watching":"New";
-            const statusColor = statusLabel==="Escalated"?"red":statusLabel==="New"?"purple":"amber";
-            return [
-              <span style={{ color:C.amber, fontWeight:700, fontSize:"0.75rem" }}>{r.id}</span>,
-              <span style={{ fontWeight:700, color:C.text }}>{r.name}</span>,
-              <span style={{ display:"inline-flex", alignItems:"center", gap:5 }}>
-                <span style={{ width:8, height:8, borderRadius:"50%", background:catColor[catMap[r.category]||r.category]||C.blue, display:"inline-block" }}/>
-                <span style={{ color:C.muted, fontSize:"0.78rem" }}>{r.category}</span>
-              </span>,
-              <Badge label={crit} color={crit==="High"?"red":crit==="Medium"?"amber":"green"}/>,
-              <Badge label={statusLabel} color={statusColor}/>,
-              <span style={{ color:velColor, fontWeight:700, fontSize:"0.78rem" }}>{velocity}</span>,
-              <span style={{ color:C.muted, fontSize:"0.78rem", maxWidth:200, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={r.potentialImpact||r.description}>{r.potentialImpact||r.description||`Potential disruption to ${r.category.toLowerCase()} objectives`}</span>,
-              <span style={{ color:C.muted, fontSize:"0.78rem" }}>{r.dateIdentified||r.reviewDate||"2026-01-15"}</span>,
-            ];
-          })}
-        />
-      </Card>
+            <div style={{ color:C.text, fontWeight:700, marginBottom:"0.5rem" }}>{r.name}</div>
+            <div style={{ display:"flex", gap:"1.5rem" }}>
+              <div><div style={{ color:C.muted, fontSize:"0.7rem" }}>Likelihood</div><div style={{ color:C.amber, fontWeight:800 }}>{r.likelihood}/5</div></div>
+              <div><div style={{ color:C.muted, fontSize:"0.7rem" }}>Impact</div><div style={{ color:C.red, fontWeight:800 }}>{r.impact}/5</div></div>
+              <div><div style={{ color:C.muted, fontSize:"0.7rem" }}>Horizon</div><div style={{ color:C.text, fontSize:"0.82rem" }}>{r.horizon}</div></div>
+            </div>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }
@@ -1346,139 +749,23 @@ function EmergingRisks() {
 function TreatmentActions() {
   const [actions, setActions] = useState(STATIC_TREATMENTS);
   useEffect(()=>{ fetch(`${API}/api/treatments`).then(r=>r.json()).then(d=>{ if(Array.isArray(d)&&d.length) setActions(d); }).catch(()=>{}); },[]);
-
-  const done    = actions.filter(a=>a.status==="Complete").length;
-  const prog    = actions.filter(a=>["In Progress","Near Complete"].includes(a.status)).length;
-  const notStarted = actions.filter(a=>a.status==="Not Started").length;
-  const overdue = actions.filter(a=>a.status!=="Complete" && a.dueDate && new Date(a.dueDate)<new Date()).length;
-  const total   = actions.length;
-  const completionPct = total ? Math.round((done/total)*100) : 0;
-
-  // Owner accountability: group actions by owner, split done vs outstanding
-  const owners = (()=>{
-    const map = {};
-    actions.forEach(a=>{
-      const o = a.owner || "Unassigned";
-      if (!map[o]) map[o] = { owner:o, done:0, open:0 };
-      if (a.status==="Complete") map[o].done++; else map[o].open++;
-    });
-    return Object.values(map).sort((a,b)=>(b.done+b.open)-(a.done+a.open));
-  })();
-  const ownerMax = Math.max(1, ...owners.map(o=>o.done+o.open));
-  const initials = name => name.split(/[\s.]+/).filter(Boolean).map(w=>w[0]).join("").slice(0,2).toUpperCase();
-
-  const trend = [
-    { m:"Aug", v:68 },{ m:"Sep", v:72 },{ m:"Oct", v:76 },
-    { m:"Nov", v:80 },{ m:"Dec", v:85 },{ m:"Jan", v:completionPct },
-  ];
-
-  const overdueActions = actions.filter(a=>a.status!=="Complete" && a.dueDate && new Date(a.dueDate)<new Date());
-
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
       <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Treatment Action Tracker</h1>
-
-      {/* KPI strip */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:"0.85rem" }}>
-        <KPICardPro label="Total Actions" value={total}      sub="this period"      color={C.blue}  delta={6}  deltaGood={true}/>
-        <KPICardPro label="Completed"     value={done}       sub={`${completionPct}% rate`} color={C.green} delta={11} deltaGood={true} spark={[55,58,62,66,69,completionPct]}/>
-        <KPICardPro label="In Progress"   value={prog}       sub="being executed"   color={C.amber}/>
-        <KPICardPro label="Not Started"   value={notStarted} sub="awaiting kickoff" color={C.muted}/>
-        <KPICardPro label="Overdue"       value={overdue}    sub="needs escalation" color={C.red}   delta={-3} deltaGood={true}/>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"0.85rem" }}>
+        {[["Total",actions.length,C.blue],["Complete",actions.filter(a=>a.status==="Complete").length,C.green],
+          ["In Progress",actions.filter(a=>a.status==="In Progress").length,C.amber],
+          ["Not Started",actions.filter(a=>a.status==="Not Started").length,C.red]].map(([l,v,c])=>(
+          <KPICard key={l} label={l} value={v} color={c}/>
+        ))}
       </div>
-
-      {/* Donut + owner bars + trend */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
-        <Card>
-          <SectionTitle>Overall Treatment Completion</SectionTitle>
-          <div style={{ display:"flex", justifyContent:"center", padding:"0.5rem 0" }}>
-            <DonutChart
-              segments={[
-                { label:"Done", value:done, color:C.green },
-                { label:"In Progress", value:prog, color:C.blue },
-                { label:"Not Started", value:notStarted, color:C.muted },
-                { label:"Overdue", value:overdue, color:C.red },
-              ]}
-              size={170} thickness={20}
-              centerValue={`${completionPct}%`} centerLabel="Completion"/>
-          </div>
-          <div style={{ display:"flex", justifyContent:"space-around", marginTop:"0.5rem", flexWrap:"wrap", gap:"0.5rem" }}>
-            {[["Done",done,C.green],["Active",prog,C.blue],["Pending",notStarted,C.muted],["Overdue",overdue,C.red]].map(([l,v,c])=>(
-              <div key={l} style={{ textAlign:"center" }}>
-                <div style={{ color:c, fontWeight:800, fontSize:"1.1rem" }}>{v}</div>
-                <div style={{ color:C.muted, fontSize:"0.7rem" }}>{l}</div>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card>
-          <SectionTitle>Owner Accountability</SectionTitle>
-          <div style={{ display:"flex", flexDirection:"column", gap:"0.6rem", marginTop:"0.25rem" }}>
-            {owners.map(o=>(
-              <div key={o.owner} style={{ display:"flex", alignItems:"center", gap:"0.6rem" }}>
-                <div style={{ width:30, height:30, borderRadius:"50%", background:C.surface, color:C.blue, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"0.68rem", fontWeight:700, flexShrink:0 }} title={o.owner}>{initials(o.owner)}</div>
-                <div style={{ flex:1 }}>
-                  <StackedBar max={ownerMax} segments={[{ label:"Done", value:o.done, color:C.green },{ label:"Open", value:o.open, color:C.red }]}/>
-                </div>
-                <div style={{ color:C.muted, fontSize:"0.72rem", minWidth:34, textAlign:"right" }}>{o.done}/{o.done+o.open}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{ display:"flex", gap:"1rem", marginTop:"0.75rem" }}>
-            <span style={{ color:C.green, fontSize:"0.7rem" }}>■ Completed</span>
-            <span style={{ color:C.red, fontSize:"0.7rem" }}>■ Outstanding</span>
-          </div>
-        </Card>
-
-        <Card>
-          <SectionTitle>Treatment Action Trend</SectionTitle>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={trend}>
-              <CartesianGrid strokeDasharray="3 3" stroke={C.border}/>
-              <XAxis dataKey="m" stroke={C.muted} tick={{ fill:C.muted, fontSize:11 }}/>
-              <YAxis stroke={C.muted} tick={{ fill:C.muted, fontSize:11 }} domain={[0,100]}/>
-              <Tooltip contentStyle={{ background:C.card, border:`1px solid ${C.border}`, color:C.text, fontSize:"0.78rem" }}/>
-              <Bar dataKey="v" fill={C.green} name="Completion %" radius={[4,4,0,0]}/>
-            </BarChart>
-          </ResponsiveContainer>
-        </Card>
-      </div>
-
-      {/* Overdue tracker (highlighted) */}
-      {overdueActions.length>0 && (
-        <Card style={{ borderLeft:`4px solid ${C.red}` }}>
-          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:"0.75rem" }}>
-            <span style={{ fontSize:"1.1rem" }}>⚠</span>
-            <h3 style={{ color:C.text, fontSize:"0.95rem", fontWeight:700, margin:0 }}>Overdue Action Tracker</h3>
-          </div>
-          <Table
-            headers={["Action ID","Description","Risk","Owner","Due Date","Priority","Progress"]}
-            rows={overdueActions.map(a=>[
-              <span style={{ color:C.red, fontWeight:700 }}>{a.id}</span>,
-              <span style={{ maxWidth:260, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={a.action}>{a.action}</span>,
-              <span style={{ color:C.muted, fontSize:"0.78rem" }}>{a.riskId||a.risk||"—"}</span>,
-              <span style={{ display:"inline-flex", width:26, height:26, borderRadius:"50%", background:C.surface, color:C.blue, alignItems:"center", justifyContent:"center", fontSize:"0.64rem", fontWeight:700 }} title={a.owner}>{initials(a.owner||"NA")}</span>,
-              <span style={{ color:C.red, fontWeight:700 }}>{a.dueDate||a.due||"—"}</span>,
-              <Badge label={a.priority||"High"} color={a.priority==="Critical"?"red":a.priority==="Low"?"green":"amber"}/>,
-              <div style={{ minWidth:110 }}>
-                <div style={{ color:C.muted, fontSize:"0.7rem", marginBottom:3 }}>{a.progress}%</div>
-                <ProgressBar value={Number(a.progress)||0} color={C.red}/>
-              </div>,
-            ])}
-          />
-        </Card>
-      )}
-
-      {/* Full register */}
       <Card>
-        <SectionTitle>All Treatment Actions</SectionTitle>
         <Table
           headers={["ID","Risk","Action","Owner","Due Date","Progress","Status"]}
           rows={actions.map(a=>[
             <span style={{ color:C.blue, fontWeight:700 }}>{a.id}</span>,
             a.riskId||a.risk||"—",
-            <span style={{ maxWidth:240, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={a.action}>{a.action}</span>,
+            a.action,
             a.owner||"—",
             a.dueDate||a.due||"—",
             <div style={{ minWidth:120 }}>
@@ -1495,136 +782,15 @@ function TreatmentActions() {
 
 // ─── MODULE: COMBINED ASSURANCE ───────────────────────────────────────────────
 function CombinedAssurance() {
-  const [data, setData] = useState(STATIC_ASSURANCE);
-  const [risks, setRisks] = useState(STATIC_RISKS);
-  useEffect(()=>{
-    fetch(`${API}/api/dashboard`).then(r=>r.json()).then(d=>{ if(d.combinedAssurance?.map?.length) setData(d.combinedAssurance.map); }).catch(()=>{});
-    fetch(`${API}/api/risks`).then(r=>r.json()).then(d=>{ if(Array.isArray(d)&&d.length) setRisks(d); }).catch(()=>{});
-  },[]);
-
-  // Providers grouped by line of defence (demo, mirrors reference).
-  const providers = [
-    { name:"Business Management",          line:"1st Line",     coverage:75, effectiveness:"Partial",   findings:12 },
-    { name:"Enterprise Risk Management",   line:"2nd Line",     coverage:85, effectiveness:"Effective",  findings:5  },
-    { name:"Compliance",                   line:"2nd Line",     coverage:90, effectiveness:"Effective",  findings:3  },
-    { name:"Fraud Risk Management",        line:"2nd Line",     coverage:80, effectiveness:"Partial",    findings:6  },
-    { name:"Business Continuity Management",line:"2nd Line",    coverage:60, effectiveness:"Partial",    findings:8  },
-    { name:"ICT Security",                 line:"2nd Line",     coverage:70, effectiveness:"Partial",    findings:7  },
-    { name:"Facilities & Security",        line:"2nd Line",     coverage:85, effectiveness:"Effective",  findings:2  },
-    { name:"Legal Services",               line:"2nd Line",     coverage:95, effectiveness:"Effective",  findings:1  },
-    { name:"Monitoring & Evaluation",      line:"2nd Line",     coverage:65, effectiveness:"Partial",    findings:4  },
-    { name:"Internal Audit",               line:"3rd Line",     coverage:92, effectiveness:"Effective",  findings:4  },
-    { name:"AGSA",                         line:"Independent",  coverage:100,effectiveness:"Effective",  findings:2  },
-    { name:"Risk Management Committee",    line:"Independent",  coverage:88, effectiveness:"Effective",  findings:3  },
-    { name:"Audit & Risk Committee",       line:"Independent",  coverage:95, effectiveness:"Effective",  findings:1  },
-    { name:"Administrator / Board",        line:"Independent",  coverage:90, effectiveness:"Effective",  findings:0  },
-  ];
-  const avgCoverage   = Math.round(providers.reduce((s,p)=>s+p.coverage,0)/providers.length);
-  const assuranceGaps = providers.filter(p=>p.coverage<80).length;
-  const overlaps      = 3; // duplicate coverage areas (demo)
-  const totalFindings = providers.reduce((s,p)=>s+p.findings,0);
-
-  const LINES = [
-    { key:"1st Line",    icon:"🛡", color:C.blue },
-    { key:"2nd Line",    icon:"🔵", color:C.purple },
-    { key:"3rd Line",    icon:"🟡", color:C.amber },
-    { key:"Independent", icon:"👁", color:C.green },
-  ];
-  const effBadge = e => e==="Effective"?"green":e==="Partial"?"amber":"red";
-
-  // Coverage heatmap: REAL risks (rows) × assurance lines (cols), coverage % per cell.
-  // Rows reflect the live risk register and reposition/relabel as risks change.
-  const lines = ["AGSA","1st Line","ERM","Compliance","Fraud","BCM","3rd Line"];
-  // Take the highest-rated risks so the most material ones surface in the matrix.
-  const topRisks = [...risks]
-    .sort((a,b)=>(Number(b.currentRating||b.residualRating||b.residual||b.inherentRating||0))-(Number(a.currentRating||a.residualRating||a.residual||a.inherentRating||0)))
-    .slice(0,6);
-  const riskRows = topRisks.map(r=>`${r.id} — ${(r.title||r.name||"").slice(0,16)}`);
-  // Deterministic coverage seeded by risk rating + line, so it's stable yet risk-reflective.
-  const seededCov = (rating, li) => {
-    const base = 100 - Math.min(45, (Number(rating)||10)*1.8);   // higher risk → lower baseline coverage
-    const wobble = ((li*37 + (Number(rating)||10)*13) % 30) - 12; // stable per (risk,line)
-    return Math.max(45, Math.min(100, Math.round(base + wobble)));
-  };
-  const cov = {};
-  topRisks.forEach(r=>{
-    const rating = Number(r.currentRating||r.residualRating||r.residual||r.inherentRating||10);
-    const row = `${r.id} — ${(r.title||r.name||"").slice(0,16)}`;
-    cov[row] = {};
-    lines.forEach((ln,li)=>{ cov[row][ln] = seededCov(rating, li); });
-  });
-  const covColor = v => v>=90?"#1a7d3f":v>=75?"#2d5a3d":v>=60?"#5a4a2d":"#5a2d2d";
-
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
-      <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Combined Assurance</h1>
-
-      {/* KPI strip */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"0.85rem" }}>
-        <Card style={{ borderTop:`3px solid ${C.green}` }}>
-          <div style={{ color:C.muted, fontSize:"0.72rem", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.06em" }}>Overall Coverage</div>
-          <div style={{ color:C.green, fontSize:"1.8rem", fontWeight:800, margin:"4px 0 8px" }}>{avgCoverage}%</div>
-          <ProgressBar value={avgCoverage} color={C.green}/>
-        </Card>
-        <KPICardPro label="Assurance Gaps"     value={assuranceGaps} sub="providers below 80% coverage" color={C.red}/>
-        <KPICardPro label="Assurance Overlaps" value={overlaps}      sub="duplicate coverage areas"     color={C.amber}/>
-        <KPICardPro label="Total Findings"     value={totalFindings} sub="across all assurance lines"   color={C.purple}/>
-      </div>
-
-      {/* Provider cards grouped by line of defence */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1.4fr 1fr 1fr", gap:"1rem", alignItems:"start" }}>
-        {LINES.map(L=>{
-          const group = providers.filter(p=>p.line===L.key);
-          return (
-            <Card key={L.key}>
-              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"0.85rem" }}>
-                <span style={{ color:C.text, fontWeight:700, fontSize:"0.95rem" }}>{L.icon} {L.key}</span>
-                <span style={{ color:C.muted, fontSize:"0.72rem" }}>{group.length} provider{group.length!==1?"s":""}</span>
-              </div>
-              <div style={{ display:"flex", flexDirection:"column", gap:"0.7rem" }}>
-                {group.map(p=>(
-                  <div key={p.name} style={{ background:C.surface, border:`1px solid ${p.effectiveness==="Effective"?C.green:C.amber}`, borderRadius:9, padding:"0.75rem 0.9rem" }}>
-                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:6, marginBottom:"0.5rem" }}>
-                      <span style={{ color:C.text, fontWeight:700, fontSize:"0.8rem", lineHeight:1.25 }}>{p.name}</span>
-                      <Badge label={p.effectiveness} color={effBadge(p.effectiveness)}/>
-                    </div>
-                    <ProgressBar value={p.coverage} color={p.effectiveness==="Effective"?C.green:C.purple}/>
-                    <div style={{ display:"flex", justifyContent:"space-between", marginTop:"0.4rem" }}>
-                      <span style={{ color:C.muted, fontSize:"0.73rem" }}>{p.coverage}% coverage</span>
-                      <span style={{ color:p.findings>5?C.red:C.muted, fontSize:"0.73rem", fontWeight:p.findings>5?700:400 }}>{p.findings} findings</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          );
-        })}
-      </div>
-
-      {/* Coverage heatmap matrix */}
+      <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Combined Assurance Map</h1>
       <Card>
-        <SectionTitle>Assurance Coverage Heatmap — Risk Coverage by Provider</SectionTitle>
-        <HeatGrid
-          rows={riskRows} cols={lines}
-          cellW={92} cellH={48} rowLabelW={170}
-          cell={(rw,cl)=>{ const v=cov[rw]?.[cl] ?? 0; return { value:`${v}%`, color:covColor(v) }; }}
-        />
-        <div style={{ display:"flex", gap:"1rem", marginTop:"0.75rem", flexWrap:"wrap" }}>
-          {[["≥90% Full",C.green],["75-89% Strong","#2d5a3d"],["60-74% Partial",C.amber],["<60% Gap",C.red]].map(([l,c])=>(
-            <span key={l} style={{ color:c, fontSize:"0.7rem" }}>■ {l}</span>
-          ))}
-        </div>
-      </Card>
-
-      {/* Combined assurance map table */}
-      <Card>
-        <SectionTitle>Combined Assurance Map — by Risk</SectionTitle>
         <Table
-          headers={["Risk Ref","1st Line","2nd Line","3rd Line","Gap","Assurance Level"]}
-          rows={data.map(r=>[
+          headers={["Risk Ref","1st Line","2nd Line","3rd Line","Gap","Level"]}
+          rows={STATIC_ASSURANCE.map(r=>[
             <span style={{ color:C.blue, fontWeight:700 }}>{r.risk}</span>,
-            r.assurer1,r.assurer2,r.assurer3,
-            <span style={{ color:r.gap==="None"?C.green:r.gap.includes("gap")?C.red:C.amber, fontSize:"0.8rem" }}>{r.gap}</span>,
+            r.assurer1,r.assurer2,r.assurer3,r.gap,
             <StatusBadge status={r.level}/>,
           ])}
         />
@@ -1636,38 +802,7 @@ function CombinedAssurance() {
 // ─── MODULE: BCM RESILIENCE ───────────────────────────────────────────────────
 function BCMResilience() {
   const [sub, setSub] = useState("overview");
-  const [data, setData] = useState(STATIC_BCM);
-  useEffect(()=>{
-    fetch(`${API}/api/dashboard`).then(r=>r.json()).then(d=>{ if(d.bcmResilience) setData({ ...STATIC_BCM, ...d.bcmResilience }); }).catch(()=>{});
-  },[]);
-  const ov = data.overview || STATIC_BCM.overview;
-  const incidents = data.incidents || STATIC_BCM.incidents;
-
   const tabs=["overview","incidents","plans","crisis","recovery","communications","testing","suppliers","dependencies","it-dr","training"];
-
-  // Resilience metric gauges — RTO/RPO compliance, MTTR, MBCO, RSL, MTPD maturity
-  const gauges = [
-    { label:"RTO Compliance",  sublabel:"4-hour target",       value:78, color:C.green },
-    { label:"RPO Compliance",  sublabel:"2-hour target",       value:65, color:C.amber },
-    { label:"MTTR",            sublabel:"Mean Time to Recovery",value:72, color:C.blue  },
-    { label:"MBCO",            sublabel:"Min Continuity Obj.",  value:60, color:C.purple },
-    { label:"RSL",             sublabel:"Recovery Service Lvl", value:82, color:C.green },
-    { label:"MTPD Maturity",   sublabel:"Max Tolerable Disrupt",value:62, color:C.amber },
-  ];
-
-  // BCM Readiness index — composite from BIA + plans tested + processes with BCP
-  const readiness = Math.round(((ov.biaComplete||0) + ((ov.plansTested/Math.max(ov.plansTotal,1))*100) + ((ov.processesWithBCP/Math.max(ov.criticalProcesses,1))*100))/3);
-  const readinessLabel = readiness>=80?"Strong":readiness>=60?"Moderate":"Weak";
-
-  // Critical processes (demo, mirrors reference) with RTO/RPO/maturity/test result
-  const criticalProcs = [
-    { name:"Payroll Processing",        rto:"4 hours",  rpo:"1 hour",  lastTest:"2026-02-15", maturity:4.2, result:"Passed" },
-    { name:"Levy Collection & Mgmt",    rto:"8 hours",  rpo:"2 hours", lastTest:"2026-01-20", maturity:3.8, result:"Passed" },
-    { name:"Grant Disbursement",        rto:"24 hours", rpo:"4 hours", lastTest:"2026-02-28", maturity:2.5, result:"Failed" },
-    { name:"ICT Core Infrastructure",   rto:"2 hours",  rpo:"1 hour",  lastTest:"2026-03-10", maturity:3.5, result:"Passed" },
-  ];
-  const testStatus = { Passed:criticalProcs.filter(p=>p.result==="Passed").length, Failed:criticalProcs.filter(p=>p.result==="Failed").length, Pending:1, "Not Tested":0 };
-
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
       <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>BCM & Resilience</h1>
@@ -1680,98 +815,25 @@ function BCMResilience() {
           </button>
         ))}
       </div>
-
       {sub==="overview"&&(
-        <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
-          {/* Resilience metric gauges */}
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))", gap:"0.85rem" }}>
-            {gauges.map(g=>(
-              <Card key={g.label} style={{ display:"flex", justifyContent:"center" }}>
-                <GaugeRing value={g.value} max={100} label={g.label} sublabel={g.sublabel} color={g.color} size={120}/>
-              </Card>
-            ))}
-          </div>
-
-          {/* Readiness donut + critical processes + test status */}
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1.5fr 1fr", gap:"1rem" }}>
-            <Card>
-              <SectionTitle>BCM Readiness Index</SectionTitle>
-              <div style={{ display:"flex", justifyContent:"center", padding:"0.5rem 0" }}>
-                <DonutChart
-                  segments={[{ label:"Ready", value:readiness, color:readiness>=80?C.green:readiness>=60?C.amber:C.red },{ label:"Gap", value:100-readiness, color:C.border }]}
-                  size={170} thickness={20}
-                  centerValue={`${readiness}%`} centerLabel={readinessLabel}/>
-              </div>
-              <div style={{ display:"flex", justifyContent:"space-around", marginTop:"0.5rem" }}>
-                {[["Compliant",criticalProcs.filter(p=>p.result==="Passed").length,C.green],["Partial",1,C.amber],["Non-Compliant",criticalProcs.filter(p=>p.result==="Failed").length,C.red]].map(([l,v,c])=>(
-                  <div key={l} style={{ textAlign:"center" }}>
-                    <div style={{ color:c, fontWeight:800, fontSize:"1.1rem" }}>{v}</div>
-                    <div style={{ color:C.muted, fontSize:"0.65rem" }}>{l}</div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-
-            <Card>
-              <SectionTitle>Critical Processes</SectionTitle>
-              <div style={{ display:"flex", flexDirection:"column", gap:"0.6rem" }}>
-                {criticalProcs.map(p=>(
-                  <div key={p.name} style={{ background:C.surface, borderRadius:8, padding:"0.65rem 0.85rem", border:`1px solid ${C.border}` }}>
-                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"0.4rem" }}>
-                      <span style={{ color:C.text, fontWeight:600, fontSize:"0.85rem" }}>● {p.name}</span>
-                      <Badge label={p.result} color={p.result==="Passed"?"green":"red"}/>
-                    </div>
-                    <div style={{ display:"flex", gap:"1.5rem", marginBottom:"0.4rem" }}>
-                      <div><div style={{ color:C.muted, fontSize:"0.62rem" }}>RTO</div><div style={{ color:C.blue, fontSize:"0.82rem", fontWeight:700 }}>{p.rto}</div></div>
-                      <div><div style={{ color:C.muted, fontSize:"0.62rem" }}>RPO</div><div style={{ color:C.blue, fontSize:"0.82rem", fontWeight:700 }}>{p.rpo}</div></div>
-                      <div style={{ marginLeft:"auto", textAlign:"right" }}><div style={{ color:C.muted, fontSize:"0.62rem" }}>Last Tested</div><div style={{ color:C.text, fontSize:"0.82rem" }}>{p.lastTest}</div></div>
-                    </div>
-                    <div style={{ display:"flex", alignItems:"center", gap:"0.5rem" }}>
-                      <span style={{ color:C.muted, fontSize:"0.62rem" }}>Maturity</span>
-                      <div style={{ flex:1 }}><ProgressBar value={p.maturity} max={5} color={p.maturity>=4?C.green:p.maturity>=3?C.amber:C.red}/></div>
-                      <span style={{ color:C.text, fontSize:"0.75rem", fontWeight:700 }}>{p.maturity}/5</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-
-            <Card>
-              <SectionTitle>Test Status</SectionTitle>
-              <div style={{ display:"flex", flexDirection:"column", gap:"0.85rem", marginTop:"0.5rem" }}>
-                {[["Passed",testStatus.Passed,C.green],["Failed",testStatus.Failed,C.red],["Pending",testStatus.Pending,C.amber],["Not Tested",testStatus["Not Tested"],C.muted]].map(([l,v,c])=>(
-                  <div key={l} style={{ display:"flex", alignItems:"center", gap:"0.6rem" }}>
-                    <div style={{ width:9, height:9, borderRadius:"50%", background:c, flexShrink:0 }}/>
-                    <span style={{ flex:1, color:C.text, fontSize:"0.85rem" }}>{l}</span>
-                    <span style={{ color:c, fontWeight:800, fontSize:"1rem" }}>{v}</span>
-                  </div>
-                ))}
-              </div>
-              <div style={{ marginTop:"1.25rem" }}>
-                <SectionTitle>Key Targets</SectionTitle>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.5rem" }}>
-                  {[["BIA Complete",`${ov.biaComplete}%`],["Plans Tested",`${ov.plansTested}/${ov.plansTotal}`],["RTO",ov.rto],["RPO",ov.rpo],["Critical Procs",ov.criticalProcesses],["With BCP",ov.processesWithBCP]].map(([l,v])=>(
-                    <div key={l} style={{ background:C.surface, borderRadius:6, padding:"0.4rem 0.6rem" }}>
-                      <div style={{ color:C.muted, fontSize:"0.6rem", textTransform:"uppercase", fontWeight:700 }}>{l}</div>
-                      <div style={{ color:C.text, fontSize:"0.9rem", fontWeight:700 }}>{v}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </Card>
-          </div>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))", gap:"0.85rem" }}>
+          <KPICard label="BIA Completion"    value={`${STATIC_BCM.overview.biaComplete}%`}   color={C.green}/>
+          <KPICard label="Plans Tested"       value={`${STATIC_BCM.overview.plansTested}/${STATIC_BCM.overview.plansTotal}`} color={C.amber}/>
+          <KPICard label="RTO Target"         value={STATIC_BCM.overview.rto}                color={C.blue}/>
+          <KPICard label="RPO Target"         value={STATIC_BCM.overview.rpo}                color={C.purple}/>
+          <KPICard label="Critical Processes" value={STATIC_BCM.overview.criticalProcesses}  color={C.blue}/>
+          <KPICard label="Processes w/ BCP"   value={STATIC_BCM.overview.processesWithBCP}   color={C.green}/>
         </div>
       )}
-
       {sub==="incidents"&&(
         <Card>
           <Table
             headers={["ID","Date","Type","Duration","Impact","RTO Met","Resolution"]}
-            rows={incidents.map(i=>[
+            rows={STATIC_BCM.incidents.map(i=>[
               i.id,i.date,i.type,i.duration,
               <StatusBadge status={i.impact}/>,
-              (i.rtoMet&&i.rtoBreached!=="Yes")?<Badge label="Yes" color="green"/>:<Badge label="No" color="red"/>,
-              i.resolution||i.status,
+              i.rtoMet?<Badge label="Yes" color="green"/>:<Badge label="No" color="red"/>,
+              i.resolution,
             ])}
           />
         </Card>
@@ -1785,126 +847,22 @@ function BCMResilience() {
 
 // ─── MODULE: FRAUD & ETHICS ───────────────────────────────────────────────────
 function FraudEthics() {
-  const [cases, setCases] = useState(STATIC_FRAUD);
-  useEffect(()=>{
-    fetch(`${API}/api/dashboard`).then(r=>r.json()).then(d=>{
-      const f = d.fraudEthics?.cases || d.fraudCases;
-      if (Array.isArray(f) && f.length) setCases(f);
-    }).catch(()=>{});
-  },[]);
-
-  const total = cases.length;
-  const underInv = cases.filter(f=>f.status==="Under Investigation").length;
-  const open = cases.filter(f=>!["Resolved","Closed","Written Off"].includes(f.status)).length;
-  const exposure = cases.reduce((s,f)=>s+(Number(f.amount)||0),0);
-
-  // 12-month fraud trend (demo)
-  const fraudTrend = [
-    { m:"Jan",v:4 },{ m:"Feb",v:3 },{ m:"Mar",v:5 },{ m:"Apr",v:2 },{ m:"May",v:3 },{ m:"Jun",v:4 },
-    { m:"Jul",v:2 },{ m:"Aug",v:3 },{ m:"Sep",v:2 },{ m:"Oct",v:1 },{ m:"Nov",v:3 },{ m:"Dec",v:2 },
-  ];
-  const rollingAvg = (fraudTrend.reduce((s,x)=>s+x.v,0)/fraudTrend.length).toFixed(1);
-
-  // Ethics category breakdown donut (derive from cases + demo categories)
-  const ethicsCats = [
-    { label:"Conflict of Interest", value:12, color:C.purple },
-    { label:"Gifts & Hospitality",  value:8,  color:C.blue   },
-    { label:"Bullying & Harassment",value:5,  color:C.amber  },
-    { label:"Discrimination",       value:3,  color:C.red    },
-    { label:"Other",                value:4,  color:C.green  },
-  ];
-  const ethicsTotal = ethicsCats.reduce((s,c)=>s+c.value,0);
-
-  // Compliance breaches feed (demo, mirrors reference)
-  const breaches = [
-    { title:"SDL Act Breach",       status:"Open",          desc:"Failure to submit mandatory quarterly reports to DHET within stipulated timeframe", date:"2026-01-30", owner:"Compliance Office" },
-    { title:"POPIA Non-Compliance", status:"Investigating", desc:"Learner personal information stored without adequate encryption",                    date:"2026-02-10", owner:"ICT Security" },
-    { title:"PFMA Breach",          status:"Investigating", desc:"Irregular expenditure identified in Q3 financial statements",                        date:"2026-02-25", owner:"CFO Office" },
-  ];
-  const breachColor = s => s==="Open"?"amber":s==="Investigating"?"blue":s==="Resolved"?"green":"red";
-
-  const typeColor = t => /fraud/i.test(t)?C.red:/ethics/i.test(t)?C.purple:C.amber;
-
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
       <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Fraud & Ethics Register</h1>
-
-      {/* KPI strip */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:"0.85rem" }}>
-        <KPICardPro label="Fraud Cases"          value={total}     sub={`${open} open`}            color={C.red}    delta={-1} deltaGood={true}/>
-        <KPICardPro label="Ethics Cases"         value={ethicsCats.length} sub="categories tracked" color={C.purple}/>
-        <KPICardPro label="Compliance Breaches"  value={breaches.length}   sub={`${breaches.filter(b=>b.status==="Open").length} open`} color={C.amber}/>
-        <KPICardPro label="Active Investigations" value={underInv}  sub="being investigated"        color={C.amber}/>
-        <KPICardPro label="Total Exposure"       value={`R${(exposure/1e6).toFixed(2)}M`} sub="financial loss" color={C.red}/>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"0.85rem" }}>
+        <KPICard label="Total Cases"         value={STATIC_FRAUD.length} color={C.red}/>
+        <KPICard label="Under Investigation" value={STATIC_FRAUD.filter(f=>f.status==="Under Investigation").length} color={C.amber}/>
+        <KPICard label="Total Exposure"      value={`R${(STATIC_FRAUD.reduce((s,f)=>s+f.amount,0)/1e6).toFixed(2)}M`} color={C.red}/>
       </div>
-
-      {/* Trend + ethics donut + breaches */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
-        <Card>
-          <SectionTitle>Fraud Trend (12-month)</SectionTitle>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={fraudTrend}>
-              <CartesianGrid strokeDasharray="3 3" stroke={C.border}/>
-              <XAxis dataKey="m" stroke={C.muted} tick={{ fill:C.muted, fontSize:10 }}/>
-              <YAxis stroke={C.muted} tick={{ fill:C.muted, fontSize:10 }} width={20}/>
-              <Tooltip contentStyle={{ background:C.card, border:`1px solid ${C.border}`, color:C.text, fontSize:"0.78rem" }}/>
-              <Bar dataKey="v" fill={C.red} name="Cases" radius={[3,3,0,0]}/>
-            </BarChart>
-          </ResponsiveContainer>
-          <div style={{ color:C.muted, fontSize:"0.75rem", textAlign:"center", marginTop:"0.25rem" }}>
-            12-month rolling average: <span style={{ color:C.red, fontWeight:700 }}>{rollingAvg} cases/month</span>
-          </div>
-        </Card>
-
-        <Card>
-          <SectionTitle>Ethics Dashboard</SectionTitle>
-          <div style={{ display:"flex", justifyContent:"center", padding:"0.25rem 0" }}>
-            <DonutChart segments={ethicsCats} size={160} thickness={20} centerValue={ethicsTotal} centerLabel="cases"/>
-          </div>
-          <div style={{ display:"flex", flexDirection:"column", gap:"0.4rem", marginTop:"0.5rem" }}>
-            {ethicsCats.map(c=>(
-              <div key={c.label} style={{ display:"flex", alignItems:"center", gap:"0.5rem" }}>
-                <div style={{ width:9, height:9, borderRadius:"50%", background:c.color, flexShrink:0 }}/>
-                <span style={{ flex:1, color:C.muted, fontSize:"0.78rem" }}>{c.label}</span>
-                <span style={{ color:C.text, fontWeight:700, fontSize:"0.8rem" }}>{c.value}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card>
-          <SectionTitle>Compliance Breaches</SectionTitle>
-          <div style={{ display:"flex", flexDirection:"column", gap:"0.6rem" }}>
-            {breaches.map(b=>(
-              <div key={b.title} style={{ background:C.surface, borderRadius:8, padding:"0.65rem 0.85rem", border:`1px solid ${C.border}` }}>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"0.3rem" }}>
-                  <span style={{ color:C.text, fontWeight:700, fontSize:"0.82rem" }}>● {b.title}</span>
-                  <Badge label={b.status} color={breachColor(b.status)}/>
-                </div>
-                <div style={{ color:C.muted, fontSize:"0.75rem", lineHeight:1.5, marginBottom:"0.3rem" }}>{b.desc}</div>
-                <div style={{ display:"flex", justifyContent:"space-between" }}>
-                  <span style={{ color:C.muted, fontSize:"0.7rem" }}>{b.date}</span>
-                  <span style={{ color:C.muted, fontSize:"0.7rem" }}>{b.owner}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-
-      {/* Register */}
       <Card>
-        <SectionTitle>Fraud, Ethics & Compliance Register</SectionTitle>
         <Table
-          headers={["Case ID","Category","Description","Amount","Severity","Source","Reported","Status"]}
-          rows={cases.map(f=>[
-            <span style={{ color:typeColor(f.category), fontWeight:700 }}>{f.id}</span>,
-            f.category,
-            <span style={{ maxWidth:240, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={f.description}>{f.description}</span>,
-            Number(f.amount)>0?<span style={{ color:C.red, fontWeight:700 }}>R{Number(f.amount).toLocaleString()}</span>:<span style={{ color:C.muted }}>—</span>,
-            <Badge label={Number(f.amount)>1e6?"High":Number(f.amount)>1e5?"Medium":"Low"} color={Number(f.amount)>1e6?"red":Number(f.amount)>1e5?"amber":"green"}/>,
-            <span style={{ color:C.muted, fontSize:"0.78rem" }}>{f.source||"—"}</span>,
-            <span style={{ color:C.muted, fontSize:"0.78rem" }}>{f.reported||"—"}</span>,
+          headers={["ID","Category","Description","Amount","Source","Reported","Status"]}
+          rows={STATIC_FRAUD.map(f=>[
+            <span style={{ color:C.red, fontWeight:700 }}>{f.id}</span>,
+            f.category,f.description,
+            f.amount>0?`R${f.amount.toLocaleString()}`:"—",
+            f.source,f.reported,
             <StatusBadge status={f.status}/>,
           ])}
         />
@@ -1915,179 +873,24 @@ function FraudEthics() {
 
 // ─── MODULE: DEPARTMENTAL RISKS ───────────────────────────────────────────────
 function DepartmentalRisks() {
-  const [oprisks, setOprisks] = useState(STATIC_OPRISKS);
-  const [portfolioFilter, setPortfolioFilter] = useState("All");
-  const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState(null);
-
-  useEffect(()=>{
-    fetch(`${API}/api/oprisks`).then(r=>r.json()).then(d=>{ if(Array.isArray(d)&&d.length) setOprisks(d); }).catch(()=>{});
-  },[]);
-
-  const sc = v => Number(v)>=15?C.red:Number(v)>=10?"#e36209":Number(v)>=6?C.amber:C.green;
-
-  // Portfolio rollups
-  const portfolios = STATIC_PORTFOLIOS.map(p=>{
-    const risks = oprisks.filter(r=>r.portfolio===p.name);
-    const critical = risks.filter(r=>r.current>=15).length;
-    const avgResidual = risks.length ? (risks.reduce((s,r)=>s+r.residual,0)/risks.length) : 0;
-    return { ...p, count:risks.length, critical, avgResidual };
-  });
-
-  const filtered = oprisks.filter(r=>
-    (portfolioFilter==="All" || r.portfolio===portfolioFilter) &&
-    ((r.name||"").toLowerCase().includes(search.toLowerCase()) || (r.id||"").toLowerCase().includes(search.toLowerCase()) || (r.unit||"").toLowerCase().includes(search.toLowerCase()))
-  );
-  const sel = selected || filtered[0] || oprisks[0];
-
-  // Per-risk progress trend (inherent → current trajectory)
-  const trendData = (()=>{
-    if (!sel) return [];
-    const start = sel.inherent, end = sel.current;
-    const months = ["Aug","Sep","Oct","Nov","Dec","Jan"];
-    return months.map((m,i)=>({ m, v:+(start + (end-start)*(i/(months.length-1))).toFixed(1) }));
-  })();
-
-  const totalRisks = oprisks.length;
-  const totalCritical = oprisks.filter(r=>r.current>=15).length;
-  const avgResidual = (oprisks.reduce((s,r)=>s+r.residual,0)/oprisks.length).toFixed(1);
-  const trendIcon = t => t==="Improving"?"↗":t==="Declining"?"↘":"—";
-  const trendColor = t => t==="Improving"?C.green:t==="Declining"?C.red:C.muted;
-
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:"0.5rem" }}>
-        <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Departmental Risk Summary</h1>
-        <input placeholder="Search operational risks…" value={search} onChange={e=>setSearch(e.target.value)} style={{ ...inputSt, width:240 }}/>
-      </div>
-
-      {/* KPI strip */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"0.85rem" }}>
-        <KPICardPro label="Operational Risks" value={totalRisks}    sub={`across ${STATIC_PORTFOLIOS.length} portfolios`} color={C.blue}/>
-        <KPICardPro label="Critical (≥15)"    value={totalCritical} sub="current rating"      color={C.red}/>
-        <KPICardPro label="Avg Residual"      value={avgResidual}   sub="across all risks"    color={C.amber} spark={[14,13,13,12,12,Number(avgResidual)]}/>
-        <KPICardPro label="Improving"         value={oprisks.filter(r=>r.trend==="Improving").length} sub="positive trend" color={C.green}/>
-      </div>
-
-      {/* Portfolio filter cards */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))", gap:"0.85rem" }}>
-        <div onClick={()=>{ setPortfolioFilter("All"); setSelected(null); }}
-          style={{ cursor:"pointer", background:portfolioFilter==="All"?"rgba(88,166,255,0.12)":C.card, border:`1px solid ${portfolioFilter==="All"?C.blue:C.border}`, borderRadius:10, padding:"0.85rem 1rem" }}>
-          <div style={{ color:C.text, fontWeight:700, fontSize:"0.85rem" }}>All Portfolios</div>
-          <div style={{ color:C.blue, fontSize:"1.5rem", fontWeight:800 }}>{totalRisks}</div>
-          <div style={{ color:C.muted, fontSize:"0.7rem" }}>{totalCritical} critical</div>
-        </div>
-        {portfolios.map(p=>{
-          const active = portfolioFilter===p.name;
-          return (
-            <div key={p.name} onClick={()=>{ setPortfolioFilter(p.name); setSelected(null); }}
-              style={{ cursor:"pointer", background:active?"rgba(88,166,255,0.12)":C.card, border:`1px solid ${active?C.blue:C.border}`, borderRadius:10, padding:"0.85rem 1rem" }}>
-              <div style={{ color:C.text, fontWeight:700, fontSize:"0.85rem", lineHeight:1.2, marginBottom:4 }}>{p.name}</div>
-              <div style={{ display:"flex", alignItems:"baseline", gap:6 }}>
-                <span style={{ color:sc(p.avgResidual), fontSize:"1.5rem", fontWeight:800 }}>{p.count}</span>
-                <span style={{ color:C.muted, fontSize:"0.7rem" }}>risks</span>
-              </div>
-              <div style={{ display:"flex", justifyContent:"space-between", marginTop:2 }}>
-                <span style={{ color:C.muted, fontSize:"0.68rem" }}>{p.units.length} unit{p.units.length!==1?"s":""}</span>
-                {p.critical>0 && <span style={{ color:C.red, fontSize:"0.68rem", fontWeight:700 }}>{p.critical} critical</span>}
-              </div>
+      <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Departmental Risk Summary</h1>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))", gap:"1rem" }}>
+        {STATIC_DEPTS.map(d=>(
+          <Card key={d.name}>
+            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:"0.5rem" }}>
+              <span style={{ color:C.text, fontWeight:700 }}>{d.name}</span>
+              {d.uifw>0&&<Badge label={`UIFW R${(d.uifw/1e6).toFixed(1)}M`} color="red"/>}
             </div>
-          );
-        })}
-      </div>
-
-      {/* Operational risk register + detail */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 380px", gap:"1.25rem", alignItems:"start" }}>
-        <Card style={{ padding:0, overflow:"hidden" }}>
-          <div style={{ padding:"0.85rem 1.1rem", borderBottom:`1px solid ${C.border}` }}>
-            <span style={{ color:C.text, fontWeight:700, fontSize:"0.95rem" }}>Operational Risk Register</span>
-            <span style={{ color:C.muted, fontSize:"0.78rem", marginLeft:8 }}>{portfolioFilter==="All"?"All portfolios":portfolioFilter} · {filtered.length} risks</span>
-          </div>
-          <div style={{ overflowX:"auto" }}>
-            <table style={{ width:"100%", borderCollapse:"collapse", fontSize:"0.82rem" }}>
-              <thead>
-                <tr>{["Risk ID","Risk Name","Inherent","Residual","Current","Target","Appetite","Trend"].map((h,i)=>
-                  <th key={i} style={{ color:C.muted, fontWeight:600, padding:"0.6rem 0.7rem", textAlign:"left", borderBottom:`1px solid ${C.border}`, whiteSpace:"nowrap" }}>{h}</th>)}</tr>
-              </thead>
-              <tbody>
-                {filtered.map(r=>{
-                  const isSel = sel && r.id===sel.id;
-                  return (
-                    <tr key={r.id} onClick={()=>setSelected(r)}
-                      style={{ borderBottom:`1px solid ${C.border}`, cursor:"pointer",
-                        background:isSel?"rgba(88,166,255,0.12)":"transparent",
-                        borderLeft:`3px solid ${isSel?C.blue:"transparent"}` }}
-                      onMouseEnter={e=>{ if(!isSel) e.currentTarget.style.background=C.surface; }}
-                      onMouseLeave={e=>{ if(!isSel) e.currentTarget.style.background="transparent"; }}>
-                      <td style={{ padding:"0.55rem 0.7rem", color:C.blue, fontWeight:700, whiteSpace:"nowrap" }}>{r.id}</td>
-                      <td style={{ padding:"0.55rem 0.7rem", color:C.text, maxWidth:230 }}>
-                        <div style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={r.name}>{r.name}</div>
-                        <div style={{ color:C.muted, fontSize:"0.68rem" }}>{r.unit}</div>
-                      </td>
-                      <td style={{ padding:"0.55rem 0.7rem", color:sc(r.inherent), fontWeight:700 }}>{r.inherent}</td>
-                      <td style={{ padding:"0.55rem 0.7rem", color:sc(r.residual), fontWeight:700 }}>{r.residual}</td>
-                      <td style={{ padding:"0.55rem 0.7rem", color:sc(r.current), fontWeight:700 }}>{r.current}</td>
-                      <td style={{ padding:"0.55rem 0.7rem", color:C.green, fontWeight:700 }}>{r.target}</td>
-                      <td style={{ padding:"0.55rem 0.7rem", color:C.muted, fontSize:"0.78rem" }}>{r.appetite}</td>
-                      <td style={{ padding:"0.55rem 0.7rem", color:trendColor(r.trend), fontWeight:700 }}>{trendIcon(r.trend)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          {filtered.length===0 && <p style={{ color:C.muted, textAlign:"center", padding:"2rem" }}>No operational risks match.</p>}
-        </Card>
-
-        {/* Detail panel */}
-        {sel && (
-          <Card style={{ position:"sticky", top:0 }}>
-            <div style={{ color:C.muted, fontSize:"0.72rem", fontWeight:700 }}>{sel.id} · {sel.portfolio} / {sel.unit}</div>
-            <h3 style={{ color:C.text, fontSize:"1.02rem", fontWeight:700, margin:"0.2rem 0 0.5rem" }}>{sel.name}</h3>
-            <p style={{ color:C.muted, fontSize:"0.8rem", lineHeight:1.6, margin:"0 0 1rem" }}>{sel.description}</p>
-
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"0.5rem", marginBottom:"1rem" }}>
-              {[["Inherent",sel.inherent,sc(sel.inherent)],["Residual",sel.residual,sc(sel.residual)],["Current",sel.current,sc(sel.current)],["Target",sel.target,C.green]].map(([l,v,c])=>(
-                <div key={l} style={{ background:C.surface, borderRadius:7, padding:"0.5rem", textAlign:"center" }}>
-                  <div style={{ color:c, fontSize:"1.3rem", fontWeight:800 }}>{v}</div>
-                  <div style={{ color:C.muted, fontSize:"0.62rem" }}>{l}</div>
-                </div>
-              ))}
+            <div style={{ display:"flex", gap:"1.25rem", marginBottom:"0.75rem" }}>
+              <div><div style={{ color:C.muted, fontSize:"0.7rem" }}>Risks</div><div style={{ color:C.blue, fontWeight:800 }}>{d.risks}</div></div>
+              <div><div style={{ color:C.muted, fontSize:"0.7rem" }}>Critical</div><div style={{ color:C.red, fontWeight:800 }}>{d.critical}</div></div>
+              <div><div style={{ color:C.muted, fontSize:"0.7rem" }}>Treatment</div><div style={{ color:C.green, fontWeight:800 }}>{d.treatment}%</div></div>
             </div>
-
-            <div style={{ display:"flex", alignItems:"center", gap:"0.6rem", marginBottom:"1rem" }}>
-              <div style={{ width:36, height:36, borderRadius:"50%", background:C.surface, display:"flex", alignItems:"center", justifyContent:"center", color:C.blue, fontWeight:700, fontSize:"0.75rem" }}>
-                {(sel.owner||"NA").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()}
-              </div>
-              <div>
-                <div style={{ color:C.text, fontSize:"0.85rem", fontWeight:600 }}>{sel.owner}</div>
-                <div style={{ display:"flex", gap:6, marginTop:2 }}>
-                  <Badge label={sel.trend} color={sel.trend==="Improving"?"green":sel.trend==="Declining"?"red":"amber"}/>
-                  <Badge label={`Appetite: ${sel.appetite}`} color="blue"/>
-                </div>
-              </div>
-            </div>
-
-            <SectionTitle>Progress Trend</SectionTitle>
-            <ResponsiveContainer width="100%" height={150}>
-              <LineChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" stroke={C.border}/>
-                <XAxis dataKey="m" stroke={C.muted} tick={{ fill:C.muted, fontSize:10 }}/>
-                <YAxis stroke={C.muted} tick={{ fill:C.muted, fontSize:10 }} width={24}/>
-                <Tooltip contentStyle={{ background:C.card, border:`1px solid ${C.border}`, color:C.text, fontSize:"0.78rem" }}/>
-                <Line type="monotone" dataKey="v" stroke={sc(sel.current)} strokeWidth={2} dot={{ r:3 }} name="Risk rating"/>
-              </LineChart>
-            </ResponsiveContainer>
-
-            <div style={{ marginTop:"0.75rem" }}>
-              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-                <span style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700 }}>Reduction to Target</span>
-                <span style={{ color:C.text, fontSize:"0.78rem", fontWeight:700 }}>{sel.current} → {sel.target}</span>
-              </div>
-              <ProgressBar value={Math.max(0, sel.inherent-sel.current)} max={Math.max(1, sel.inherent-sel.target)} color={C.green}/>
-            </div>
+            <ProgressBar value={d.treatment} color={d.treatment>=80?C.green:d.treatment>=60?C.amber:C.red}/>
           </Card>
-        )}
+        ))}
       </div>
     </div>
   );
@@ -2122,382 +925,95 @@ function UIFWExpenditure() {
 
 // ─── MODULE: THIRD-PARTY RISK ─────────────────────────────────────────────────
 function ThirdPartyRisk() {
-  const [vendors] = useState(STATIC_THIRD);
-
-  const total = vendors.length;
-  const highRisk = vendors.filter(v=>v.risk==="High").length;
-  const avgScore = Math.round(vendors.reduce((s,v)=>s+(Number(v.score)||0),0)/vendors.length);
-  const underReview = vendors.filter(v=>v.status==="Review").length;
-  const scoreColor = s => s>=80?C.green:s>=65?C.amber:C.red;
-  const riskColor  = r => r==="High"?C.red:r==="Medium"?C.amber:C.green;
-
-  // Risk-tier distribution
-  const tiers = ["High","Medium","Low"];
-  const tierCounts = tiers.map(t=>({ tier:t, count:vendors.filter(v=>v.risk===t).length, color:riskColor(t) }));
-  const tierMax = Math.max(1, ...tierCounts.map(t=>t.count));
-
-  // Contract expiry awareness: flag contracts within ~90 days of a reference date
-  const soonExpiry = vendors.filter(v=>{
-    if (!v.contract || v.contract==="Ongoing") return false;
-    const d = new Date(v.contract); const now = new Date("2026-06-19");
-    const days = (d-now)/(1000*60*60*24);
-    return days>=0 && days<=120;
-  });
-
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
       <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Third-Party Risk Register</h1>
-
-      {/* KPI strip */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"0.85rem" }}>
-        <KPICardPro label="Total Vendors"    value={total}      sub="under management"        color={C.blue}/>
-        <KPICardPro label="High Risk"        value={highRisk}   sub="require close monitoring" color={C.red}/>
-        <KPICardPro label="Avg Risk Score"   value={avgScore}   sub="out of 100"               color={scoreColor(avgScore)} spark={[70,72,74,73,75,avgScore]}/>
-        <KPICardPro label="Under Review"     value={underReview} sub="contract/risk review"    color={C.amber}/>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))", gap:"1rem" }}>
+        {STATIC_THIRD.map(tp=>(
+          <Card key={tp.id} style={{ borderLeft:`3px solid ${tp.risk==="High"?C.red:tp.risk==="Medium"?C.amber:C.green}` }}>
+            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:"0.4rem" }}>
+              <span style={{ color:C.text, fontWeight:700 }}>{tp.name}</span>
+              <StatusBadge status={tp.status}/>
+            </div>
+            <div style={{ color:C.muted, fontSize:"0.78rem", marginBottom:"0.5rem" }}>{tp.type}</div>
+            <div style={{ display:"flex", gap:"1rem" }}>
+              <div><div style={{ color:C.muted, fontSize:"0.7rem" }}>Risk</div><Badge label={tp.risk} color={tp.risk==="High"?"red":tp.risk==="Medium"?"amber":"green"}/></div>
+              <div><div style={{ color:C.muted, fontSize:"0.7rem" }}>Score</div><div style={{ color:tp.score>=80?C.green:tp.score>=65?C.amber:C.red, fontWeight:800 }}>{tp.score}</div></div>
+              <div><div style={{ color:C.muted, fontSize:"0.7rem" }}>Contract</div><div style={{ color:C.text, fontSize:"0.82rem" }}>{tp.contract}</div></div>
+            </div>
+          </Card>
+        ))}
       </div>
-
-      {/* Risk distribution + contract expiry */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
-        <Card>
-          <SectionTitle>Risk Tier Distribution</SectionTitle>
-          <div style={{ display:"flex", flexDirection:"column", gap:"0.85rem", marginTop:"0.5rem" }}>
-            {tierCounts.map(t=>(
-              <div key={t.tier} style={{ display:"flex", alignItems:"center", gap:"0.75rem" }}>
-                <div style={{ width:60, color:C.muted, fontSize:"0.8rem", fontWeight:600 }}>{t.tier}</div>
-                <div style={{ flex:1, background:C.border, borderRadius:6, height:22, overflow:"hidden" }}>
-                  <div style={{ width:`${(t.count/tierMax)*100}%`, height:"100%", background:t.color, borderRadius:6,
-                    display:"flex", alignItems:"center", justifyContent:"flex-end", paddingRight:8, transition:"width 0.5s" }}>
-                    <span style={{ color:"#fff", fontSize:"0.72rem", fontWeight:700 }}>{t.count}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div style={{ marginTop:"1.25rem" }}>
-            <SectionTitle>Vendor Score Ranking</SectionTitle>
-            <div style={{ display:"flex", flexDirection:"column", gap:"0.55rem" }}>
-              {[...vendors].sort((a,b)=>b.score-a.score).map(v=>(
-                <div key={v.id} style={{ display:"flex", alignItems:"center", gap:"0.6rem" }}>
-                  <div style={{ width:110, color:C.text, fontSize:"0.78rem", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={v.name}>{v.name}</div>
-                  <div style={{ flex:1 }}><ProgressBar value={v.score} color={scoreColor(v.score)}/></div>
-                  <span style={{ color:scoreColor(v.score), fontSize:"0.78rem", fontWeight:700, minWidth:24, textAlign:"right" }}>{v.score}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <SectionTitle>⚠ Contract Renewals — Next 120 Days</SectionTitle>
-          {soonExpiry.length>0 ? (
-            <div style={{ display:"flex", flexDirection:"column", gap:"0.6rem" }}>
-              {soonExpiry.map(v=>(
-                <div key={v.id} style={{ background:C.surface, borderRadius:8, padding:"0.65rem 0.85rem", borderLeft:`3px solid ${riskColor(v.risk)}` }}>
-                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                    <span style={{ color:C.text, fontWeight:700, fontSize:"0.85rem" }}>{v.name}</span>
-                    <Badge label={v.risk} color={v.risk==="High"?"red":v.risk==="Medium"?"amber":"green"}/>
-                  </div>
-                  <div style={{ display:"flex", justifyContent:"space-between", marginTop:"0.3rem" }}>
-                    <span style={{ color:C.muted, fontSize:"0.75rem" }}>{v.type}</span>
-                    <span style={{ color:C.amber, fontSize:"0.78rem", fontWeight:700 }}>Expires {v.contract}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p style={{ color:C.muted, fontSize:"0.82rem" }}>No contracts expiring within the next 120 days.</p>
-          )}
-          <div style={{ marginTop:"1rem", padding:"0.85rem", background:C.surface, borderRadius:8 }}>
-            <div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700, marginBottom:6 }}>Portfolio Health</div>
-            <div style={{ display:"flex", gap:"1.25rem" }}>
-              <div><div style={{ color:C.green, fontSize:"1.4rem", fontWeight:800 }}>{vendors.filter(v=>v.score>=80).length}</div><div style={{ color:C.muted, fontSize:"0.68rem" }}>Strong (80+)</div></div>
-              <div><div style={{ color:C.amber, fontSize:"1.4rem", fontWeight:800 }}>{vendors.filter(v=>v.score>=65&&v.score<80).length}</div><div style={{ color:C.muted, fontSize:"0.68rem" }}>Adequate</div></div>
-              <div><div style={{ color:C.red, fontSize:"1.4rem", fontWeight:800 }}>{vendors.filter(v=>v.score<65).length}</div><div style={{ color:C.muted, fontSize:"0.68rem" }}>Weak (&lt;65)</div></div>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Detailed register */}
-      <Card>
-        <SectionTitle>Third-Party Register</SectionTitle>
-        <Table
-          headers={["ID","Vendor","Type","Risk Tier","Score","Contract Expiry","Status"]}
-          rows={vendors.map(v=>[
-            <span style={{ color:C.blue, fontWeight:700 }}>{v.id}</span>,
-            <span style={{ fontWeight:700, color:C.text }}>{v.name}</span>,
-            <span style={{ color:C.muted, fontSize:"0.78rem" }}>{v.type}</span>,
-            <Badge label={v.risk} color={v.risk==="High"?"red":v.risk==="Medium"?"amber":"green"}/>,
-            <div style={{ display:"flex", alignItems:"center", gap:6, minWidth:90 }}>
-              <div style={{ flex:1 }}><ProgressBar value={v.score} color={scoreColor(v.score)}/></div>
-              <span style={{ color:scoreColor(v.score), fontWeight:700, fontSize:"0.78rem" }}>{v.score}</span>
-            </div>,
-            <span style={{ color:soonExpiry.includes(v)?C.amber:C.text, fontWeight:soonExpiry.includes(v)?700:400, fontSize:"0.82rem" }}>{v.contract}</span>,
-            <StatusBadge status={v.status}/>,
-          ])}
-        />
-      </Card>
     </div>
   );
 }
 
 // ─── MODULE: APP ALIGNMENT ────────────────────────────────────────────────────
 function APPAlignment() {
-  const [apps] = useState(STATIC_APP);
-
-  // Group APP items under strategic objectives (derived from ref prefix)
-  const objectives = [
-    { code:"SO 1", name:"Financial Sustainability & Skills Funding", color:C.blue },
-    { code:"SO 2", name:"Clean Governance & Compliance",            color:C.green },
-    { code:"SO 3", name:"Digital Transformation & Systems",         color:C.purple },
-    { code:"SO 4", name:"Human Capital & Capability",               color:C.amber },
-  ];
-  const objOf = ref => "SO " + (ref.match(/APP (\d)/)?.[1] || "1");
-
-  // Previous-period values (demo) keyed by ref
-  const prev = { "APP 1.1":10,"APP 1.2":72,"APP 2.1":98,"APP 2.2":5.1,"APP 3.1":45,"APP 3.2":63,"APP 4.1":72 };
-
-  const onTrack = apps.filter(a=>a.status==="On Track").length;
-  const behind  = apps.filter(a=>a.status==="Behind").length;
-  const inProg  = apps.filter(a=>a.status==="In Progress").length;
-  const avgAchievement = Math.round(apps.reduce((s,a)=>s+Math.min(100,(a.actual/Math.max(a.target,0.01))*100),0)/apps.length);
-
-  // KRI / KPI trend series — current vs previous reporting period (demo)
-  const kpiTrend = [
-    { period:"Q1 (Prev)", achievement:62, kriBreaches:7, compliance:74 },
-    { period:"Q2 (Prev)", achievement:66, kriBreaches:6, compliance:78 },
-    { period:"Q3 (Prev)", achievement:70, kriBreaches:6, compliance:80 },
-    { period:"Q4 (Prev)", achievement:73, kriBreaches:5, compliance:83 },
-    { period:"Q1 (Curr)", achievement:76, kriBreaches:4, compliance:86 },
-    { period:"Q2 (Curr)", achievement:avgAchievement, kriBreaches:3, compliance:88 },
-  ];
-
-  const variance = a => +(a.actual - a.target).toFixed(1);
-  const varColor = v => v>=0?C.green:v<=-10?C.red:C.amber;
-
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
       <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Annual Performance Plan Alignment</h1>
-
-      {/* KPI strip */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"0.85rem" }}>
-        <KPICardPro label="Strategic Objectives" value={objectives.length} sub="aligned to APP"          color={C.blue}/>
-        <KPICardPro label="KPIs Tracked"          value={apps.length}        sub={`${onTrack} on track`} color={C.green}/>
-        <KPICardPro label="Avg Achievement"       value={`${avgAchievement}%`} sub="of target"           color={avgAchievement>=80?C.green:avgAchievement>=60?C.amber:C.red} spark={[62,66,70,73,76,avgAchievement]}/>
-        <KPICardPro label="Behind Target"         value={behind}             sub="require intervention"  color={C.red}/>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"0.85rem" }}>
+        <KPICard label="On Track"    value={STATIC_APP.filter(a=>a.status==="On Track").length}    color={C.green}/>
+        <KPICard label="Behind"      value={STATIC_APP.filter(a=>a.status==="Behind").length}      color={C.red}/>
+        <KPICard label="In Progress" value={STATIC_APP.filter(a=>a.status==="In Progress").length} color={C.amber}/>
       </div>
-
-      {/* Strategic objectives breakdown */}
       <Card>
-        <SectionTitle>Strategic Objectives — APP Performance</SectionTitle>
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))", gap:"0.85rem" }}>
-          {objectives.map(o=>{
-            const items = apps.filter(a=>objOf(a.ref)===o.code);
-            const objAch = items.length ? Math.round(items.reduce((s,a)=>s+Math.min(100,(a.actual/Math.max(a.target,0.01))*100),0)/items.length) : 0;
-            return (
-              <div key={o.code} style={{ background:C.surface, borderRadius:9, padding:"0.9rem 1rem", borderTop:`3px solid ${o.color}` }}>
-                <div style={{ color:C.muted, fontSize:"0.68rem", fontWeight:700 }}>{o.code}</div>
-                <div style={{ color:C.text, fontWeight:700, fontSize:"0.85rem", lineHeight:1.3, marginBottom:"0.5rem", minHeight:34 }}>{o.name}</div>
-                <div style={{ display:"flex", alignItems:"baseline", gap:6, marginBottom:6 }}>
-                  <span style={{ color:o.color, fontSize:"1.5rem", fontWeight:800 }}>{objAch}%</span>
-                  <span style={{ color:C.muted, fontSize:"0.7rem" }}>avg achievement</span>
-                </div>
-                <ProgressBar value={objAch} color={o.color}/>
-                <div style={{ color:C.muted, fontSize:"0.7rem", marginTop:6 }}>{items.length} KPI{items.length!==1?"s":""}</div>
-              </div>
-            );
-          })}
-        </div>
+        {STATIC_APP.map(a=>(
+          <div key={a.ref} style={{ padding:"0.75rem 0", borderBottom:`1px solid ${C.border}`, display:"flex", alignItems:"center", gap:"1rem" }}>
+            <span style={{ color:C.blue, fontWeight:700, minWidth:70, fontSize:"0.82rem" }}>{a.ref}</span>
+            <span style={{ color:C.text, flex:1, fontSize:"0.88rem" }}>{a.objective}</span>
+            <div style={{ minWidth:140, textAlign:"right" }}>
+              <div style={{ color:C.muted, fontSize:"0.7rem" }}>Target {a.target}% | Actual {a.actual}%</div>
+              <ProgressBar value={a.actual} max={a.target} color={a.actual>=a.target?C.green:C.red}/>
+            </div>
+            <StatusBadge status={a.status}/>
+          </div>
+        ))}
       </Card>
-
-      {/* Targeted vs achieved + variance table */}
-      <Card>
-        <SectionTitle>APP Targets — Targeted vs Achieved & Variance</SectionTitle>
-        <Table
-          headers={["Ref","Objective","Strategic Obj.","Target","Achieved","Variance","Prev. Period","Status"]}
-          rows={apps.map(a=>{
-            const v = variance(a);
-            const p = prev[a.ref];
-            const pDelta = p!=null ? +(a.actual - p).toFixed(1) : null;
-            return [
-              <span style={{ color:C.blue, fontWeight:700 }}>{a.ref}</span>,
-              <span style={{ maxWidth:260, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={a.objective}>{a.objective}</span>,
-              <span style={{ color:C.muted, fontSize:"0.78rem" }}>{objOf(a.ref)}</span>,
-              <span style={{ color:C.text, fontWeight:600 }}>{a.target}{a.target<=10?"":"%"}</span>,
-              <span style={{ color:C.text, fontWeight:700 }}>{a.actual}{a.target<=10?"":"%"}</span>,
-              <span style={{ color:varColor(v), fontWeight:700 }}>{v>=0?"+":""}{v}</span>,
-              <span style={{ color:pDelta>=0?C.green:C.red, fontSize:"0.8rem" }}>{p!=null?`${p} (${pDelta>=0?"+":""}${pDelta})`:"—"}</span>,
-              <StatusBadge status={a.status}/>,
-            ];
-          })}
-        />
-      </Card>
-
-      {/* KRI / KPI trends current vs previous period */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
-        <Card>
-          <SectionTitle>KPI Achievement Trend — Current vs Previous</SectionTitle>
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={kpiTrend}>
-              <CartesianGrid strokeDasharray="3 3" stroke={C.border}/>
-              <XAxis dataKey="period" stroke={C.muted} tick={{ fill:C.muted, fontSize:9 }}/>
-              <YAxis stroke={C.muted} tick={{ fill:C.muted, fontSize:10 }} domain={[0,100]}/>
-              <Tooltip contentStyle={{ background:C.card, border:`1px solid ${C.border}`, color:C.text, fontSize:"0.78rem" }}/>
-              <Legend wrapperStyle={{ fontSize:"0.72rem", color:C.muted }}/>
-              <Line type="monotone" dataKey="achievement" stroke={C.green} strokeWidth={2} dot={{ r:3 }} name="KPI Achievement %"/>
-              <Line type="monotone" dataKey="compliance"  stroke={C.blue}  strokeWidth={2} dot={{ r:3 }} name="Compliance %"/>
-            </LineChart>
-          </ResponsiveContainer>
-        </Card>
-        <Card>
-          <SectionTitle>KRI Breach Trend — Current vs Previous</SectionTitle>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={kpiTrend}>
-              <CartesianGrid strokeDasharray="3 3" stroke={C.border}/>
-              <XAxis dataKey="period" stroke={C.muted} tick={{ fill:C.muted, fontSize:9 }}/>
-              <YAxis stroke={C.muted} tick={{ fill:C.muted, fontSize:10 }} allowDecimals={false}/>
-              <Tooltip contentStyle={{ background:C.card, border:`1px solid ${C.border}`, color:C.text, fontSize:"0.78rem" }}/>
-              <Bar dataKey="kriBreaches" fill={C.red} name="KRI Breaches" radius={[4,4,0,0]}/>
-            </BarChart>
-          </ResponsiveContainer>
-        </Card>
-      </div>
     </div>
   );
 }
 
 // ─── MODULE: PREDICTIVE INTEL ─────────────────────────────────────────────────
 function PredictiveIntel() {
-  // Historical + forecast with confidence band (lower/upper for forecast zone)
-  const data = [
-    { month:"Jan", actual:38.5, forecast:null, lo:null, hi:null },
-    { month:"Feb", actual:39.2, forecast:null, lo:null, hi:null },
-    { month:"Mar", actual:40.1, forecast:null, lo:null, hi:null },
-    { month:"Apr", actual:40.8, forecast:null, lo:null, hi:null },
-    { month:"May", actual:41.5, forecast:null, lo:null, hi:null },
-    { month:"Jun", actual:42.0, forecast:42.0, lo:42.0, hi:42.0 },
-    { month:"Jul", actual:null, forecast:42.6, lo:41.5, hi:43.7 },
-    { month:"Aug", actual:null, forecast:43.1, lo:41.6, hi:44.6 },
-    { month:"Sep", actual:null, forecast:43.5, lo:41.5, hi:45.5 },
-    { month:"Oct", actual:null, forecast:44.0, lo:41.6, hi:46.4 },
-    { month:"Nov", actual:null, forecast:44.6, lo:41.8, hi:47.4 },
-    { month:"Dec", actual:null, forecast:45.2, lo:41.9, hi:48.5 },
+  const data=[
+    { month:"Jul 26", exposure:13.2, uifw:18.5, treatment:68 },
+    { month:"Aug 26", exposure:12.8, uifw:17.1, treatment:72 },
+    { month:"Sep 26", exposure:12.1, uifw:15.8, treatment:78 },
+    { month:"Oct 26", exposure:11.5, uifw:14.2, treatment:83 },
+    { month:"Nov 26", exposure:10.9, uifw:12.5, treatment:88 },
+    { month:"Dec 26", exposure:10.2, uifw:11.0, treatment:92 },
   ];
-
-  const kpis = [
-    { label:"Predicted KRI Breaches", value:3,    sub:"-2 from previous", color:C.green,  delta:-2, good:true,  spark:[5,5,4,4,3,3] },
-    { label:"Predicted Overdue Actions", value:5, sub:"-3 from previous", color:C.green,  delta:-3, good:true,  spark:[9,8,7,6,6,5] },
-    { label:"Predicted Risk Exposure", value:43.5, sub:"+1.5 from previous", color:C.amber, delta:1.5, good:false, spark:[40,41,41,42,42,43.5] },
-    { label:"Opportunity Realisation %", value:68, sub:"+5 from previous", color:C.green, delta:5, good:true, spark:[58,60,62,64,66,68] },
-  ];
-
-  const modelConfidence = [
-    { label:"Risk Exposure Forecast", value:92 },
-    { label:"KRI Breach Prediction",  value:85 },
-    { label:"Treatment Delay Forecast", value:78 },
-    { label:"Opportunity Realisation", value:72 },
-  ];
-
-  const velocityAlerts = [
-    { title:"Cybersecurity Maturity", note:"Projected to reach Red threshold by March", color:C.red },
-    { title:"BCP Test Success", note:"Expected improvement to 75% next quarter", color:C.amber },
-    { title:"Employee Engagement", note:"Steady upward trend projected", color:C.green },
-  ];
-
-  const recommendations = [
-    "Accelerate cybersecurity framework deployment by 4 weeks",
-    "Prioritise BCP testing for Grant Disbursement and IT Service Management",
-    "Increase monitoring frequency for KRI-005 (Cyber Maturity) to weekly",
-    "Fast-track Municipal Finance Skills Academy for Q2 benefit realisation",
-    "Escalate SETA consolidation risk to ARC for strategic response planning",
-  ];
-
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
-      <div>
-        <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Predictive Risk Intelligence</h1>
-        <p style={{ color:C.muted, fontSize:"0.82rem", margin:"2px 0 0" }}>AI-powered forecasting based on historical trend analysis</p>
-      </div>
-
-      {/* KPI strip */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"0.85rem" }}>
-        {kpis.map(k=>(
-          <KPICardPro key={k.label} label={k.label} value={k.value} sub={k.sub} color={k.color} delta={k.delta} deltaGood={k.good} spark={k.spark}/>
-        ))}
-      </div>
-
-      {/* Forecast with confidence band */}
+      <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Predictive Intelligence</h1>
       <Card>
-        <SectionTitle>Future Risk Exposure Forecast</SectionTitle>
-        <div style={{ display:"flex", gap:"1.25rem", marginBottom:"0.5rem" }}>
-          <span style={{ color:C.red, fontSize:"0.72rem" }}>━ Historical</span>
-          <span style={{ color:C.purple, fontSize:"0.72rem" }}>┅ AI Forecast</span>
-          <span style={{ color:C.muted, fontSize:"0.72rem" }}>▒ Confidence Band</span>
-        </div>
-        <ResponsiveContainer width="100%" height={260}>
-          <ComposedChart data={data}>
-            <defs>
-              <linearGradient id="confBand" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={C.purple} stopOpacity={0.25}/>
-                <stop offset="100%" stopColor={C.purple} stopOpacity={0.04}/>
-              </linearGradient>
-            </defs>
+        <SectionTitle>6-Month Risk Exposure Forecast</SectionTitle>
+        <ResponsiveContainer width="100%" height={220}>
+          <LineChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke={C.border}/>
             <XAxis dataKey="month" stroke={C.muted} tick={{ fill:C.muted, fontSize:11 }}/>
-            <YAxis stroke={C.muted} tick={{ fill:C.muted, fontSize:11 }} domain={[36,50]}/>
+            <YAxis stroke={C.muted} tick={{ fill:C.muted, fontSize:11 }}/>
             <Tooltip contentStyle={{ background:C.card, border:`1px solid ${C.border}`, color:C.text, fontSize:"0.78rem" }}/>
-            <Area type="monotone" dataKey="hi" stroke="none" fill="url(#confBand)" name="Upper bound"/>
-            <Area type="monotone" dataKey="lo" stroke="none" fill={C.card} fillOpacity={1} name="Lower bound"/>
-            <Line type="monotone" dataKey="actual"   stroke={C.red}    strokeWidth={2.5} dot={{ r:3 }} name="Historical" connectNulls/>
-            <Line type="monotone" dataKey="forecast" stroke={C.purple} strokeWidth={2.5} strokeDasharray="6 4" dot={{ r:3 }} name="AI Forecast" connectNulls/>
-          </ComposedChart>
+            <Legend wrapperStyle={{ fontSize:"0.75rem", color:C.muted }}/>
+            <Line type="monotone" dataKey="exposure"  stroke={C.red}   strokeWidth={2} name="Risk Exposure" dot={{ r:4 }}/>
+            <Line type="monotone" dataKey="treatment" stroke={C.green} strokeWidth={2} name="Treatment %"   dot={{ r:4 }}/>
+          </LineChart>
         </ResponsiveContainer>
-        <div style={{ textAlign:"right", marginTop:"0.25rem" }}>
-          <span style={{ background:"rgba(163,113,247,0.12)", border:`1px solid ${C.purple}`, borderRadius:6, padding:"3px 10px", color:C.purple, fontSize:"0.72rem", fontWeight:600 }}>FORECAST ZONE — AI Generated Predictions</span>
-        </div>
       </Card>
-
-      {/* Velocity alerts + model confidence + recommendations */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
-        <Card>
-          <SectionTitle>⚡ Risk Velocity Alerts</SectionTitle>
-          <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
-            {velocityAlerts.map(a=>(
-              <div key={a.title} style={{ background:C.surface, borderRadius:8, padding:"0.65rem 0.85rem", borderLeft:`3px solid ${a.color}` }}>
-                <div style={{ color:C.text, fontWeight:700, fontSize:"0.83rem" }}>{a.title}</div>
-                <div style={{ color:a.color, fontSize:"0.76rem", marginTop:2 }}>{a.note}</div>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card>
-          <SectionTitle>🎯 Model Confidence</SectionTitle>
-          <div style={{ display:"flex", flexDirection:"column", gap:"0.9rem", marginTop:"0.25rem" }}>
-            {modelConfidence.map(m=>(
-              <div key={m.label}>
-                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
-                  <span style={{ color:C.text, fontSize:"0.8rem" }}>{m.label}</span>
-                  <span style={{ color:C.cyan, fontSize:"0.8rem", fontWeight:700 }}>{m.value}%</span>
-                </div>
-                <ProgressBar value={m.value} color={C.cyan}/>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card>
-          <SectionTitle>🧠 Recommended Actions</SectionTitle>
-          <div style={{ display:"flex", flexDirection:"column", gap:"0.6rem" }}>
-            {recommendations.map((rec,i)=>(
-              <div key={i} style={{ display:"flex", gap:"0.6rem", alignItems:"flex-start" }}>
-                <div style={{ width:20, height:20, borderRadius:"50%", background:"rgba(163,113,247,0.15)", color:C.purple, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"0.68rem", fontWeight:700, flexShrink:0 }}>{i+1}</div>
-                <span style={{ color:C.text, fontSize:"0.8rem", lineHeight:1.5 }}>{rec}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
+      <Card>
+        <SectionTitle>UIFW Trend Projection (R million)</SectionTitle>
+        <ResponsiveContainer width="100%" height={180}>
+          <BarChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" stroke={C.border}/>
+            <XAxis dataKey="month" stroke={C.muted} tick={{ fill:C.muted, fontSize:11 }}/>
+            <YAxis stroke={C.muted} tick={{ fill:C.muted, fontSize:11 }}/>
+            <Tooltip contentStyle={{ background:C.card, border:`1px solid ${C.border}`, color:C.text, fontSize:"0.78rem" }}/>
+            <Bar dataKey="uifw" fill={C.amber} name="UIFW (Rm)" radius={[4,4,0,0]}/>
+          </BarChart>
+        </ResponsiveContainer>
+      </Card>
     </div>
   );
 }
@@ -3553,169 +2069,6 @@ function DepartmentalRisksAdmin() {
   );
 }
 
-// ─── OPERATIONAL RISK ADMIN ───────────────────────────────────────────────────
-const EMPTY_OPRISK = {
-  id:"", portfolio:"CFO Office", unit:"", name:"",
-  inherent:"", residual:"", current:"", target:"",
-  appetite:"Medium", trend:"Stable", owner:"", description:"",
-};
-
-function OperationalRiskForm({ initial={}, onSave, onCancel, saving }) {
-  const [f, setF] = useState({ ...EMPTY_OPRISK, ...initial });
-  const set = k => v => setF(p=>{
-    const next = { ...p, [k]:v };
-    // When portfolio changes, reset unit to that portfolio's first unit
-    if (k==="portfolio") {
-      const port = STATIC_PORTFOLIOS.find(x=>x.name===v);
-      next.unit = port ? port.units[0] : "";
-    }
-    return next;
-  });
-  const units = (STATIC_PORTFOLIOS.find(x=>x.name===f.portfolio)?.units) || [];
-  return (
-    <div style={{ background:C.surface, border:`1px solid ${C.blue}`, borderRadius:10, padding:"1.5rem", marginBottom:"1.5rem" }}>
-      <h3 style={{ color:C.blue, fontWeight:700, margin:"0 0 1.25rem" }}>{initial.id ? `Edit — ${initial.id}` : "Add Operational Risk"}</h3>
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
-        <FInput  label="Risk ID" value={f.id} onChange={set("id")} required placeholder="OR-021" />
-        <FSelect label="Portfolio" value={f.portfolio} onChange={set("portfolio")} options={STATIC_PORTFOLIOS.map(p=>p.name)} />
-        <FSelect label="Unit" value={f.unit} onChange={set("unit")} options={units.length?units:["—"]} />
-      </div>
-      <FInput label="Risk Name" value={f.name} onChange={set("name")} required placeholder="e.g. Irregular procurement / non-compliant bids" />
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:"1rem" }}>
-        <FInput label="Inherent (1-25)" value={f.inherent} onChange={set("inherent")} type="number" placeholder="20" />
-        <FInput label="Residual (1-25)" value={f.residual} onChange={set("residual")} type="number" placeholder="15" />
-        <FInput label="Current (1-25)"  value={f.current}  onChange={set("current")}  type="number" placeholder="15" />
-        <FInput label="Target (1-25)"   value={f.target}   onChange={set("target")}   type="number" placeholder="8" />
-      </div>
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1rem" }}>
-        <FSelect label="Appetite" value={f.appetite} onChange={set("appetite")} options={["Zero","Low","Medium","High"]} />
-        <FSelect label="Trend"    value={f.trend}    onChange={set("trend")}    options={["Improving","Stable","Declining"]} />
-        <FInput  label="Owner"    value={f.owner}    onChange={set("owner")}    placeholder="e.g. SCM Manager" />
-      </div>
-      <FTextarea label="Description" value={f.description} onChange={set("description")} rows={2} placeholder="Describe the operational risk…" />
-      <div style={{ display:"flex", gap:"0.75rem", marginTop:"0.5rem" }}>
-        <button onClick={()=>onSave(f)} disabled={saving}
-          style={{ padding:"0.65rem 1.75rem", background:C.blue, color:"#fff", border:"none", borderRadius:8, fontWeight:700, fontSize:"0.9rem", cursor:"pointer", opacity:saving?0.6:1 }}>
-          {saving?"Saving…":initial.id?"Update Risk":"Add Risk"}
-        </button>
-        <button onClick={onCancel} style={{ padding:"0.65rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, fontWeight:600, fontSize:"0.9rem", cursor:"pointer" }}>Cancel</button>
-      </div>
-    </div>
-  );
-}
-
-function OperationalRiskAdmin() {
-  const [risks, setRisks]       = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [saving, setSaving]     = useState(false);
-  const [toast, setToast]       = useState(null);
-  const [mode, setMode]         = useState(null);
-  const [confirmDel, setConfirmDel] = useState(null);
-
-  function showToast(msg, type="ok") { setToast({ msg, type }); setTimeout(()=>setToast(null), 3500); }
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${API}/api/oprisks`);
-      const d = await res.json();
-      setRisks(Array.isArray(d) && d.length ? d : STATIC_OPRISKS);
-    } catch { setRisks(STATIC_OPRISKS); }
-    finally { setLoading(false); }
-  }, []);
-
-  useEffect(()=>{ load(); }, [load]);
-
-  async function handleSave(f) {
-    if (!f.id)   { showToast("Risk ID is required.", "err"); return; }
-    if (!f.name) { showToast("Risk Name is required.", "err"); return; }
-    setSaving(true);
-    const isEdit = !!mode?.id;
-    const body = {
-      ...f,
-      inherent:Number(f.inherent)||0, residual:Number(f.residual)||0,
-      current:Number(f.current)||0,   target:Number(f.target)||0,
-    };
-    try {
-      const res = await fetch(`${API}/api/oprisks${isEdit?`/${encodeURIComponent(f.id)}`:""}`, {
-        method: isEdit ? "PUT" : "POST",
-        headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) throw new Error("Failed to save");
-      await logAudit({ module:"Operational Risks", action:isEdit?"Edit":"Add", recordId:f.id,
-        description:`${isEdit?"Updated":"Added"} operational risk ${f.id} — ${f.name} (${f.portfolio}/${f.unit})`, after:body });
-      showToast(isEdit ? `✅ ${f.id} updated.` : `✅ ${f.id} added.`);
-      setMode(null); load();
-    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
-    finally { setSaving(false); }
-  }
-
-  async function handleDelete(id) {
-    setSaving(true);
-    try {
-      const res = await fetch(`${API}/api/oprisks/${encodeURIComponent(id)}`, { method:"DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
-      await logAudit({ module:"Operational Risks", action:"Delete", recordId:id, description:`Deleted operational risk ${id}` });
-      showToast(`🗑 ${id} deleted.`); setConfirmDel(null); load();
-    } catch(e) { showToast(`❌ ${e.message}`, "err"); }
-    finally { setSaving(false); }
-  }
-
-  const sc = v => Number(v)>=15?C.red:Number(v)>=10?"#e36209":Number(v)>=6?C.amber:C.green;
-
-  return (
-    <div>
-      {toast && <div style={{ position:"fixed", top:16, right:16, zIndex:1000, padding:"0.75rem 1.25rem", borderRadius:8, background:toast.type==="ok"?"rgba(63,185,80,0.15)":"rgba(248,81,73,0.15)", border:`1px solid ${toast.type==="ok"?C.green:C.red}`, color:toast.type==="ok"?C.green:C.red, fontWeight:600, fontSize:"0.88rem" }}>{toast.msg}</div>}
-      {confirmDel && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", zIndex:999, display:"flex", alignItems:"center", justifyContent:"center" }}>
-          <div style={{ background:C.card, border:`1px solid ${C.red}`, borderRadius:12, padding:"2rem", maxWidth:400, width:"90%" }}>
-            <h3 style={{ color:C.red, margin:"0 0 0.75rem" }}>Delete Operational Risk</h3>
-            <p style={{ color:C.text, marginBottom:"1.5rem" }}>Delete <strong>{confirmDel}</strong>?</p>
-            <div style={{ display:"flex", gap:"0.75rem" }}>
-              <button onClick={()=>handleDelete(confirmDel)} disabled={saving} style={{ padding:"0.6rem 1.5rem", background:C.red, color:"#fff", border:"none", borderRadius:7, fontWeight:700, cursor:"pointer" }}>{saving?"Deleting…":"Yes, Delete"}</button>
-              <button onClick={()=>setConfirmDel(null)} style={{ padding:"0.6rem 1.25rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:7, cursor:"pointer" }}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.25rem", flexWrap:"wrap", gap:"0.75rem" }}>
-        <div>
-          <h3 style={{ color:C.text, margin:"0 0 0.2rem", fontWeight:700 }}>Operational Risks — Edit Mode</h3>
-          <p style={{ color:C.muted, fontSize:"0.82rem", margin:0 }}>{risks.length} operational risks across {STATIC_PORTFOLIOS.length} portfolios</p>
-        </div>
-        <div style={{ display:"flex", gap:"0.75rem" }}>
-          <button onClick={()=>setMode("add")} disabled={!!mode} style={{ padding:"0.6rem 1.25rem", background:C.blue, color:"#fff", border:"none", borderRadius:8, fontWeight:700, fontSize:"0.88rem", cursor:"pointer", opacity:mode?0.5:1 }}>+ Add Operational Risk</button>
-          <button onClick={load} style={{ padding:"0.6rem 0.9rem", background:"transparent", color:C.muted, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer", fontSize:"0.88rem" }}>↻ Refresh</button>
-        </div>
-      </div>
-      {mode==="add"         && <OperationalRiskForm onSave={handleSave} onCancel={()=>setMode(null)} saving={saving} />}
-      {mode && mode!=="add" && <OperationalRiskForm initial={mode} onSave={handleSave} onCancel={()=>setMode(null)} saving={saving} />}
-      {loading ? <div style={{ textAlign:"center", padding:"3rem", color:C.muted }}>Loading…</div> : (
-        <Card>
-          <Table
-            headers={["Risk ID","Name","Portfolio / Unit","Inh.","Res.","Cur.","Tgt.","Trend","Actions"]}
-            rows={risks.map(r=>[
-              <span style={{ color:C.blue, fontWeight:700 }}>{r.id}</span>,
-              <span style={{ color:C.text, maxWidth:220, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={r.name}>{r.name}</span>,
-              <span style={{ color:C.muted, fontSize:"0.76rem" }}>{r.portfolio} / {r.unit}</span>,
-              <span style={{ color:sc(r.inherent), fontWeight:700 }}>{r.inherent}</span>,
-              <span style={{ color:sc(r.residual), fontWeight:700 }}>{r.residual}</span>,
-              <span style={{ color:sc(r.current), fontWeight:700 }}>{r.current}</span>,
-              <span style={{ color:C.green, fontWeight:700 }}>{r.target}</span>,
-              <span style={{ color:r.trend==="Improving"?C.green:r.trend==="Declining"?C.red:C.muted, fontSize:"0.78rem" }}>{r.trend}</span>,
-              <div style={{ display:"flex", gap:"0.5rem" }}>
-                <button onClick={()=>setMode({ ...r })} disabled={!!mode} style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.blue, border:`1px solid ${C.blue}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Edit</button>
-                <button onClick={()=>setConfirmDel(r.id)} disabled={!!mode} style={{ padding:"0.3rem 0.75rem", background:"transparent", color:C.red, border:`1px solid ${C.red}`, borderRadius:6, fontSize:"0.78rem", cursor:"pointer", opacity:mode?0.4:1 }}>Delete</button>
-              </div>,
-            ])}
-          />
-        </Card>
-      )}
-    </div>
-  );
-}
-
 // ─── THIRD-PARTY RISK ADMIN ───────────────────────────────────────────────────
 const EMPTY_TP = {
   id:"", name:"", type:"ICT", risk:"Medium", contract:"", score:"",
@@ -4471,7 +2824,6 @@ const MODULE_OPTIONS = [
   { value:"uifw",         label:"UIFW Expenditure",   component: UIFWAdmin },
   { value:"fraud",        label:"Fraud & Ethics",     component: FraudEthicsAdmin },
   { value:"departmental", label:"Departmental Risks", component: DepartmentalRisksAdmin },
-  { value:"oprisks",      label:"Operational Risks",  component: OperationalRiskAdmin },
   { value:"thirdparty",   label:"Third-Party Risk",   component: ThirdPartyRiskAdmin },
   { value:"opportunities",label:"Opportunities",      component: OpportunitiesAdmin },
   { value:"emerging",     label:"Emerging Risks",     component: EmergingRisksAdmin },
@@ -5243,8 +3595,11 @@ const STATIC_PROJECTS = {
 
 // ─── PROJECTS & CONTRACTS VIEW MODULE ─────────────────────────────────────────
 function ProjectsModule() {
-  const [sub, setSub]       = useState("projects");
+  const [sub, setSub]       = useState("dashboard");
   const [search, setSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState("All");
+  const [filterRisk, setFilterRisk]     = useState("All");
+  const [selectedProj, setSelectedProj] = useState(null);
   const [data, setData]     = useState(STATIC_PROJECTS);
 
   useEffect(()=>{
@@ -5253,57 +3608,157 @@ function ProjectsModule() {
     }).catch(()=>{});
   },[]);
 
-  const projects = data.projects  || [];
+  const projects  = data.projects  || [];
   const contracts = data.contracts || [];
 
-  const totalBudget   = projects.reduce((s,p)=>s+(Number(p.budget)||0),0);
-  const totalSpent    = projects.reduce((s,p)=>s+(Number(p.spent)||0),0);
-  const highRiskProj  = projects.filter(p=>p.riskRating==="High").length;
-  const activeProj    = projects.filter(p=>p.status==="In Progress").length;
+  // ── Portfolio-level KPIs ──────────────────────────────────────────────────
+  const totalBudget        = projects.reduce((s,p)=>s+(Number(p.budget)||0),0);
+  const totalSpent         = projects.reduce((s,p)=>s+(Number(p.spent)||0),0);
+  const budgetUtilPct      = Math.round((totalSpent/Math.max(totalBudget,1))*100);
   const totalContractValue = contracts.reduce((s,c)=>s+(Number(c.value)||0),0);
-  const expiringSoon  = contracts.filter(c=>c.status==="Expiring Soon"||c.renewalStatus==="Review Required"||c.renewalStatus==="Do Not Renew").length;
-  const lowSLA        = contracts.filter(c=>Number(c.slaCompliance)<80).length;
+
+  // ── Status breakdown ──────────────────────────────────────────────────────
+  const statusGroups = {
+    "In Progress": projects.filter(p=>p.status==="In Progress").length,
+    "Planning":    projects.filter(p=>p.status==="Planning").length,
+    "Complete":    projects.filter(p=>p.status==="Complete").length,
+    "On Hold":     projects.filter(p=>p.status==="On Hold").length,
+    "Cancelled":   projects.filter(p=>p.status==="Cancelled").length,
+    "Overdue":     projects.filter(p=>p.status==="Overdue").length,
+  };
+  const statusColors = {
+    "In Progress": C.blue,
+    "Planning":    C.purple,
+    "Complete":    C.green,
+    "On Hold":     C.amber,
+    "Cancelled":   C.red,
+    "Overdue":     C.red,
+  };
+
+  // ── Performance indicators ────────────────────────────────────────────────
+  // Schedule Performance Index = milestones complete % vs timeline elapsed %
+  function schedulePerf(p) {
+    const start   = new Date(p.startDate);
+    const end     = new Date(p.endDate);
+    const today   = new Date();
+    const totalDays   = Math.max((end - start)/(1000*60*60*24), 1);
+    const elapsedDays = Math.min(Math.max((today - start)/(1000*60*60*24), 0), totalDays);
+    const timeElapsed = elapsedDays / totalDays; // 0-1
+    const milestonesPct = (p.milestonesComplete / Math.max(p.milestonesTotal,1)); // 0-1
+    if (timeElapsed === 0) return { spi: 1, label:"Not Started", color:C.muted };
+    const spi = milestonesPct / timeElapsed;
+    if (spi >= 0.95)     return { spi, label:"On Schedule",    color:C.green };
+    if (spi >= 0.75)     return { spi, label:"Slight Delay",   color:C.amber };
+    if (spi >= 0.5)      return { spi, label:"Delayed",        color:C.red   };
+    return                      { spi, label:"Critically Late", color:C.red  };
+  }
+
+  // Cost Performance Index = budget remaining vs work remaining
+  function costPerf(p) {
+    const spentPct = Number(p.spent) / Math.max(Number(p.budget),1);
+    const workDone = p.milestonesComplete / Math.max(p.milestonesTotal,1);
+    if (workDone === 0) return { cpi:1, label:"Not Started", color:C.muted };
+    const cpi = workDone / spentPct;
+    if (cpi >= 1.0)  return { cpi, label:"Under Budget",   color:C.green };
+    if (cpi >= 0.85) return { cpi, label:"On Budget",      color:C.green };
+    if (cpi >= 0.7)  return { cpi, label:"Over Budget",    color:C.amber };
+    return                  { cpi, label:"Significantly Over", color:C.red };
+  }
+
+  // Days remaining / overdue
+  function daysRemaining(p) {
+    const diff = Math.ceil((new Date(p.endDate) - new Date())/(1000*60*60*24));
+    return diff;
+  }
+
+  // Overall project health
+  function projectHealth(p) {
+    const sp = schedulePerf(p);
+    const cp = costPerf(p);
+    const risk = p.riskRating;
+    if (p.status==="Complete") return { label:"Complete", color:C.green };
+    if (p.status==="Cancelled") return { label:"Cancelled", color:C.red };
+    if (p.status==="On Hold")   return { label:"On Hold",   color:C.amber };
+    const scores = [
+      sp.spi >= 0.95 ? 2 : sp.spi >= 0.75 ? 1 : 0,
+      cp.cpi >= 0.85 ? 2 : cp.cpi >= 0.7  ? 1 : 0,
+      risk === "Low" ? 2 : risk === "Medium" ? 1 : 0,
+    ];
+    const total = scores.reduce((a,b)=>a+b,0);
+    if (total >= 5) return { label:"🟢 Healthy",  color:C.green };
+    if (total >= 3) return { label:"🟡 At Risk",  color:C.amber };
+    return               { label:"🔴 Critical",  color:C.red   };
+  }
+
+  // Portfolio efficiency metrics
+  const onSchedule     = projects.filter(p=>schedulePerf(p).spi>=0.95&&p.status!=="Complete"&&p.status!=="Cancelled").length;
+  const delayed        = projects.filter(p=>schedulePerf(p).spi<0.75&&p.status!=="Complete"&&p.status!=="Cancelled").length;
+  const overBudget     = projects.filter(p=>costPerf(p).cpi<0.7&&p.status!=="Complete"&&p.status!=="Cancelled").length;
+  const highRiskActive = projects.filter(p=>p.riskRating==="High"&&p.status==="In Progress").length;
+  const expiringSoon   = contracts.filter(c=>c.status==="Expiring Soon"||c.renewalStatus==="Review Required"||c.renewalStatus==="Do Not Renew").length;
+  const lowSLA         = contracts.filter(c=>Number(c.slaCompliance)<80).length;
+  const avgSLA         = contracts.length ? Math.round(contracts.reduce((s,c)=>s+Number(c.slaCompliance||0),0)/contracts.length) : 0;
+  const avgMilestone   = projects.filter(p=>p.status!=="Complete"&&p.status!=="Cancelled").length
+    ? Math.round(projects.filter(p=>p.status!=="Complete"&&p.status!=="Cancelled").reduce((s,p)=>s+Math.round((p.milestonesComplete/Math.max(p.milestonesTotal,1))*100),0) / projects.filter(p=>p.status!=="Complete"&&p.status!=="Cancelled").length)
+    : 100;
 
   const sc = s => {
     const v=(s||"").toLowerCase();
     if (v.includes("complete")||v==="on track"||v==="active") return C.green;
-    if (v.includes("review")||v==="planning"||v==="expiring soon") return C.amber;
-    if (v.includes("do not renew")||v==="overdue") return C.red;
+    if (v.includes("review")||v==="planning"||v==="expiring soon"||v==="on hold") return C.amber;
+    if (v.includes("do not renew")||v==="overdue"||v==="cancelled") return C.red;
     return C.muted;
   };
 
-  const filtered = arr => arr.filter(r=>JSON.stringify(r).toLowerCase().includes(search.toLowerCase()));
+  const filtered = arr => arr.filter(r=>
+    (filterStatus==="All" || r.status===filterStatus) &&
+    (filterRisk==="All"   || r.riskRating===filterRisk) &&
+    JSON.stringify(r).toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
+
+      {/* Header */}
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:"0.5rem" }}>
         <div>
-          <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Project & Contract Risk</h1>
-          <p style={{ color:C.muted, fontSize:"0.82rem", margin:"2px 0 0" }}>Project Portfolio · Contract & Commitment Register — Q2 2026/27</p>
+          <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Project & Contract Management</h1>
+          <p style={{ color:C.muted, fontSize:"0.82rem", margin:"2px 0 0" }}>Portfolio Performance · Efficiency Indicators · Contract Register — Q2 2026/27</p>
         </div>
-        <input placeholder="Search projects & contracts…" value={search} onChange={e=>setSearch(e.target.value)} style={{ ...inputSt, width:240 }}/>
+        <div style={{ display:"flex", gap:"0.5rem" }}>
+          <input placeholder="Search…" value={search} onChange={e=>setSearch(e.target.value)} style={{ ...inputSt, width:180 }}/>
+        </div>
       </div>
 
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:"0.75rem" }}>
+      {/* KPI strip — 8 cards */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(8,1fr)", gap:"0.6rem" }}>
         {[
-          ["Active Projects",   activeProj,                                  C.blue ],
-          ["High Risk Projects",highRiskProj,                                 highRiskProj>0?C.red:C.green ],
-          ["Project Budget",    `R${(totalBudget/1e6).toFixed(1)}M`,         C.purple ],
-          ["Spent / Committed", `R${(totalSpent/1e6).toFixed(1)}M`,          C.amber ],
-          ["Contract Value",    `R${(totalContractValue/1e6).toFixed(1)}M`, C.cyan ],
-          ["Contracts at Risk", expiringSoon+lowSLA,                          (expiringSoon+lowSLA)>0?C.red:C.green ],
+          ["Total Projects",    projects.length,                          C.blue  ],
+          ["In Progress",       statusGroups["In Progress"],               C.blue  ],
+          ["Planning",          statusGroups["Planning"],                  C.purple],
+          ["On Hold",           statusGroups["On Hold"],                   statusGroups["On Hold"]>0?C.amber:C.muted ],
+          ["Complete",          statusGroups["Complete"],                  C.green ],
+          ["Delayed",           delayed,                                   delayed>0?C.red:C.green ],
+          ["Over Budget",       overBudget,                                overBudget>0?C.red:C.green ],
+          ["Contracts at Risk", expiringSoon+lowSLA,                       (expiringSoon+lowSLA)>0?C.red:C.green ],
         ].map(([l,v,c])=>(
-          <div key={l} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8, padding:"0.75rem 1rem", borderTop:`3px solid ${c}` }}>
-            <div style={{ color:C.muted, fontSize:"0.65rem", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.06em" }}>{l}</div>
-            <div style={{ color:c, fontSize:"1.35rem", fontWeight:800 }}>{v}</div>
+          <div key={l} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8, padding:"0.6rem 0.75rem", borderTop:`3px solid ${c}` }}>
+            <div style={{ color:C.muted, fontSize:"0.6rem", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em" }}>{l}</div>
+            <div style={{ color:c, fontSize:"1.3rem", fontWeight:800 }}>{v}</div>
           </div>
         ))}
       </div>
 
+      {/* Sub tabs */}
       <div style={{ display:"flex", borderBottom:`1px solid ${C.border}` }}>
-        {[["projects","📁 Project Portfolio"],["contracts","📜 Contract & Commitment Register"]].map(([id,label])=>(
-          <button key={id} onClick={()=>setSub(id)}
-            style={{ padding:"0.5rem 1.1rem", border:"none", background:"transparent", cursor:"pointer",
+        {[
+          ["dashboard","📊 Portfolio Overview"],
+          ["efficiency","⚡ Performance & Efficiency"],
+          ["projects","📁 Project Register"],
+          ["contracts","📜 Contract Register"],
+        ].map(([id,label])=>(
+          <button key={id} onClick={()=>{ setSub(id); setSelectedProj(null); }}
+            style={{ padding:"0.5rem 1.0rem", border:"none", background:"transparent", cursor:"pointer",
               fontSize:"0.82rem", fontWeight:600, color:sub===id?C.text:C.muted,
               borderBottom:sub===id?`2px solid ${C.blue}`:"2px solid transparent", whiteSpace:"nowrap" }}>
             {label}
@@ -5311,50 +3766,274 @@ function ProjectsModule() {
         ))}
       </div>
 
-      {sub==="projects" && (
-        <Card>
-          <Table
-            headers={["ID","Project","Type","Manager","Budget","Spent","Progress","Risk","Status"]}
-            rows={filtered(projects).map(p=>{
-              const pct = Math.round((p.milestonesComplete/Math.max(p.milestonesTotal,1))*100);
-              const spentPct = Math.round((Number(p.spent)/Math.max(Number(p.budget),1))*100);
-              return [
-                <span style={{ color:C.blue, fontWeight:700, fontSize:"0.75rem" }}>{p.id}</span>,
-                <div><div style={{ color:C.text, fontWeight:600, fontSize:"0.82rem" }}>{p.name}</div>
-                  <div style={{ color:C.muted, fontSize:"0.7rem" }}>{p.department}</div></div>,
-                <Badge label={p.type} color={p.type==="Discretionary Grant"?"amber":"blue"}/>,
-                p.manager,
-                <span style={{ color:C.text, fontWeight:700 }}>R{(Number(p.budget)/1e6).toFixed(1)}M</span>,
-                <span style={{ color:spentPct>90?C.red:C.muted }}>R{(Number(p.spent)/1e6).toFixed(1)}M ({spentPct}%)</span>,
-                <div style={{ minWidth:90 }}>
-                  <div style={{ fontSize:"0.72rem", color:C.muted, marginBottom:2 }}>{p.milestonesComplete}/{p.milestonesTotal} milestones</div>
-                  <ProgressBar value={pct} color={pct>=80?C.green:pct>=40?C.amber:C.red}/>
-                </div>,
-                <Badge label={p.riskRating} color={p.riskRating==="High"?"red":p.riskRating==="Medium"?"amber":"green"}/>,
-                <span style={{ color:sc(p.status), fontWeight:700, fontSize:"0.8rem" }}>{p.status}</span>,
-              ];
+      {/* ── PORTFOLIO OVERVIEW ── */}
+      {sub==="dashboard" && (
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1.25rem" }}>
+
+          {/* Status breakdown */}
+          <Card>
+            <h3 style={{ color:C.text, fontWeight:700, margin:"0 0 1rem", fontSize:"0.95rem" }}>📊 Portfolio Status Breakdown</h3>
+            {Object.entries(statusGroups).filter(([,v])=>v>0).map(([label, count])=>(
+              <div key={label} style={{ display:"flex", alignItems:"center", gap:"0.75rem", marginBottom:"0.65rem" }}>
+                <div style={{ width:10, height:10, borderRadius:"50%", background:statusColors[label]||C.muted, flexShrink:0 }}/>
+                <div style={{ flex:1, color:C.muted, fontSize:"0.82rem" }}>{label}</div>
+                <div style={{ minWidth:120 }}><ProgressBar value={projects.length?Math.round((count/projects.length)*100):0} color={statusColors[label]||C.muted}/></div>
+                <div style={{ color:statusColors[label]||C.muted, fontWeight:800, minWidth:28, textAlign:"right" }}>{count}</div>
+              </div>
+            ))}
+            <div style={{ marginTop:"1rem", paddingTop:"0.75rem", borderTop:`1px solid ${C.border}` }}>
+              <div style={{ display:"flex", justifyContent:"space-between" }}>
+                <span style={{ color:C.muted, fontSize:"0.78rem" }}>Total Portfolio Budget</span>
+                <span style={{ color:C.purple, fontWeight:800 }}>R{(totalBudget/1e6).toFixed(1)}M</span>
+              </div>
+              <div style={{ display:"flex", justifyContent:"space-between", marginTop:"0.35rem" }}>
+                <span style={{ color:C.muted, fontSize:"0.78rem" }}>Total Spent / Committed</span>
+                <span style={{ color:budgetUtilPct>85?C.red:C.amber, fontWeight:800 }}>R{(totalSpent/1e6).toFixed(1)}M ({budgetUtilPct}%)</span>
+              </div>
+            </div>
+          </Card>
+
+          {/* Project health summary */}
+          <Card>
+            <h3 style={{ color:C.text, fontWeight:700, margin:"0 0 1rem", fontSize:"0.95rem" }}>🏥 Project Health Scorecard</h3>
+            {projects.map(p=>{
+              const health = projectHealth(p);
+              return (
+                <div key={p.id} onClick={()=>{ setSub("efficiency"); setSelectedProj(p); }}
+                  style={{ display:"flex", alignItems:"center", gap:"0.75rem", padding:"0.45rem 0.6rem",
+                    borderRadius:7, marginBottom:"0.35rem", cursor:"pointer",
+                    background:C.surface, border:`1px solid ${C.border}` }}>
+                  <span style={{ color:C.blue, fontWeight:700, fontSize:"0.72rem", minWidth:52 }}>{p.id}</span>
+                  <span style={{ color:C.text, fontSize:"0.8rem", flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={p.name}>{p.name}</span>
+                  <span style={{ color:health.color, fontWeight:700, fontSize:"0.75rem", whiteSpace:"nowrap" }}>{health.label}</span>
+                </div>
+              );
             })}
-          />
-        </Card>
+          </Card>
+
+          {/* Budget vs Spend by project */}
+          <Card>
+            <h3 style={{ color:C.text, fontWeight:700, margin:"0 0 1rem", fontSize:"0.95rem" }}>💰 Budget vs Spend</h3>
+            {projects.map(p=>{
+              const spentPct = Math.round((Number(p.spent)/Math.max(Number(p.budget),1))*100);
+              const col = spentPct>=95?C.red:spentPct>=80?C.amber:C.blue;
+              return (
+                <div key={p.id} style={{ marginBottom:"0.6rem" }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", marginBottom:"0.2rem" }}>
+                    <span style={{ color:C.muted, fontSize:"0.75rem", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:220 }}>{p.id} — {p.name}</span>
+                    <span style={{ color:col, fontWeight:700, fontSize:"0.75rem", whiteSpace:"nowrap" }}>{spentPct}%</span>
+                  </div>
+                  <ProgressBar value={spentPct} color={col}/>
+                </div>
+              );
+            })}
+          </Card>
+
+          {/* Contract health */}
+          <Card>
+            <h3 style={{ color:C.text, fontWeight:700, margin:"0 0 1rem", fontSize:"0.95rem" }}>📜 Contract Performance</h3>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"0.75rem", marginBottom:"1rem" }}>
+              {[
+                ["Total Value",  `R${(totalContractValue/1e6).toFixed(1)}M`, C.cyan ],
+                ["Avg SLA",      `${avgSLA}%`,                               avgSLA>=90?C.green:avgSLA>=75?C.amber:C.red ],
+                ["At Risk",      expiringSoon+lowSLA,                        (expiringSoon+lowSLA)>0?C.red:C.green ],
+              ].map(([l,v,c])=>(
+                <div key={l} style={{ background:C.surface, borderRadius:7, padding:"0.6rem", textAlign:"center" }}>
+                  <div style={{ color:C.muted, fontSize:"0.65rem", textTransform:"uppercase", fontWeight:700 }}>{l}</div>
+                  <div style={{ color:c, fontSize:"1.1rem", fontWeight:800 }}>{v}</div>
+                </div>
+              ))}
+            </div>
+            {contracts.map(c=>{
+              const sla = Number(c.slaCompliance);
+              const col = sla>=90?C.green:sla>=75?C.amber:C.red;
+              return (
+                <div key={c.id} style={{ display:"flex", alignItems:"center", gap:"0.75rem", marginBottom:"0.5rem" }}>
+                  <span style={{ color:C.cyan, fontWeight:700, fontSize:"0.7rem", minWidth:46 }}>{c.id}</span>
+                  <span style={{ color:C.muted, fontSize:"0.75rem", flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.title}</span>
+                  <span style={{ color:col, fontWeight:700, fontSize:"0.78rem", minWidth:38, textAlign:"right" }}>{sla}%</span>
+                </div>
+              );
+            })}
+          </Card>
+        </div>
       )}
 
+      {/* ── PERFORMANCE & EFFICIENCY ── */}
+      {sub==="efficiency" && (
+        <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
+
+          {/* Efficiency summary strip */}
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:"0.75rem" }}>
+            {[
+              ["On Schedule",     onSchedule,    C.green ],
+              ["Slight Delay",    projects.filter(p=>{ const s=schedulePerf(p); return s.spi>=0.75&&s.spi<0.95&&p.status!=="Complete"&&p.status!=="Cancelled"; }).length, C.amber ],
+              ["Delayed",         delayed,        C.red   ],
+              ["Avg Completion",  `${avgMilestone}%`, avgMilestone>=70?C.green:avgMilestone>=40?C.amber:C.red ],
+              ["Over Budget",     overBudget,     overBudget>0?C.red:C.green ],
+            ].map(([l,v,c])=>(
+              <div key={l} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8, padding:"0.75rem 1rem", borderTop:`3px solid ${c}` }}>
+                <div style={{ color:C.muted, fontSize:"0.65rem", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em" }}>{l}</div>
+                <div style={{ color:c, fontSize:"1.4rem", fontWeight:800 }}>{v}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Selected project detail */}
+          {selectedProj && (()=>{
+            const sp = schedulePerf(selectedProj);
+            const cp = costPerf(selectedProj);
+            const hlth = projectHealth(selectedProj);
+            const dr = daysRemaining(selectedProj);
+            const spentPct = Math.round((Number(selectedProj.spent)/Math.max(Number(selectedProj.budget),1))*100);
+            const milePct  = Math.round((selectedProj.milestonesComplete/Math.max(selectedProj.milestonesTotal,1))*100);
+            return (
+              <div style={{ background:C.card, border:`1px solid ${C.blue}`, borderRadius:12, padding:"1.5rem" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"1rem" }}>
+                  <div>
+                    <div style={{ display:"flex", gap:"0.75rem", alignItems:"center", marginBottom:"0.3rem" }}>
+                      <span style={{ color:C.blue, fontWeight:800 }}>{selectedProj.id}</span>
+                      <span style={{ color:hlth.color, fontWeight:700, fontSize:"0.82rem" }}>{hlth.label}</span>
+                      <Badge label={selectedProj.riskRating} color={selectedProj.riskRating==="High"?"red":selectedProj.riskRating==="Medium"?"amber":"green"}/>
+                    </div>
+                    <h3 style={{ color:C.text, margin:"0 0 0.2rem", fontWeight:700 }}>{selectedProj.name}</h3>
+                    <p style={{ color:C.muted, margin:0, fontSize:"0.82rem" }}>{selectedProj.department} · {selectedProj.manager}</p>
+                  </div>
+                  <button onClick={()=>setSelectedProj(null)} style={{ background:"transparent", border:"none", color:C.muted, cursor:"pointer", fontSize:"1.2rem" }}>✕</button>
+                </div>
+
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:"1rem", marginBottom:"1rem" }}>
+                  {[
+                    ["Schedule Index (SPI)", sp.spi.toFixed(2), sp.color, sp.label],
+                    ["Cost Index (CPI)",     cp.cpi.toFixed(2), cp.color, cp.label],
+                    ["Budget Spent",         `${spentPct}%`,    spentPct>90?C.red:C.amber, `R${(Number(selectedProj.spent)/1e6).toFixed(1)}M of R${(Number(selectedProj.budget)/1e6).toFixed(1)}M`],
+                    ["Milestones",           `${milePct}%`,     milePct>=80?C.green:milePct>=40?C.amber:C.red, `${selectedProj.milestonesComplete}/${selectedProj.milestonesTotal} complete`],
+                  ].map(([label,val,col,sub2])=>(
+                    <div key={label} style={{ background:C.surface, borderRadius:8, padding:"0.85rem 1rem", borderTop:`3px solid ${col}` }}>
+                      <div style={{ color:C.muted, fontSize:"0.65rem", textTransform:"uppercase", fontWeight:700 }}>{label}</div>
+                      <div style={{ color:col, fontSize:"1.5rem", fontWeight:800, margin:"0.2rem 0" }}>{val}</div>
+                      <div style={{ color:col, fontSize:"0.72rem", fontWeight:600 }}>{sub2}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
+                  <div>
+                    <div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700, marginBottom:"0.3rem" }}>Timeline</div>
+                    <div style={{ display:"flex", justifyContent:"space-between", marginBottom:"0.25rem" }}>
+                      <span style={{ color:C.muted, fontSize:"0.78rem" }}>{selectedProj.startDate} → {selectedProj.endDate}</span>
+                      <span style={{ color:dr<0?C.red:dr<30?C.amber:C.green, fontWeight:700, fontSize:"0.78rem" }}>{dr<0?`${Math.abs(dr)} days overdue`:`${dr} days remaining`}</span>
+                    </div>
+                    <ProgressBar value={Math.min(100-Math.round((dr/Math.max((new Date(selectedProj.endDate)-new Date(selectedProj.startDate))/(1000*60*60*24),1))*100),100)} color={dr<0?C.red:C.blue}/>
+                  </div>
+                  <div>
+                    <div style={{ color:C.muted, fontSize:"0.7rem", textTransform:"uppercase", fontWeight:700, marginBottom:"0.3rem" }}>Description</div>
+                    <div style={{ color:C.text, fontSize:"0.82rem" }}>{selectedProj.description}</div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Per-project efficiency table */}
+          <Card>
+            <h3 style={{ color:C.text, fontWeight:700, margin:"0 0 1rem", fontSize:"0.95rem" }}>Project Performance Efficiency — All Projects</h3>
+            <Table
+              headers={["ID","Project","Status","Schedule (SPI)","Cost (CPI)","Milestone %","Budget Spent","Days Left","Health"]}
+              rows={projects.map(p=>{
+                const sp     = schedulePerf(p);
+                const cp     = costPerf(p);
+                const hlth   = projectHealth(p);
+                const milePct = Math.round((p.milestonesComplete/Math.max(p.milestonesTotal,1))*100);
+                const spentPct= Math.round((Number(p.spent)/Math.max(Number(p.budget),1))*100);
+                const dr      = daysRemaining(p);
+                return [
+                  <span style={{ color:C.blue, fontWeight:700, fontSize:"0.72rem", cursor:"pointer" }} onClick={()=>setSelectedProj(p)}>{p.id}</span>,
+                  <span style={{ fontWeight:600, fontSize:"0.8rem", maxWidth:150, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={p.name}>{p.name}</span>,
+                  <span style={{ color:sc(p.status), fontWeight:700, fontSize:"0.78rem" }}>{p.status}</span>,
+                  <div>
+                    <div style={{ color:sp.color, fontWeight:700, fontSize:"0.8rem" }}>{sp.spi.toFixed(2)}</div>
+                    <div style={{ color:sp.color, fontSize:"0.68rem" }}>{sp.label}</div>
+                  </div>,
+                  <div>
+                    <div style={{ color:cp.color, fontWeight:700, fontSize:"0.8rem" }}>{cp.cpi.toFixed(2)}</div>
+                    <div style={{ color:cp.color, fontSize:"0.68rem" }}>{cp.label}</div>
+                  </div>,
+                  <div style={{ minWidth:80 }}>
+                    <div style={{ fontSize:"0.72rem", color:C.muted, marginBottom:2 }}>{milePct}%</div>
+                    <ProgressBar value={milePct} color={milePct>=80?C.green:milePct>=40?C.amber:C.red}/>
+                  </div>,
+                  <span style={{ color:spentPct>=95?C.red:spentPct>=80?C.amber:C.muted, fontWeight:700, fontSize:"0.8rem" }}>{spentPct}%</span>,
+                  <span style={{ color:dr<0?C.red:dr<30?C.amber:C.muted, fontWeight:dr<0?700:400, fontSize:"0.78rem" }}>{dr<0?`${Math.abs(dr)}d overdue`:`${dr}d`}</span>,
+                  <span style={{ color:hlth.color, fontWeight:700, fontSize:"0.78rem" }}>{hlth.label}</span>,
+                ];
+              })}
+            />
+          </Card>
+        </div>
+      )}
+
+      {/* ── PROJECT REGISTER ── */}
+      {sub==="projects" && (
+        <div>
+          <div style={{ display:"flex", gap:"0.75rem", marginBottom:"1rem", flexWrap:"wrap" }}>
+            <select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)} style={inputSt}>
+              {["All","In Progress","Planning","Complete","On Hold","Cancelled"].map(s=><option key={s} value={s}>{s}</option>)}
+            </select>
+            <select value={filterRisk} onChange={e=>setFilterRisk(e.target.value)} style={inputSt}>
+              {["All","High","Medium","Low"].map(s=><option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <Card>
+            <Table
+              headers={["ID","Project","Type","Manager","Budget","Spent","Milestones","Risk","Status"]}
+              rows={filtered(projects).map(p=>{
+                const pct      = Math.round((p.milestonesComplete/Math.max(p.milestonesTotal,1))*100);
+                const spentPct = Math.round((Number(p.spent)/Math.max(Number(p.budget),1))*100);
+                return [
+                  <span style={{ color:C.blue, fontWeight:700, fontSize:"0.75rem" }}>{p.id}</span>,
+                  <div><div style={{ color:C.text, fontWeight:600, fontSize:"0.82rem" }}>{p.name}</div>
+                    <div style={{ color:C.muted, fontSize:"0.7rem" }}>{p.department}</div></div>,
+                  <Badge label={p.type} color={p.type==="Discretionary Grant"?"amber":"blue"}/>,
+                  p.manager,
+                  <span style={{ color:C.text, fontWeight:700 }}>R{(Number(p.budget)/1e6).toFixed(1)}M</span>,
+                  <span style={{ color:spentPct>90?C.red:C.muted }}>R{(Number(p.spent)/1e6).toFixed(1)}M ({spentPct}%)</span>,
+                  <div style={{ minWidth:90 }}>
+                    <div style={{ fontSize:"0.72rem", color:C.muted, marginBottom:2 }}>{p.milestonesComplete}/{p.milestonesTotal} ({pct}%)</div>
+                    <ProgressBar value={pct} color={pct>=80?C.green:pct>=40?C.amber:C.red}/>
+                  </div>,
+                  <Badge label={p.riskRating} color={p.riskRating==="High"?"red":p.riskRating==="Medium"?"amber":"green"}/>,
+                  <span style={{ color:sc(p.status), fontWeight:700, fontSize:"0.8rem" }}>{p.status}</span>,
+                ];
+              })}
+            />
+          </Card>
+        </div>
+      )}
+
+      {/* ── CONTRACT REGISTER ── */}
       {sub==="contracts" && (
         <Card>
           <Table
-            headers={["ID","Contract","Supplier","Value","End Date","SLA %","Risk","Renewal Status"]}
+            headers={["ID","Contract","Supplier","Type","Value","End Date","SLA %","Risk","Renewal Status"]}
             rows={filtered(contracts).map(c=>{
               const daysLeft = Math.ceil((new Date(c.endDate)-new Date())/(1000*60*60*24));
+              const sla      = Number(c.slaCompliance);
               return [
                 <span style={{ color:C.cyan, fontWeight:700, fontSize:"0.75rem" }}>{c.id}</span>,
-                <div><div style={{ color:C.text, fontWeight:600, fontSize:"0.82rem" }}>{c.title}</div>
-                  <div style={{ color:C.muted, fontSize:"0.7rem" }}>{c.type}</div></div>,
-                c.supplier,
+                <div><div style={{ color:C.text, fontWeight:600, fontSize:"0.82rem" }}>{c.title}</div></div>,
+                <span style={{ fontSize:"0.78rem" }}>{c.supplier}</span>,
+                <Badge label={c.type} color="blue"/>,
                 <span style={{ color:C.text, fontWeight:700 }}>R{(Number(c.value)/1e6).toFixed(1)}M</span>,
                 <div>
-                  <div style={{ color:daysLeft<90?C.amber:C.text, fontWeight:daysLeft<90?700:400 }}>{c.endDate}</div>
+                  <div style={{ color:daysLeft<90?C.amber:C.text, fontWeight:daysLeft<90?700:400, fontSize:"0.8rem" }}>{c.endDate}</div>
                   {daysLeft>0 && daysLeft<180 && <div style={{ color:daysLeft<90?C.red:C.amber, fontSize:"0.7rem" }}>{daysLeft} days left</div>}
+                  {daysLeft<=0 && <div style={{ color:C.red, fontSize:"0.7rem", fontWeight:700 }}>EXPIRED</div>}
                 </div>,
-                <span style={{ color:Number(c.slaCompliance)>=90?C.green:Number(c.slaCompliance)>=75?C.amber:C.red, fontWeight:700 }}>{c.slaCompliance}%</span>,
+                <div>
+                  <span style={{ color:sla>=90?C.green:sla>=75?C.amber:C.red, fontWeight:700 }}>{sla}%</span>
+                  <div style={{ marginTop:2, minWidth:60 }}><ProgressBar value={sla} color={sla>=90?C.green:sla>=75?C.amber:C.red}/></div>
+                </div>,
                 <Badge label={c.riskRating} color={c.riskRating==="High"?"red":c.riskRating==="Medium"?"amber":"green"}/>,
                 <span style={{ color:sc(c.renewalStatus), fontWeight:700, fontSize:"0.78rem" }}>{c.renewalStatus}</span>,
               ];
@@ -8506,8 +7185,6 @@ const MODULES = {
   policy:    PolicyModule,
   declarations:DeclarationsModule,
   projects:  ProjectsModule,
-  internalaudit: InternalAuditModule,
-  auditlog:      AuditLog,
   admin:AdminTab,
 };
 
