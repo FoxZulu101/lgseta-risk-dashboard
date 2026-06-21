@@ -856,33 +856,150 @@ function ExecutiveOverview() {
 }
 
 // ─── MODULE: RISK APPETITE ────────────────────────────────────────────────────
+// Six-level appetite framework (matches Appetite Alignment Matrix screenshot)
+const APPETITE_LEVELS = [
+  { key:"Zero Tolerance", sub:"Non-Negotiable", color:C.red    },
+  { key:"Averse",         sub:"Avoidance",      color:C.red    },
+  { key:"Minimalist",     sub:"Conservative",   color:C.amber  },
+  { key:"Cautious",       sub:"Balanced",       color:C.amber  },
+  { key:"Open",           sub:"Receptive",      color:C.green  },
+  { key:"Hungry",         sub:"Aggressive",     color:C.green  },
+];
+const APPETITE_AREAS = [
+  { area:"Financial Sustainability",   level:"Cautious"       },
+  { area:"Operational Excellence",     level:"Open"           },
+  { area:"Digital Transformation",     level:"Hungry"         },
+  { area:"Governance & Compliance",    level:"Zero Tolerance" },
+  { area:"Stakeholder Relations",      level:"Minimalist"     },
+  { area:"Skills Innovation",          level:"Open"           },
+];
+// Counts that drive the distribution donut + framework list
+const APPETITE_COUNTS = {
+  "Zero Tolerance":5, "Averse":8, "Minimalist":12, "Cautious":22, "Open":18, "Hungry":5,
+};
+// Appetite vs actual exposure by category (bar chart)
+const APPETITE_EXPOSURE = [
+  { category:"Strategic",   appetite:12, exposure:14 },
+  { category:"Operational", appetite:18, exposure:16 },
+  { category:"Compliance",  appetite:8,  exposure:15 },
+  { category:"Financial",   appetite:10, exposure:16 },
+  { category:"Reputation",  appetite:6,  exposure:14 },
+  { category:"Technology",  appetite:14, exposure:18 },
+];
+
 function RiskAppetite() {
+  const [period, setPeriod] = useState("current");
+
+  const donutSegments = APPETITE_LEVELS.map(l=>({ name:l.key, color:l.color, value:APPETITE_COUNTS[l.key]||0 }));
+  const totalRisks = donutSegments.reduce((s,x)=>s+x.value,0);
+  const levelColor = lvl => (APPETITE_LEVELS.find(l=>l.key===lvl)||{}).color || C.muted;
+
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
-      <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Risk Appetite Framework</h1>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))", gap:"1rem" }}>
-        {STATIC_APPETITE.map(r=>{
-          const breach=r.current>r.max;
-          return (
-            <Card key={r.category} style={{ borderLeft:`3px solid ${breach?C.red:C.green}` }}>
-              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:"0.5rem" }}>
-                <span style={{ color:C.text, fontWeight:700 }}>{r.category}</span>
-                <Badge label={r.appetite} color={r.appetite==="Zero"?"red":r.appetite==="Low"?"amber":"green"} />
-              </div>
-              <div style={{ color:breach?C.red:C.green, fontSize:"1.6rem", fontWeight:800 }}>{r.current} <span style={{ color:C.muted, fontSize:"0.8rem" }}>{r.unit}</span></div>
-              <div style={{ color:C.muted, fontSize:"0.78rem", marginBottom:"0.5rem" }}>Tolerance limit: {r.max} {r.unit}</div>
-              <ProgressBar value={r.current} max={r.max*1.5} color={breach?C.red:C.green}/>
-              {breach&&<div style={{ color:C.red, fontSize:"0.75rem", marginTop:"0.4rem" }}>⚠ Appetite breached</div>}
-            </Card>
-          );
-        })}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:"0.5rem" }}>
+        <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>Risk Appetite</h1>
+        <div style={{ display:"flex", gap:6, background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:3 }}>
+          {[["current","Current Period"],["previous","Previous Period"]].map(([v,l])=>(
+            <button key={v} onClick={()=>setPeriod(v)}
+              style={{ border:"none", cursor:"pointer", borderRadius:6, padding:"0.35rem 0.9rem", fontSize:"0.78rem", fontWeight:600,
+                background:period===v?C.green:"transparent", color:period===v?"#0d1117":C.muted }}>{l}</button>
+          ))}
+        </div>
       </div>
+
+      {/* Row 1: Alignment Matrix + Distribution donut */}
+      <div style={{ display:"grid", gridTemplateColumns:"1.55fr 1fr", gap:"1rem", alignItems:"start" }}>
+        <Card>
+          <SectionTitle>Appetite Alignment Matrix</SectionTitle>
+          <div style={{ overflowX:"auto" }}>
+            <table style={{ width:"100%", borderCollapse:"collapse", fontSize:"0.74rem", minWidth:620 }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign:"left", padding:"0.5rem 0.6rem", color:C.muted, fontWeight:700, borderBottom:`1px solid ${C.border}` }}>STRATEGIC<br/>AREA</th>
+                  {APPETITE_LEVELS.map(l=>(
+                    <th key={l.key} style={{ padding:"0.5rem 0.4rem", borderBottom:`1px solid ${C.border}`, textAlign:"center", verticalAlign:"top" }}>
+                      <div style={{ color:l.color, fontWeight:700, fontSize:"0.68rem", textTransform:"uppercase" }}>{l.key}</div>
+                      <div style={{ color:C.muted, fontSize:"0.58rem", textTransform:"uppercase" }}>{l.sub}</div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {APPETITE_AREAS.map(a=>(
+                  <tr key={a.area}>
+                    <td style={{ padding:"0.7rem 0.6rem", color:C.text, fontWeight:600, borderBottom:`1px solid ${C.border}` }}>{a.area}</td>
+                    {APPETITE_LEVELS.map(l=>{
+                      const on = l.key===a.level;
+                      return (
+                        <td key={l.key} style={{ padding:"0.5rem", textAlign:"center", borderBottom:`1px solid ${C.border}` }}>
+                          {on && <div title={`${a.area}: ${l.key}`} style={{ width:16, height:16, borderRadius:"50%", background:l.color, margin:"0 auto", boxShadow:`0 0 0 4px ${l.color}22` }}/>}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+
+        <Card>
+          <SectionTitle>Appetite Distribution</SectionTitle>
+          <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:"0.75rem" }}>
+            <DonutChart segments={donutSegments} size={210} thickness={30} centerValue={totalRisks} centerLabel="total risks"/>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:"0.4rem 0.9rem", justifyContent:"center" }}>
+              {APPETITE_LEVELS.map(l=>(
+                <div key={l.key} style={{ display:"flex", alignItems:"center", gap:5 }}>
+                  <span style={{ width:9, height:9, borderRadius:"50%", background:l.color }}/>
+                  <span style={{ color:C.muted, fontSize:"0.7rem" }}>{l.key}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Row 2: Exposure bars + Framework list */}
+      <div style={{ display:"grid", gridTemplateColumns:"1.55fr 1fr", gap:"1rem", alignItems:"start" }}>
+        <Card>
+          <SectionTitle>Appetite vs Actual Exposure by Risk Category</SectionTitle>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={APPETITE_EXPOSURE} barGap={4}>
+              <CartesianGrid strokeDasharray="3 3" stroke={C.border} vertical={false}/>
+              <XAxis dataKey="category" stroke={C.muted} tick={{ fill:C.muted, fontSize:11 }}/>
+              <YAxis stroke={C.muted} tick={{ fill:C.muted, fontSize:11 }} domain={[0,20]}/>
+              <Tooltip contentStyle={{ background:C.card, border:`1px solid ${C.border}`, color:C.text, fontSize:"0.78rem" }} cursor={{ fill:"rgba(255,255,255,0.04)" }}/>
+              <Legend wrapperStyle={{ fontSize:"0.75rem" }}/>
+              <Bar dataKey="appetite" name="Appetite"        fill="#5b6b86" radius={[3,3,0,0]}/>
+              <Bar dataKey="exposure" name="Exceeds Appetite" fill={C.red}    radius={[3,3,0,0]}/>
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+
+        <Card>
+          <SectionTitle>Risk Appetite Framework</SectionTitle>
+          <div style={{ display:"flex", flexDirection:"column" }}>
+            {APPETITE_LEVELS.map((l,i)=>(
+              <div key={l.key} style={{ display:"flex", alignItems:"center", gap:"0.75rem", padding:"0.7rem 0.2rem",
+                borderBottom:i<APPETITE_LEVELS.length-1?`1px solid ${C.border}`:"none" }}>
+                <span style={{ width:12, height:12, borderRadius:3, background:l.color, flexShrink:0 }}/>
+                <div style={{ flex:1 }}>
+                  <div style={{ color:C.text, fontWeight:700, fontSize:"0.85rem" }}>{l.key}</div>
+                  <div style={{ color:C.muted, fontSize:"0.72rem" }}>{l.sub}</div>
+                </div>
+                <div style={{ color:C.text, fontWeight:700, fontSize:"0.85rem" }}>{APPETITE_COUNTS[l.key]} <span style={{ color:C.muted, fontWeight:400, fontSize:"0.72rem" }}>risks</span></div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
       <Card>
         <SectionTitle>Appetite Statement</SectionTitle>
-        <p style={{ color:C.muted, lineHeight:1.7, fontSize:"0.88rem" }}>
-          LGSETA has a <strong style={{ color:C.text }}>Zero tolerance</strong> for compliance breaches and fraud.
-          The organisation maintains a <strong style={{ color:C.text }}>Low appetite</strong> for financial, reputational, and strategic risks.
-          A <strong style={{ color:C.text }}>Medium appetite</strong> applies to operational and technology risks where innovation is pursued.
+        <p style={{ color:C.muted, lineHeight:1.7, fontSize:"0.88rem", margin:0 }}>
+          LGSETA maintains a <strong style={{ color:C.text }}>Zero Tolerance</strong> stance for governance and compliance breaches,
+          a <strong style={{ color:C.text }}>Cautious</strong> position on financial sustainability, and an <strong style={{ color:C.text }}>Open</strong> to
+          <strong style={{ color:C.text }}> Hungry</strong> appetite for operational excellence, skills innovation and digital transformation where pursuing opportunity creates sector value.
         </p>
       </Card>
     </div>
@@ -1024,34 +1141,109 @@ function KRIMonitoring() {
   const [kris, setKris] = useState(STATIC_KRIS);
   const [selectedKRI, setSelectedKRI] = useState(null);
   useEffect(()=>{ fetch(`${API}/api/kris`).then(r=>r.json()).then(d=>{ if(Array.isArray(d)&&d.length) setKris(d); }).catch(()=>{}); },[]);
+
+  const num = v => parseFloat(String(v).replace(/[^0-9.\-]/g,""))||0;
+  // RAG status: Red if outside tolerance, Amber if within ~10% of target, else Green
+  const rag = k => {
+    if ((k.currentStatus||"").includes("Outside")) {
+      const a=num(k.currentPeriodValue), t=num(k.target);
+      return (t>0 && Math.abs(a-t)/t<=0.15) ? "Amber" : "Red";
+    }
+    return "Green";
+  };
+  const ragColor = s => s==="Red"?C.red:s==="Amber"?C.amber:C.green;
+
+  const red   = kris.filter(k=>rag(k)==="Red").length;
+  const amber = kris.filter(k=>rag(k)==="Amber").length;
+  const green = kris.filter(k=>rag(k)==="Green").length;
+
+  // Top 3 indicators (worst breaches first) → trend chart
+  const months = ["Aug","Sep","Oct","Nov","Dec","Jan"];
+  const lineColors = [C.amber, C.blue, C.red];
+  const top3 = [...kris].sort((a,b)=>{
+    const order={Red:0,Amber:1,Green:2}; return order[rag(a)]-order[rag(b)];
+  }).slice(0,3);
+  const trendData = months.map((m,i)=>{
+    const row={ m };
+    top3.forEach((k,ki)=>{
+      const cur=num(k.currentPeriodValue), tgt=num(k.target);
+      const start=tgt + (cur-tgt)*0.4;
+      row[k.id]=+(start + (cur-start)*(i/(months.length-1))).toFixed(1);
+    });
+    return row;
+  });
+
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
       {selectedKRI && <KRITrendModal kri={selectedKRI} onClose={()=>setSelectedKRI(null)}/>}
-      <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>KRI Monitoring Dashboard</h1>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))", gap:"1rem" }}>
-        {kris.map(k=>{
-          const actual=parseFloat(k.currentPeriodValue)||0;
-          const target=parseFloat(k.target)||0;
-          const breach=(k.currentStatus||"").includes("Outside");
-          return (
-            <Card key={k.id} style={{ borderTop:`3px solid ${breach?C.red:C.green}` }}>
-              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:"0.3rem" }}>
-                <span style={{ color:C.muted, fontSize:"0.72rem", fontWeight:700 }}>{k.id}</span>
-                <StatusBadge status={k.currentStatus||k.status}/>
-              </div>
-              <div style={{ color:C.text, fontWeight:700, fontSize:"0.9rem", marginBottom:"0.5rem" }}>{k.indicator||k.name}</div>
-              <div style={{ display:"flex", gap:"1rem", marginBottom:"0.5rem" }}>
-                <div><div style={{ color:C.muted, fontSize:"0.7rem" }}>Actual</div><div style={{ color:breach?C.red:C.green, fontSize:"1.4rem", fontWeight:800 }}>{k.currentPeriodValue||k.actual}</div></div>
-                <div><div style={{ color:C.muted, fontSize:"0.7rem" }}>Target</div><div style={{ color:C.text, fontSize:"1.4rem", fontWeight:800 }}>{k.target}</div></div>
-                <div style={{ marginLeft:"auto", alignSelf:"center" }}><span style={{ fontSize:"1rem" }}>{(k.trend||"").toLowerCase()==="improving"?"↑":(k.trend||"").toLowerCase()==="declining"?"↓":"→"}</span></div>
-              <button onClick={()=>setSelectedKRI(k)}
-                style={{ marginLeft:4, background:"transparent", border:`1px solid ${C.border}`, borderRadius:5,
-                  color:C.blue, fontSize:"0.68rem", padding:"2px 6px", cursor:"pointer" }}>📈</button>
-              </div>
-              <ProgressBar value={actual} max={target||100} color={breach?C.red:C.green}/>
-            </Card>
-          );
-        })}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:"0.5rem" }}>
+        <h1 style={{ color:C.text, fontSize:"1.3rem", fontWeight:700, margin:0 }}>KRI Monitoring</h1>
+        <div style={{ display:"flex", gap:"0.5rem" }}>
+          {[["Red",red],["Amber",amber],["Green",green]].map(([s,n])=>(
+            <div key={s} style={{ display:"flex", alignItems:"center", gap:5, background:C.surface, border:`1px solid ${C.border}`, borderRadius:7, padding:"0.3rem 0.7rem" }}>
+              <span style={{ width:9, height:9, borderRadius:"50%", background:ragColor(s) }}/>
+              <span style={{ color:C.text, fontWeight:700, fontSize:"0.8rem" }}>{n}</span>
+              <span style={{ color:C.muted, fontSize:"0.72rem" }}>{s}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem", alignItems:"start" }}>
+        {/* Traffic Light Dashboard */}
+        <Card>
+          <SectionTitle>KRI Traffic Light Dashboard</SectionTitle>
+          <div style={{ display:"flex", flexDirection:"column", gap:"0.85rem" }}>
+            {kris.map(k=>{
+              const status=rag(k), col=ragColor(status);
+              const actual=num(k.currentPeriodValue), target=num(k.target);
+              const pctMax=Math.max(actual,target,1)*1.25;
+              const isPct=String(k.currentPeriodValue).includes("%");
+              return (
+                <div key={k.id} onClick={()=>setSelectedKRI(k)}
+                  style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:"0.7rem 0.85rem", cursor:"pointer",
+                    borderLeft:`3px solid ${col}` }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"0.55rem" }}>
+                    <div>
+                      <div style={{ color:C.text, fontWeight:700, fontSize:"0.85rem" }}>{k.indicator||k.name}</div>
+                      <div style={{ color:C.muted, fontSize:"0.7rem" }}>{k.subtitle||k.category||"Key Risk Indicator"}</div>
+                    </div>
+                    <span style={{ background:col, color:"#0d1117", fontWeight:800, fontSize:"0.68rem", padding:"2px 10px", borderRadius:5 }}>{status}</span>
+                  </div>
+                  <div style={{ position:"relative", height:18, background:`${col}22`, borderRadius:9, overflow:"hidden" }}>
+                    <div style={{ position:"absolute", left:0, top:0, bottom:0, width:`${Math.min(100,(actual/pctMax)*100)}%`, background:col, borderRadius:9, transition:"width 0.5s ease" }}/>
+                    <span style={{ position:"absolute", left:"50%", top:"50%", transform:"translate(-50%,-50%)", color:C.text, fontSize:"0.68rem", fontWeight:700 }}>
+                      {k.currentPeriodValue||k.actual}
+                    </span>
+                  </div>
+                  <div style={{ display:"flex", justifyContent:"space-between", marginTop:3 }}>
+                    <span style={{ color:C.muted, fontSize:"0.64rem" }}>{isPct?`${Math.round(actual*0.6)}%`:""}</span>
+                    <span style={{ color:C.muted, fontSize:"0.64rem" }}>Target: {k.target}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+
+        {/* Trend analysis — top 3 */}
+        <Card>
+          <SectionTitle>KRI Trend Analysis — Top 3 Indicators</SectionTitle>
+          <ResponsiveContainer width="100%" height={340}>
+            <LineChart data={trendData}>
+              <CartesianGrid strokeDasharray="3 3" stroke={C.border}/>
+              <XAxis dataKey="m" stroke={C.muted} tick={{ fill:C.muted, fontSize:11 }}/>
+              <YAxis stroke={C.muted} tick={{ fill:C.muted, fontSize:11 }}/>
+              <Tooltip contentStyle={{ background:C.card, border:`1px solid ${C.border}`, color:C.text, fontSize:"0.78rem" }}/>
+              <Legend wrapperStyle={{ fontSize:"0.72rem" }}/>
+              {top3.map((k,i)=>(
+                <Line key={k.id} type="monotone" dataKey={k.id} name={`${k.id} ${k.indicator||k.name}`.slice(0,28)}
+                  stroke={lineColors[i%lineColors.length]} strokeWidth={2} dot={{ r:3 }}/>
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+          <p style={{ color:C.muted, fontSize:"0.72rem", margin:"0.5rem 0 0" }}>Click any indicator on the left to open its full trend history.</p>
+        </Card>
       </div>
     </div>
   );
