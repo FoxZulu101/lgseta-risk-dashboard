@@ -8560,6 +8560,7 @@ function LoginScreen({ onLogin }) {
   const [password, setPassword] = useState("");
   const [error, setError]       = useState("");
   const [busy, setBusy]         = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   applyTheme("dark");
 
@@ -8614,6 +8615,28 @@ function LoginScreen({ onLogin }) {
             padding:"0.6rem", fontSize:"0.85rem", fontWeight:700, cursor:busy?"default":"pointer" }}>
           {busy ? "Signing in…" : "Sign in"}
         </button>
+
+        <div style={{ textAlign:"center", marginTop:"1rem" }}>
+          <button type="button" onClick={()=>setShowHelp(s=>!s)}
+            style={{ background:"none", border:"none", color:C.blue, fontSize:"0.78rem", cursor:"pointer",
+              textDecoration:"underline", padding:0 }}>
+            Forgot username or password?
+          </button>
+        </div>
+
+        {showHelp && (
+          <div style={{ marginTop:"0.85rem", background:C.bg, border:`1px solid ${C.border}`, borderRadius:8,
+            padding:"0.85rem 1rem", fontSize:"0.78rem", color:C.muted, lineHeight:1.5 }}>
+            <div style={{ color:C.text, fontWeight:700, marginBottom:"0.35rem" }}>Recovering your access</div>
+            Sign-in details for the GRC Intelligence Center are managed by your administrator. If you have
+            forgotten your username or password, please contact your{" "}
+            <strong style={{ color:C.text }}>system administrator</strong> (GRC / Compliance unit) to have your
+            access reset.
+            <div style={{ marginTop:"0.5rem", fontSize:"0.72rem" }}>
+              Administrators reset credentials from the service configuration, then redeploy.
+            </div>
+          </div>
+        )}
       </form>
     </div>
   );
