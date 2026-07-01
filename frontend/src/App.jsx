@@ -4,62 +4,12 @@ import {
   AreaChart, Area, ComposedChart,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from "recharts";
+import { API, TOKEN_KEY, storedUser, saveSession, clearSession } from "./api";
+import { C, applyTheme } from "./theme";
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
-// API base is configurable via Vite env (VITE_API_URL) so the app can point at a
-// local backend in dev; production (Netlify) leaves it unset and uses Render.
-const API = import.meta.env.VITE_API_URL || "https://lgseta-risk-dashboard.onrender.com";
+// API base, auth session and the fetch interceptor now live in ./api.js
 
-// ─── AUTH ─────────────────────────────────────────────────────────────────────
-// Local JWT session. The token is attached to every API request by the global
-// fetch interceptor below, so the ~100 existing fetch call-sites stay untouched.
-const TOKEN_KEY = "bjmapex_token";
-const USER_KEY  = "bjmapex_user";
-let AUTH_TOKEN = (typeof localStorage !== "undefined" && localStorage.getItem(TOKEN_KEY)) || null;
-
-function setToken(t) {
-  AUTH_TOKEN = t || null;
-  if (t) localStorage.setItem(TOKEN_KEY, t);
-  else   localStorage.removeItem(TOKEN_KEY);
-}
-function storedUser() {
-  try { return JSON.parse(localStorage.getItem(USER_KEY) || "null"); }
-  catch (e) { return null; }
-}
-function saveSession(token, user) {
-  setToken(token);
-  localStorage.setItem(USER_KEY, JSON.stringify(user || null));
-}
-function clearSession() {
-  setToken(null);
-  localStorage.removeItem(USER_KEY);
-}
-
-// Global fetch interceptor: for any request to our API, attach the bearer token
-// and, on a 401, clear the session and signal the app to return to the login
-// screen. Non-API requests pass through untouched. Installed once.
-if (typeof window !== "undefined" && !window.__bjmapexFetchPatched) {
-  const _origFetch = window.fetch.bind(window);
-  window.fetch = (input, init) => {
-    init = init || {};
-    const url = typeof input === "string" ? input : (input && input.url) || "";
-    if (url.indexOf(API) === 0) {
-      const isLogin = url.indexOf("/api/auth/login") !== -1;
-      if (AUTH_TOKEN) {
-        init = { ...init, headers: { ...(init.headers || {}), Authorization: "Bearer " + AUTH_TOKEN } };
-      }
-      return _origFetch(input, init).then(res => {
-        if (res.status === 401 && !isLogin) {
-          clearSession();
-          window.dispatchEvent(new Event("bjmapex-unauthorized"));
-        }
-        return res;
-      });
-    }
-    return _origFetch(input, init);
-  };
-  window.__bjmapexFetchPatched = true;
-}
 
 // ─── PERIOD CONTEXT ───────────────────────────────────────────────────────────
 // Lets any module read the globally-selected reporting period via usePeriod().
@@ -84,29 +34,8 @@ async function logAudit({ module, action, recordId, description, before=null, af
   } catch(e) { console.warn("Audit log failed:", e.message); }
 }
 
-// ─── COLOUR TOKENS ────────────────────────────────────────────────────────────
-// Two palettes. Accent colours (red/amber/green/blue/purple/cyan) are shared so
-// status semantics stay consistent across themes; only the surfaces invert.
-const THEMES = {
-  dark: {
-    bg:      "#0d1117", surface: "#161b22", card: "#1c2230", border: "#30363d",
-    text:    "#e6edf3", muted:   "#8b949e", red:  "#f85149", amber:  "#e3b341",
-    green:   "#3fb950", blue:    "#58a6ff", purple:"#a371f7", cyan:   "#39d353",
-  },
-  light: {
-    bg:      "#f6f8fa", surface: "#ffffff", card: "#ffffff", border: "#d0d7de",
-    text:    "#1f2328", muted:   "#656d76", red:  "#cf222e", amber:  "#9a6700",
-    green:   "#1a7f37", blue:    "#0969da", purple:"#8250df", cyan:   "#1a7f37",
-  },
-};
+// Colour tokens (C, applyTheme) now live in ./theme.js
 
-// `C` is a LIVE token object. Components read C.* at render time, so mutating it
-// in place (applyTheme) and forcing a re-render of <App/> reskins the entire app
-// without threading a theme prop through 800+ styled lines.
-const C = { ...THEMES.dark };
-function applyTheme(name) {
-  Object.assign(C, THEMES[name] || THEMES.dark);
-}
 
 // ─── STATIC FALLBACK DATA ─────────────────────────────────────────────────────
 const STATIC_RISKS = [
