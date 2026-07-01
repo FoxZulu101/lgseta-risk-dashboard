@@ -75,20 +75,37 @@ const upload = multer({
 // ═══════════════════════════════════════════════════════════════════════════════
 function ensureAdmin() {
   try {
+    const u = process.env.ADMIN_USERNAME, p = process.env.ADMIN_PASSWORD;
     const data = readData();
     if (!Array.isArray(data.users)) data.users = [];
-    if (data.users.length === 0) {
-      const u = process.env.ADMIN_USERNAME, p = process.env.ADMIN_PASSWORD;
-      if (u && p) {
-        data.users.push({
-          id: "USR-ADMIN", username: u, name: "Administrator", role: "admin",
-          passwordHash: bcrypt.hashSync(p, 10), createdAt: new Date().toISOString(),
-        });
-        writeData(data);
-        console.log(`Bootstrapped admin user '${u}'.`);
-      } else {
+    if (!u || !p) {
+      if (data.users.length === 0) {
         console.warn("⚠  No users exist and ADMIN_USERNAME/ADMIN_PASSWORD not set — nobody can log in until an admin is created.");
       }
+      return;
+    }
+    // The bootstrap admin's credentials TRACK the ADMIN_USERNAME/ADMIN_PASSWORD
+    // env vars: created on first run, and re-synced on later deploys so that
+    // changing those vars actually updates the login (they are the source of
+    // truth for this single bootstrap account).
+    const admin = data.users.find(x => x.id === "USR-ADMIN");
+    if (!admin) {
+      data.users.push({
+        id: "USR-ADMIN", username: u, name: "Administrator", role: "admin",
+        passwordHash: bcrypt.hashSync(p, 10), createdAt: new Date().toISOString(),
+      });
+      writeData(data);
+      console.log(`Bootstrapped admin user '${u}'.`);
+      return;
+    }
+    const changed = admin.username !== u || !bcrypt.compareSync(p, admin.passwordHash);
+    if (changed) {
+      admin.username = u;
+      admin.passwordHash = bcrypt.hashSync(p, 10);
+      admin.role = "admin";
+      admin.updatedAt = new Date().toISOString();
+      writeData(data);
+      console.log(`Synced admin user '${u}' from environment.`);
     }
   } catch (e) { console.error("ensureAdmin failed:", e.message); }
 }
