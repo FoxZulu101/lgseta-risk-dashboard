@@ -152,6 +152,84 @@ app.use((req, res, next) => {
   next();
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// AUDIT TRAIL  (server-side, append-only)
+// ───────────────────────────────────────────────────────────────────────────────
+// Records every successful mutating API call into data.auditLog. Runs after the
+// auth gate (so req.user is known) and wraps res.json to capture the outcome, so
+// individual route handlers need no changes. The Audit Log module reads this.
+// ═══════════════════════════════════════════════════════════════════════════════
+const AUDIT_MODULES = {
+  dashboard:"Dashboard", risks:"Strategic Risks", oprisks:"Operational Risks",
+  kris:"KRI Monitoring", treatments:"Treatment Actions", uifw:"UIFW Expenditure",
+  opportunities:"Opportunities", appetite:"Risk Appetite", bcm:"BCM Resilience",
+  declarations:"Declarations", upload:"Data Import", period:"Reporting Period",
+};
+function auditModule(p) {
+  const seg = (p.split("/")[2] || "").toLowerCase();
+  return AUDIT_MODULES[seg] || (seg ? seg.charAt(0).toUpperCase() + seg.slice(1) : "System");
+}
+function auditAction(method) {
+  if (method === "POST")   return "Add";
+  if (method === "PUT")    return "Edit";
+  if (method === "PATCH")  return "Edit";
+  if (method === "DELETE") return "Delete";
+  return "Change";
+}
+function auditRecordId(req, body) {
+  const parts = req.path.split("/");
+  if (parts.length >= 4 && parts[3]) return decodeURIComponent(parts[3]);
+  if (body && typeof body === "object") {
+    if (body.reference) return String(body.reference);
+    if (body.id)        return String(body.id);
+    for (const v of Object.values(body)) if (v && typeof v === "object" && !Array.isArray(v) && v.id) return String(v.id);
+  }
+  return "";
+}
+function auditEntity(body) {
+  if (body && typeof body === "object") {
+    for (const v of Object.values(body)) if (v && typeof v === "object" && !Array.isArray(v) && v.id) return v;
+  }
+  return null;
+}
+function appendAudit(req, body) {
+  const data = readData();
+  if (!Array.isArray(data.auditLog)) data.auditLog = [];
+  const actor    = (req.user && (req.user.name || req.user.username)) || "Anonymous (public)";
+  const role     = (req.user && req.user.role) || "public";
+  const module   = auditModule(req.path);
+  const action   = auditAction(req.method);
+  const recordId = auditRecordId(req, body);
+  const ip = (String(req.headers["x-forwarded-for"] || "").split(",")[0].trim())
+             || req.ip || (req.socket && req.socket.remoteAddress) || "";
+  data.auditLog.push({
+    id: "AL-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 7),
+    timestamp: new Date().toISOString(),
+    action, module, recordId,
+    description: `${action} — ${module}${recordId ? " [" + recordId + "]" : ""} by ${actor}`,
+    after: auditEntity(body) || body || null,
+    meta: { user: actor, role, method: req.method, path: req.path, ip },
+  });
+  if (data.auditLog.length > 5000) data.auditLog = data.auditLog.slice(-5000);
+  writeData(data);
+}
+
+// Wraps res.json on mutating requests and logs the entry once the handler
+// responds with a 2xx. Blocked/failed requests are not logged.
+app.use((req, res, next) => {
+  if (!req.path.startsWith("/api/")) return next();
+  if (!["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) return next();
+  if (req.path === "/api/auth/login") return next();
+  const origJson = res.json.bind(res);
+  res.json = (body) => {
+    try {
+      if (res.statusCode >= 200 && res.statusCode < 300) appendAudit(req, body);
+    } catch (e) { console.error("Audit log failed:", e.message); }
+    return origJson(body);
+  };
+  next();
+});
+
 // Login — verifies credentials and returns a signed JWT.
 app.post("/api/auth/login", authLimiter, (req, res) => {
   try {
