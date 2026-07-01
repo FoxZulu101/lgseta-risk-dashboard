@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, createContext, useContext } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   AreaChart, Area, ComposedChart,
@@ -11,17 +11,13 @@ import {
   inputSt, labelSt, FInput, FSelect, FTextarea,
 } from "./ui";
 import { GaugeRing, DonutChart, KPICardPro, StackedBar, RadarChart, HeatGrid, Sparkline } from "./charts";
+import { PeriodContext, usePeriod, PERIODS } from "./period";
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 // API base, auth session and the fetch interceptor now live in ./api.js
 
 
-// ─── PERIOD CONTEXT ───────────────────────────────────────────────────────────
-// Lets any module read the globally-selected reporting period via usePeriod().
-// Modules that don't need it simply ignore it — no prop-drilling required.
-const PeriodContext = createContext("Q2-2627");
-function usePeriod() { return useContext(PeriodContext); }
-
+// Reporting-period context now lives in ./period.js
 // ─── AUDIT LOG HELPER ─────────────────────────────────────────────────────────
 async function logAudit({ module, action, recordId, description, before=null, after=null, meta={} }) {
   try {
@@ -8696,17 +8692,8 @@ const MODULES = {
 };
 
 // ─── ROOT ─────────────────────────────────────────────────────────────────────
-const PERIODS = [
-  { value:"Q1-2526", label:"Q1 2025/26" },
-  { value:"Q2-2526", label:"Q2 2025/26" },
-  { value:"Q3-2526", label:"Q3 2025/26" },
-  { value:"Q4-2526", label:"Q4 2025/26" },
-  { value:"Q1-2627", label:"Q1 2026/27" },
-  { value:"Q2-2627", label:"Q2 2026/27" },
-  { value:"Q3-2627", label:"Q3 2026/27" },
-  { value:"Q4-2627", label:"Q4 2026/27" },
-  { value:"Q1-2728", label:"Q1 2027/28" },
-];
+// PERIODS now lives in ./period.js
+
 
 function LoginScreen({ onLogin }) {
   const [username, setUsername] = useState("");
