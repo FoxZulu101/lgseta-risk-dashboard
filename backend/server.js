@@ -2,14 +2,44 @@ const express = require("express");
 const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const multer = require("multer");
-const XLSX = require("xlsx");
+const ExcelJS = require("exceljs");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
-app.use(express.json());
+// ── Security config (all overridable via environment) ─────────────────────────
+const JWT_SECRET    = process.env.JWT_SECRET || "dev-insecure-secret-change-me";
+const TOKEN_TTL     = process.env.TOKEN_TTL || "8h";
+const MAX_UPLOAD_MB = Number(process.env.MAX_UPLOAD_MB) || 5;
+if (!process.env.JWT_SECRET) {
+  console.warn("⚠  JWT_SECRET is not set — using an insecure development secret. Set JWT_SECRET before production use.");
+}
+
+// Restrict CORS to configured origins. If CORS_ORIGINS is unset we fall back to
+// permissive mode (previous behaviour) so the live site keeps working until the
+// env var is set — but you SHOULD set it (comma-separated list of origins).
+const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS || "").split(",").map(s => s.trim()).filter(Boolean);
+if (ALLOWED_ORIGINS.length) {
+  app.use(cors({ origin: ALLOWED_ORIGINS }));
+} else {
+  console.warn("⚠  CORS_ORIGINS not set — allowing all origins. Set CORS_ORIGINS to lock this down.");
+  app.use(cors());
+}
+
+app.use(helmet());
+app.use(express.json({ limit: "2mb" }));
+
+// Rate limiters
+const apiLimiter     = rateLimit({ windowMs: 15*60*1000, max: 1000, standardHeaders: true, legacyHeaders: false });
+const authLimiter    = rateLimit({ windowMs: 15*60*1000, max: 20,   standardHeaders: true, legacyHeaders: false, message: { message: "Too many login attempts — try again later" } });
+const declareLimiter = rateLimit({ windowMs: 60*60*1000, max: 30,   standardHeaders: true, legacyHeaders: false });
+app.use("/api", apiLimiter);
 
 // Persistent-disk storage: the live data file lives on the Render disk mounted
 // at /data so it survives redeploys. The repo's data/dashboardData.json is used
@@ -32,17 +62,157 @@ try {
 }
 
 function readData()      { return JSON.parse(fs.readFileSync(fs.existsSync(dataPath) ? dataPath : seedPath, "utf8")); }
-function writeData(data) { fs.writeFileSync(dataPath, JSON.stringify(data, null, 2)); }
+function writeData(data) {
+  // Atomic write: serialise to a temp file then rename over the target. rename()
+  // is atomic on the same filesystem, so a crash mid-write can never leave a
+  // half-written / unparseable data file. (Interim mitigation — the real fix is
+  // the move to PostgreSQL.)
+  const tmp = dataPath + ".tmp";
+  fs.writeFileSync(tmp, JSON.stringify(data, null, 2));
+  fs.renameSync(tmp, dataPath);
+}
 
-// ── Multer ───────────────────────────────────────────────────────────────────
+// ── Multer (hardened: random server-side filenames, size + count limits) ──────
+// Filenames are generated server-side from random bytes — the client's
+// originalname is never used to build the path, which closes the path-traversal
+// risk (e.g. "../../etc/x"). Only the extension is derived from it.
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadsDir),
-  filename:    (req, file, cb) => cb(null, `upload_${Date.now()}_${file.originalname}`)
+  filename:    (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, `upload_${Date.now()}_${crypto.randomBytes(6).toString("hex")}${ext}`);
+  }
 });
-const upload = multer({ storage, fileFilter: (req, file, cb) => {
-  const ext = path.extname(file.originalname).toLowerCase();
-  [".xlsx",".xls",".csv"].includes(ext) ? cb(null, true) : cb(new Error("Only Excel/CSV allowed"));
-}});
+const upload = multer({
+  storage,
+  limits: { fileSize: MAX_UPLOAD_MB * 1024 * 1024, files: 1 },
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    [".xlsx",".xls",".csv"].includes(ext) ? cb(null, true) : cb(new Error("Only Excel/CSV allowed"));
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AUTHENTICATION & AUTHORISATION  (local accounts — pluggable; Entra ID later)
+// ───────────────────────────────────────────────────────────────────────────────
+// Users live in data.users = [{ id, username, name, role, passwordHash }].
+// Roles: "admin" (full read/write) | "viewer" (read-only, may still generate
+// reports). Room is left for finer roles later. On first run an admin is
+// bootstrapped from ADMIN_USERNAME / ADMIN_PASSWORD if no users exist. This is
+// the AUTH_MODE=local path; it swaps for Entra ID / OIDC at the Azure phase.
+// ═══════════════════════════════════════════════════════════════════════════════
+function ensureAdmin() {
+  try {
+    const data = readData();
+    if (!Array.isArray(data.users)) data.users = [];
+    if (data.users.length === 0) {
+      const u = process.env.ADMIN_USERNAME, p = process.env.ADMIN_PASSWORD;
+      if (u && p) {
+        data.users.push({
+          id: "USR-ADMIN", username: u, name: "Administrator", role: "admin",
+          passwordHash: bcrypt.hashSync(p, 10), createdAt: new Date().toISOString(),
+        });
+        writeData(data);
+        console.log(`Bootstrapped admin user '${u}'.`);
+      } else {
+        console.warn("⚠  No users exist and ADMIN_USERNAME/ADMIN_PASSWORD not set — nobody can log in until an admin is created.");
+      }
+    }
+  } catch (e) { console.error("ensureAdmin failed:", e.message); }
+}
+ensureAdmin();
+
+// Endpoints reachable WITHOUT a token: login, and the public staff declarations
+// submit. Everything else under /api requires a valid session.
+function isPublicRequest(req) {
+  if (req.method === "POST" && req.path === "/api/auth/login")   return true;
+  if (req.method === "POST" && req.path === "/api/declarations") return true;
+  return false;
+}
+
+// Auth gate — runs before every route. Blocks all /api/* traffic that lacks a
+// valid Bearer token (except the public endpoints). Viewers are read-only:
+// mutating verbs are refused, except POST /api/reports/* (document generation).
+app.use((req, res, next) => {
+  if (!req.path.startsWith("/api/")) return next();
+  if (isPublicRequest(req)) return next();
+
+  const header = req.headers.authorization || "";
+  const token  = header.startsWith("Bearer ") ? header.slice(7) : null;
+  if (!token) return res.status(401).json({ message: "Authentication required" });
+
+  try { req.user = jwt.verify(token, JWT_SECRET); }
+  catch (e) { return res.status(401).json({ message: "Invalid or expired session" }); }
+
+  const isMutation = ["POST", "PUT", "DELETE", "PATCH"].includes(req.method);
+  const isReport   = req.method === "POST" && req.path.startsWith("/api/reports/");
+  if (req.user.role === "viewer" && isMutation && !isReport) {
+    return res.status(403).json({ message: "Your role is read-only" });
+  }
+  next();
+});
+
+// Login — verifies credentials and returns a signed JWT.
+app.post("/api/auth/login", authLimiter, (req, res) => {
+  try {
+    const { username, password } = req.body || {};
+    if (!username || !password) return res.status(400).json({ message: "username and password required" });
+    const user = (readData().users || []).find(u => u.username === username);
+    if (!user || !bcrypt.compareSync(password, user.passwordHash)) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+    const token = jwt.sign(
+      { sub: user.id, username: user.username, role: user.role, name: user.name },
+      JWT_SECRET, { expiresIn: TOKEN_TTL }
+    );
+    res.json({ token, user: { id: user.id, username: user.username, name: user.name, role: user.role } });
+  } catch (e) { res.status(500).json({ message: "Login failed" }); }
+});
+
+// Return the current session (used by the frontend to restore state on reload).
+app.get("/api/auth/me", (req, res) => res.json({ user: req.user }));
+
+// ── Public staff declarations submit ──────────────────────────────────────────
+// Replaces the old declare.html pattern of GET-then-PUT of the entire datastore.
+// This appends ONE validated record server-side and never exposes existing data.
+app.post("/api/declarations", declareLimiter, (req, res) => {
+  try {
+    const b = req.body || {};
+    const clip = (v, n) => String(v == null ? "" : v).slice(0, n);
+    const employee = clip(b.employee || b.fullName || b.name, 160).trim();
+    if (!employee) return res.status(400).json({ message: "Employee name is required" });
+    const finVal = (b.financialValue === "" || b.financialValue == null) ? "" : (Number(b.financialValue) || 0);
+    const record = {
+      id:               b.id || `DEC-${Date.now()}`,
+      type:             clip(b.type, 120),
+      employee,
+      employeeNum:      clip(b.employeeNum, 60),
+      department:       clip(b.department, 120),
+      jobTitle:         clip(b.jobTitle, 120),
+      description:      clip(b.description, 4000),
+      relatedParty:     clip(b.relatedParty, 240),
+      financialValue:   finVal,
+      dateSubmitted:    clip(b.dateSubmitted, 40),
+      periodCovered:    clip(b.periodCovered, 60),
+      mitigationAction: clip(b.mitigationAction, 2000),
+      supportingDocs:   clip(b.supportingDocs, 500),
+      dueDate:          clip(b.dueDate, 40),
+      notes:            clip(b.notes, 2000),
+      riskLevel:        clip(b.riskLevel, 40) || "Medium",
+      status:           "Submitted",
+      managerReview:    "Pending",
+      complianceReview: "Pending",
+      approvalStatus:   "Pending",
+      submittedVia:     "Staff Intranet Portal",
+      createdAt:        new Date().toISOString(),
+    };
+    const data = readData();
+    if (!Array.isArray(data.declarations)) data.declarations = [];
+    data.declarations.push(record);
+    writeData(data);
+    res.json({ message: "Declaration submitted", reference: record.id });
+  } catch (e) { res.status(500).json({ message: "Submission failed" }); }
+});
 
 // ── Root ─────────────────────────────────────────────────────────────────────
 app.get("/", (req, res) => res.send("LGSETA BJMAPEX GRC Intelligence Center — Backend Running"));
@@ -305,28 +475,84 @@ const TEMPLATES = {
   },
 };
 
-app.get("/api/templates/:type", (req, res) => {
+// ── Spreadsheet helpers (exceljs — replaces the unmaintained `xlsx`) ───────────
+async function buildTemplateBuffer(tmpl, sheetName) {
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet(sheetName);
+  ws.addRow(tmpl.headers);
+  ws.addRow(tmpl.sample);
+  tmpl.headers.forEach((_, i) => { ws.getColumn(i + 1).width = 22; });
+  return Buffer.from(await wb.xlsx.writeBuffer());
+}
+
+// Parse the first worksheet of an .xlsx/.csv file into an array of row objects
+// keyed by the header row — the shape the import logic below expects.
+async function parseSheetToJson(filePath) {
+  const wb = new ExcelJS.Workbook();
+  const ext = path.extname(filePath).toLowerCase();
+  if (ext === ".csv") await wb.csv.readFile(filePath);
+  else                await wb.xlsx.readFile(filePath);
+
+  const ws = wb.worksheets[0];
+  if (!ws) return [];
+
+  const cellText = (v) => {
+    if (v == null) return "";
+    if (typeof v === "object") {
+      if (v.text !== undefined)             return v.text;                 // hyperlink
+      if (v.result !== undefined)           return v.result;              // formula
+      if (Array.isArray(v.richText))        return v.richText.map(t => t.text).join("");
+      if (v instanceof Date)                return v.toISOString().slice(0, 10);
+      return String(v);
+    }
+    return v;
+  };
+
+  let headers = null;
+  const rows = [];
+  ws.eachRow((row, rowNumber) => {
+    const values = row.values; // 1-indexed; index 0 is empty
+    if (rowNumber === 1) {
+      headers = values.map(h => (h == null ? "" : String(cellText(h)).trim()));
+      return;
+    }
+    if (!headers) return;
+    const obj = {};
+    let hasValue = false;
+    for (let c = 1; c < headers.length; c++) {
+      const key = headers[c];
+      if (!key) continue;
+      const val = cellText(values[c]);
+      if (val !== "" && val !== undefined && val !== null) hasValue = true;
+      obj[key] = val === undefined ? "" : val;
+    }
+    if (hasValue) rows.push(obj);
+  });
+  return rows;
+}
+
+app.get("/api/templates/:type", async (req, res) => {
   const tmpl = TEMPLATES[req.params.type];
   if (!tmpl) return res.status(404).json({ message:"Template not found" });
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet([tmpl.headers, tmpl.sample]);
-  ws["!cols"] = tmpl.headers.map(()=>({ wch:22 }));
-  XLSX.utils.book_append_sheet(wb, ws, req.params.type.toUpperCase());
-  const buf = XLSX.write(wb, { type:"buffer", bookType:"xlsx" });
-  res.setHeader("Content-Disposition", `attachment; filename=LGSETA_${req.params.type}_template.xlsx`);
-  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-  res.send(buf);
+  try {
+    const buf = await buildTemplateBuffer(tmpl, req.params.type.toUpperCase());
+    res.setHeader("Content-Disposition", `attachment; filename=LGSETA_${req.params.type}_template.xlsx`);
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.send(buf);
+  } catch (e) {
+    console.error("Template generation error:", e);
+    res.status(500).json({ message:"Template generation failed" });
+  }
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // EXCEL UPLOAD
 // ═══════════════════════════════════════════════════════════════════════════════
-app.post("/api/upload/:type", upload.single("file"), (req, res) => {
+app.post("/api/upload/:type", upload.single("file"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message:"No file uploaded" });
-    const wb   = XLSX.readFile(req.file.path);
-    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-    if (!rows.length) return res.status(400).json({ message:"File is empty" });
+    const rows = await parseSheetToJson(req.file.path);
+    if (!rows.length) { fs.unlinkSync(req.file.path); return res.status(400).json({ message:"File is empty" }); }
 
     const data = readData();
     const type = req.params.type;
@@ -382,7 +608,11 @@ app.post("/api/upload/:type", upload.single("file"), (req, res) => {
     writeData(data);
     fs.unlinkSync(req.file.path);
     res.json({ message:"Import successful", type, added, updated, total:added+updated });
-  } catch (e) { res.status(500).json({ message:"Upload failed", error:e.message }); }
+  } catch (e) {
+    if (req.file && fs.existsSync(req.file.path)) { try { fs.unlinkSync(req.file.path); } catch (_) {} }
+    console.error("Upload error:", e);
+    res.status(500).json({ message:"Upload failed" });
+  }
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────
@@ -1546,7 +1776,6 @@ app.post("/api/reports/:type", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => console.log(`LGSETA GRC Backend running on port ${PORT}`));
 // ═══════════════════════════════════════════════════════════════════════════════
 // OPERATIONAL RISKS  —  GET / POST / PUT / DELETE
 // ───────────────────────────────────────────────────────────────────────────────
@@ -1627,26 +1856,5 @@ app.delete("/api/oprisks/:id", (req, res) => {
   } catch (e) { res.status(500).json({ message:"Failed to delete operational risk", error:e.message }); }
 });
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// QUARTERLY REPORT GENERATOR
-// ═══════════════════════════════════════════════════════════════════════════════
-
-
-app.post("/api/reports/:type", async (req, res) => {
-  const type = req.params.type; // excom | arc | board
-  if (!["excom","arc","board"].includes(type)) {
-    return res.status(400).json({ message:"Invalid report type. Use: excom, arc, or board" });
-  }
-  try {
-    const data   = readData();
-    const buffer = await generateReport(type, data);
-    const date   = new Date().toISOString().slice(0,10);
-    const labels = { excom:"EXCOM", arc:"ARC", board:"Board" };
-    res.setHeader("Content-Disposition", `attachment; filename=LGSETA_${labels[type]}_GRC_Report_${date}.docx`);
-    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-    res.send(buffer);
-  } catch (e) {
-    console.error("Report generation error:", e);
-    res.status(500).json({ message:"Report generation failed", error:e.message });
-  }
-});
+// ── Start ─────────────────────────────────────────────────────────────────────
+app.listen(PORT, () => console.log(`LGSETA GRC Backend running on port ${PORT}`));

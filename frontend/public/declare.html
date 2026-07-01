@@ -568,22 +568,14 @@
     };
 
     try {
-      // GET existing data
-      const getRes = await fetch(`${API}/api/dashboard`);
-      if (!getRes.ok) throw new Error("Cannot reach server");
-      const data = await getRes.json();
-
-      // Append declaration
-      if (!Array.isArray(data.declarations)) data.declarations = [];
-      data.declarations.push(declaration);
-
-      // PUT back
-      const putRes = await fetch(`${API}/api/dashboard`, {
-        method: "PUT",
+      // Append-only submit: the server validates and stores a single record.
+      // The public page no longer reads or overwrites the whole datastore.
+      const postRes = await fetch(`${API}/api/declarations`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(declaration),
       });
-      if (!putRes.ok) throw new Error("Failed to save declaration");
+      if (!postRes.ok) throw new Error("Failed to save declaration");
 
       // Show success
       document.getElementById("form-container").style.display = "none";

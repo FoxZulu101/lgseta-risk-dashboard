@@ -6,7 +6,60 @@ import {
 } from "recharts";
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
-const API = "https://lgseta-risk-dashboard.onrender.com";
+// API base is configurable via Vite env (VITE_API_URL) so the app can point at a
+// local backend in dev; production (Netlify) leaves it unset and uses Render.
+const API = import.meta.env.VITE_API_URL || "https://lgseta-risk-dashboard.onrender.com";
+
+// ─── AUTH ─────────────────────────────────────────────────────────────────────
+// Local JWT session. The token is attached to every API request by the global
+// fetch interceptor below, so the ~100 existing fetch call-sites stay untouched.
+const TOKEN_KEY = "bjmapex_token";
+const USER_KEY  = "bjmapex_user";
+let AUTH_TOKEN = (typeof localStorage !== "undefined" && localStorage.getItem(TOKEN_KEY)) || null;
+
+function setToken(t) {
+  AUTH_TOKEN = t || null;
+  if (t) localStorage.setItem(TOKEN_KEY, t);
+  else   localStorage.removeItem(TOKEN_KEY);
+}
+function storedUser() {
+  try { return JSON.parse(localStorage.getItem(USER_KEY) || "null"); }
+  catch (e) { return null; }
+}
+function saveSession(token, user) {
+  setToken(token);
+  localStorage.setItem(USER_KEY, JSON.stringify(user || null));
+}
+function clearSession() {
+  setToken(null);
+  localStorage.removeItem(USER_KEY);
+}
+
+// Global fetch interceptor: for any request to our API, attach the bearer token
+// and, on a 401, clear the session and signal the app to return to the login
+// screen. Non-API requests pass through untouched. Installed once.
+if (typeof window !== "undefined" && !window.__bjmapexFetchPatched) {
+  const _origFetch = window.fetch.bind(window);
+  window.fetch = (input, init) => {
+    init = init || {};
+    const url = typeof input === "string" ? input : (input && input.url) || "";
+    if (url.indexOf(API) === 0) {
+      const isLogin = url.indexOf("/api/auth/login") !== -1;
+      if (AUTH_TOKEN) {
+        init = { ...init, headers: { ...(init.headers || {}), Authorization: "Bearer " + AUTH_TOKEN } };
+      }
+      return _origFetch(input, init).then(res => {
+        if (res.status === 401 && !isLogin) {
+          clearSession();
+          window.dispatchEvent(new Event("bjmapex-unauthorized"));
+        }
+        return res;
+      });
+    }
+    return _origFetch(input, init);
+  };
+  window.__bjmapexFetchPatched = true;
+}
 
 // ─── PERIOD CONTEXT ───────────────────────────────────────────────────────────
 // Lets any module read the globally-selected reporting period via usePeriod().
@@ -9000,9 +9053,77 @@ const PERIODS = [
   { value:"Q1-2728", label:"Q1 2027/28" },
 ];
 
+function LoginScreen({ onLogin }) {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError]       = useState("");
+  const [busy, setBusy]         = useState(false);
+
+  applyTheme("dark");
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setError(""); setBusy(true);
+    try {
+      const res = await fetch(`${API}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      if (!res.ok) {
+        setError(res.status === 401 ? "Invalid username or password." : "Login failed — please try again.");
+        setBusy(false); return;
+      }
+      const data = await res.json();
+      saveSession(data.token, data.user);
+      onLogin({ token: data.token, user: data.user });
+    } catch (err) {
+      setError("Cannot reach the server. Check your connection and try again.");
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center",
+      background:C.bg, fontFamily:"'Segoe UI','Inter',sans-serif", padding:"1rem" }}>
+      <form onSubmit={submit} style={{ width:"100%", maxWidth:380, background:C.surface,
+        border:`1px solid ${C.border}`, borderRadius:12, padding:"2rem", boxShadow:"0 10px 40px rgba(0,0,0,0.35)" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:"0.6rem", marginBottom:"1.25rem" }}>
+          <div style={{ width:36, height:36, background:"linear-gradient(135deg,#1d6fa4,#3b82f6)", borderRadius:8,
+            display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontWeight:800 }}>i</div>
+          <div>
+            <div style={{ color:C.text, fontWeight:800, fontSize:"1rem", lineHeight:1.2 }}>LGSETA — BJMAPEX</div>
+            <div style={{ color:C.muted, fontSize:"0.72rem" }}>GRC Intelligence Center</div>
+          </div>
+        </div>
+        <h3 style={{ color:C.text, fontSize:"0.95rem", margin:"0 0 1rem" }}>Sign in</h3>
+        {error && <div style={{ background:"rgba(220,38,38,0.12)", border:`1px solid ${C.red}`, color:C.red,
+          borderRadius:6, padding:"0.5rem 0.7rem", fontSize:"0.78rem", marginBottom:"0.85rem" }}>{error}</div>}
+        <label style={{ display:"block", color:C.muted, fontSize:"0.72rem", marginBottom:"0.25rem" }}>Username</label>
+        <input value={username} onChange={e=>setUsername(e.target.value)} autoFocus autoComplete="username"
+          style={{ width:"100%", boxSizing:"border-box", background:C.bg, border:`1px solid ${C.border}`, borderRadius:6,
+            color:C.text, fontSize:"0.85rem", padding:"0.55rem 0.7rem", marginBottom:"0.85rem", outline:"none" }}/>
+        <label style={{ display:"block", color:C.muted, fontSize:"0.72rem", marginBottom:"0.25rem" }}>Password</label>
+        <input type="password" value={password} onChange={e=>setPassword(e.target.value)} autoComplete="current-password"
+          style={{ width:"100%", boxSizing:"border-box", background:C.bg, border:`1px solid ${C.border}`, borderRadius:6,
+            color:C.text, fontSize:"0.85rem", padding:"0.55rem 0.7rem", marginBottom:"1.1rem", outline:"none" }}/>
+        <button type="submit" disabled={busy}
+          style={{ width:"100%", background:busy?C.muted:C.blue, color:"#fff", border:"none", borderRadius:6,
+            padding:"0.6rem", fontSize:"0.85rem", fontWeight:700, cursor:busy?"default":"pointer" }}>
+          {busy ? "Signing in…" : "Sign in"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
 export default function App() {
-  const [active, setActive] = useState("executive");
-  const [period, setPeriod]   = useState("Q2-2627");
+  const [session, setSession] = useState(() => {
+    const t = (typeof localStorage !== "undefined" && localStorage.getItem(TOKEN_KEY)) || null;
+    return t ? { token: t, user: storedUser() } : null;
+  });
+  const [active, setActive]     = useState("executive");
+  const [period, setPeriod]     = useState("Q2-2627");
   const [darkMode, setDarkMode] = useState(true);
   const Module = MODULES[active] || ExecutiveOverview;
 
@@ -9010,7 +9131,16 @@ export default function App() {
   // changes. Toggling state forces App (and all modules) to re-render with the
   // new surface colours.
   useEffect(() => { applyTheme(darkMode ? "dark" : "light"); }, [darkMode]);
+  // Any API call that gets a 401 (expired/invalid token) bounces back to login.
+  useEffect(() => {
+    const onUnauth = () => setSession(null);
+    window.addEventListener("bjmapex-unauthorized", onUnauth);
+    return () => window.removeEventListener("bjmapex-unauthorized", onUnauth);
+  }, []);
   applyTheme(darkMode ? "dark" : "light"); // ensure tokens are correct on first paint
+
+  if (!session) return <LoginScreen onLogin={setSession} />;
+  const logout = () => { clearSession(); setSession(null); };
 
   return (
     <div style={{ display:"flex", height:"100vh", background:C.bg, fontFamily:"'Segoe UI','Inter',sans-serif", overflow:"hidden" }}>
@@ -9066,6 +9196,16 @@ export default function App() {
             </button>
             <span style={{ color:C.green, fontSize:"0.78rem", fontWeight:600 }}>● Live</span>
             <span style={{ color:C.muted, fontSize:"0.78rem" }}>{PERIODS.find(p=>p.value===period)?.label||"Q2 2026/27"}</span>
+            <span style={{ width:1, height:20, background:C.border }} />
+            <span style={{ color:C.text, fontSize:"0.78rem", fontWeight:600 }}>
+              {session.user?.name || session.user?.username || "User"}
+              {session.user?.role ? <span style={{ color:C.muted, fontWeight:400 }}>{" · "+session.user.role}</span> : null}
+            </span>
+            <button onClick={logout} title="Sign out"
+              style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:6,
+                color:C.text, fontSize:"0.75rem", padding:"0.3rem 0.6rem", cursor:"pointer" }}>
+              Sign out
+            </button>
           </div>
         </header>
         <main style={{ flex:1, overflowY:"auto", padding:"1.5rem" }}>
