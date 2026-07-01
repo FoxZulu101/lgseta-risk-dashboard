@@ -4,7 +4,6 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const multer = require("multer");
-const ExcelJS = require("exceljs");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const bcrypt = require("bcryptjs");
@@ -41,36 +40,9 @@ const authLimiter    = rateLimit({ windowMs: 15*60*1000, max: 20,   standardHead
 const declareLimiter = rateLimit({ windowMs: 60*60*1000, max: 30,   standardHeaders: true, legacyHeaders: false });
 app.use("/api", apiLimiter);
 
-// Persistent-disk storage: the live data file lives on the Render disk mounted
-// at /data so it survives redeploys. The repo's data/dashboardData.json is used
-// only as the first-run seed.
-const DISK_DIR  = process.env.DATA_DIR || "/data";
-const dataPath  = path.join(DISK_DIR, "dashboardData.json");
-const seedPath  = path.join(__dirname, "data", "dashboardData.json");
-const uploadsDir = path.join(__dirname, "uploads");
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
-
-// On first run the disk is empty — seed it once from the file committed in the repo.
-try {
-  if (!fs.existsSync(DISK_DIR)) fs.mkdirSync(DISK_DIR, { recursive: true });
-  if (!fs.existsSync(dataPath) && fs.existsSync(seedPath)) {
-    fs.copyFileSync(seedPath, dataPath);
-    console.log("Seeded persistent data file from repo on first run.");
-  }
-} catch (e) {
-  console.error("Persistent-disk init failed, falling back to repo path:", e.message);
-}
-
-function readData()      { return JSON.parse(fs.readFileSync(fs.existsSync(dataPath) ? dataPath : seedPath, "utf8")); }
-function writeData(data) {
-  // Atomic write: serialise to a temp file then rename over the target. rename()
-  // is atomic on the same filesystem, so a crash mid-write can never leave a
-  // half-written / unparseable data file. (Interim mitigation — the real fix is
-  // the move to PostgreSQL.)
-  const tmp = dataPath + ".tmp";
-  fs.writeFileSync(tmp, JSON.stringify(data, null, 2));
-  fs.renameSync(tmp, dataPath);
-}
+// Data store (flat-file persistence). readData/writeData + first-run seed live
+// in ./store.js. uploadsDir is the multer destination.
+const { readData, writeData, uploadsDir } = require("./store");
 
 // ── Multer (hardened: random server-side filenames, size + count limits) ──────
 // Filenames are generated server-side from random bytes — the client's
@@ -527,87 +499,9 @@ app.put("/api/period", (req, res) => {
   } catch (e) { res.status(500).json({ message:"Failed to update period", error:e.message }); }
 });
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// EXCEL TEMPLATES
-// ═══════════════════════════════════════════════════════════════════════════════
-const TEMPLATES = {
-  risks: {
-    headers: ["id","title","category","description","inherentRating","residualRating","currentRating","targetRating","currentStatus","appetite","owner","department","response","controlEffectiveness","trend","reviewDate"],
-    sample:  ["SR-011","Example Risk Title","Strategic Risk","Description",20,15,15,8,"Outside Tolerance","Low","CEO","Office of CEO","Treat","Partially Effective","Stable","2026-09-30"]
-  },
-  kris: {
-    headers: ["id","indicator","linkedRisk","category","target","currentPeriodValue","previousPeriodValue","currentStatus","previousStatus","trend","greenThreshold","amberThreshold","redThreshold"],
-    sample:  ["KRI-009","KRI Name","SR-001","Strategic Performance","95%","88%","82%","Outside Tolerance","Outside Tolerance","Improving","95%-100%","85%-94%","Below 85%"]
-  },
-  treatments: {
-    headers: ["id","riskId","action","owner","dueDate","status","priority","progress","budget"],
-    sample:  ["TA-009","SR-001","Treatment description","Risk Owner","2026-09-30","In Progress","High",50,100000]
-  },
-  uifw: {
-    headers: ["id","type","description","amount","department","dateIdentified","status","responsibleOfficer","condoned","recoverable","referredTo"],
-    sample:  ["UIFW-009","Irregular","Description",500000,"Finance","2026-06-14","Open","Finance Manager","false","true","Internal Audit"]
-  },
-  incidents: {
-    headers: ["id","title","date","type","affectedUnit","severity","duration","rtoBreached","impact","actionsTaken","status"],
-    sample:  ["INC-004","Incident Title","2026-06-14","ICT Outage","All Departments","High","4 hours","Yes","High impact","Actions taken","Open"]
-  },
-};
+// Excel templates + upload parsing live in ./excel.js.
+const { TEMPLATES, buildTemplateBuffer, parseSheetToJson } = require("./excel");
 
-// ── Spreadsheet helpers (exceljs — replaces the unmaintained `xlsx`) ───────────
-async function buildTemplateBuffer(tmpl, sheetName) {
-  const wb = new ExcelJS.Workbook();
-  const ws = wb.addWorksheet(sheetName);
-  ws.addRow(tmpl.headers);
-  ws.addRow(tmpl.sample);
-  tmpl.headers.forEach((_, i) => { ws.getColumn(i + 1).width = 22; });
-  return Buffer.from(await wb.xlsx.writeBuffer());
-}
-
-// Parse the first worksheet of an .xlsx/.csv file into an array of row objects
-// keyed by the header row — the shape the import logic below expects.
-async function parseSheetToJson(filePath) {
-  const wb = new ExcelJS.Workbook();
-  const ext = path.extname(filePath).toLowerCase();
-  if (ext === ".csv") await wb.csv.readFile(filePath);
-  else                await wb.xlsx.readFile(filePath);
-
-  const ws = wb.worksheets[0];
-  if (!ws) return [];
-
-  const cellText = (v) => {
-    if (v == null) return "";
-    if (typeof v === "object") {
-      if (v.text !== undefined)             return v.text;                 // hyperlink
-      if (v.result !== undefined)           return v.result;              // formula
-      if (Array.isArray(v.richText))        return v.richText.map(t => t.text).join("");
-      if (v instanceof Date)                return v.toISOString().slice(0, 10);
-      return String(v);
-    }
-    return v;
-  };
-
-  let headers = null;
-  const rows = [];
-  ws.eachRow((row, rowNumber) => {
-    const values = row.values; // 1-indexed; index 0 is empty
-    if (rowNumber === 1) {
-      headers = values.map(h => (h == null ? "" : String(cellText(h)).trim()));
-      return;
-    }
-    if (!headers) return;
-    const obj = {};
-    let hasValue = false;
-    for (let c = 1; c < headers.length; c++) {
-      const key = headers[c];
-      if (!key) continue;
-      const val = cellText(values[c]);
-      if (val !== "" && val !== undefined && val !== null) hasValue = true;
-      obj[key] = val === undefined ? "" : val;
-    }
-    if (hasValue) rows.push(obj);
-  });
-  return rows;
-}
 
 app.get("/api/templates/:type", async (req, res) => {
   const tmpl = TEMPLATES[req.params.type];
